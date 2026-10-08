@@ -40,7 +40,12 @@ namespace ProjectCR
         [Min(0.1f)]
         [SerializeField] private float chipScale = 1.4f;
 
-        [SerializeField] private float trayLift = 0.012f;
+        [Tooltip("고른 금액 칸 칩을 들어 올리는 높이(m).")]
+        [SerializeField] private float trayLift = 0.0132f;
+
+        [Tooltip("칩이 올라가고 내려가는 데 걸리는 대략의 시간(초). 0이면 바로.")]
+        [Min(0f)]
+        [SerializeField] private float trayLiftTime = 0.18f;
 
         [Tooltip("마우스가 가리키는 베팅 자리 표시.")]
         [SerializeField] private Transform hoverMarker;
@@ -75,6 +80,12 @@ namespace ProjectCR
         private readonly Stack<StackLabel> freeLabels = new Stack<StackLabel>();
         private Vector3[] trayBase;
 
+        // 트레이 칩 들림: 지금 높이, SmoothDamp 속도, 지금 고른 금액(목표). 목표에 닿으면 움직임을 멈춘다.
+        private float[] trayLiftNow;
+        private float[] trayLiftVelocity;
+        private long trayTargetValue = -1;
+        private bool trayMoving;
+
         /// <summary>칩 더미 위 합계 글자. 읽기 쉽게 어두운 그림자 글자를 뒤에 하나 더 둔다.</summary>
         private sealed class StackLabel
         {
@@ -90,6 +101,8 @@ namespace ProjectCR
         private void Awake()
         {
             trayBase = new Vector3[trayChips.Length];
+            trayLiftNow = new float[trayChips.Length];
+            trayLiftVelocity = new float[trayChips.Length];
             for (int i = 0; i < trayChips.Length; i++)
             {
                 trayBase[i] = trayChips[i].localPosition;
@@ -121,6 +134,46 @@ namespace ProjectCR
             {
                 tablet.Refresh(flow);
             }
+        }
+
+        /// <summary>고른 칸 칩은 trayLift까지, 나머지는 0까지 부드럽게 옮긴다(SmoothDamp, 시간 기준이라 프레임과 무관).</summary>
+        private void Update()
+        {
+            if (!trayMoving || trayLiftNow == null)
+            {
+                return;
+            }
+
+            float dt = Time.unscaledDeltaTime;
+            bool moving = false;
+            for (int i = 0; i < trayChips.Length; i++)
+            {
+                float target = denominations[trayChipSlot[i]] == trayTargetValue ? trayLift : 0f;
+                float now = trayLiftTime > 0f
+                    ? Mathf.SmoothDamp(trayLiftNow[i], target, ref trayLiftVelocity[i], trayLiftTime, Mathf.Infinity, dt)
+                    : target;
+                if (Mathf.Abs(now - target) < 0.00002f && Mathf.Abs(trayLiftVelocity[i]) < 0.0005f)
+                {
+                    now = target;
+                    trayLiftVelocity[i] = 0f;
+                }
+                else
+                {
+                    moving = true;
+                }
+
+                trayLiftNow[i] = now;
+                ApplyTrayLift(i);
+            }
+
+            trayMoving = moving;
+        }
+
+        private void ApplyTrayLift(int i)
+        {
+            Transform chip = trayChips[i];
+            Vector3 lift = board.transform.up * trayLiftNow[i];
+            chip.localPosition = trayBase[i] + (chip.parent != null ? chip.parent.InverseTransformVector(lift) : lift);
         }
 
         /// <summary>합계 글자가 늘 카메라를 보고 화면에서 칩 위에 있게 한다(시점 전환·카메라 이동 중에도).</summary>
@@ -324,14 +377,11 @@ namespace ProjectCR
                 trayGlow.Show(Array.IndexOf(denominations, chipValue));
             }
 
-            for (int i = 0; i < trayChips.Length; i++)
+            // 높이는 Update가 천천히 맞춘다. 여기서는 목표만 바꾼다.
+            if (trayTargetValue != chipValue)
             {
-                bool selected = denominations[trayChipSlot[i]] == chipValue;
-                trayChips[i].localPosition = trayBase[i];
-                if (selected)
-                {
-                    trayChips[i].position += board.transform.up * trayLift;
-                }
+                trayTargetValue = chipValue;
+                trayMoving = true;
             }
         }
 

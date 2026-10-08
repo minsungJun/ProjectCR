@@ -1509,7 +1509,8 @@ MonoBehaviour:
   trayGlow: {fileID: 2559008808015048583}
   chipHeight: 0.003400147
   chipScale: 1.4
-  trayLift: 0.012
+  trayLift: 0.0132
+  trayLiftTime: 0.18
   hoverMarker: {fileID: 5815044522110396604}
   highlight: {fileID: 7829970707408365493}
   balanceText: {fileID: 4600475829427376586}
