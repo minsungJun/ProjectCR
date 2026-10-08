@@ -30,7 +30,7 @@ namespace ProjectCR
         [Tooltip("0이면 매번 다른 시드. 0이 아니면 같은 시드에서 같은 결과 순서가 나온다. 실제 시드는 콘솔에 찍힌다.")]
         [SerializeField] private int randomSeed;
 
-        [Tooltip("공 i의 결과를 이 번호로 고정한다. 비우면 추첨 결과 그대로. -1은 그 공만 추첨대로.")]
+        [Tooltip("공 i의 결과를 이 번호로 고정한다. 비우면 추첨 결과 그대로. -1은 그 공만 추첨대로, -2는 해골.")]
         [SerializeField] private List<int> forcedNumbers = new List<int>();
 
         [Tooltip("회전마다 공을 이만큼 더 굴린다. 공 여러 개 연출·정산 확인용.")]
@@ -152,7 +152,7 @@ namespace ProjectCR
                 return;
             }
 
-            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {spin.Bet.Number}번에 {spin.Bet.Stake:N0} → 결과 {DescribeNumbers(spin.Result)}");
+            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {spin.Bet.Number}번에 {spin.Bet.Stake:N0} → 결과 {Describe(spin.Result)}");
 
             hud.ShowSpinning();
             hud.Refresh(flow);
@@ -165,21 +165,27 @@ namespace ProjectCR
 
             if (flow.CompleteSpin(spin.Id, out SettlementResult settlement))
             {
+                Debug.Log($"[RouletteGame] 회전 #{spin.Id} 정산: {settlement.Outcome}, 지급 {settlement.TotalPayout:N0}, 연속 낙첨 {flow.ConsecutiveLosses}");
                 hud.ShowSettlement(settlement);
             }
 
             hud.Refresh(flow);
         }
 
-        private static string DescribeNumbers(SpinResult result)
+        private static string Describe(SpinResult result)
         {
             var numbers = new List<string>(result.Balls.Count);
             foreach (BallResult ball in result.Balls)
             {
-                numbers.Add(ball.Number.ToString());
+                numbers.Add(ball.IsSkull ? "해골" : ball.Number.ToString());
             }
 
             return string.Join(", ", numbers);
+        }
+
+        private static string Describe(PocketDefinition pocket)
+        {
+            return pocket.IsSkull ? "해골" : pocket.Number.ToString();
         }
 
         private void OnPayClicked()
@@ -215,10 +221,10 @@ namespace ProjectCR
         // ---------- 검증 ----------
 
         /// <summary>
-        /// 0~36을 휠 순서대로 하나씩 강제로 굴려, 공에 가장 가까운 앵커가 목표 칸인지 확인한다.
+        /// 모든 칸(해골 포함)을 휠 순서대로 하나씩 강제로 굴려, 공에 가장 가까운 앵커가 목표 칸인지 확인한다.
         /// 돈과 라운드는 건드리지 않는다. 플레이 모드에서만 동작한다.
         /// </summary>
-        [ContextMenu("37칸 순회 검증")]
+        [ContextMenu("전체 칸 순회 검증")]
         public void StartPocketVerification()
         {
             if (!Application.isPlaying || verifying || presenter.IsPlaying)
@@ -257,7 +263,7 @@ namespace ProjectCR
                 if (landedIndex != i)
                 {
                     mismatches++;
-                    Debug.LogError($"[검증] 목표 {number}(칸 {i}) → 실제 {definition.GetPocket(landedIndex).Number}(칸 {landedIndex})");
+                    Debug.LogError($"[검증] 목표 {Describe(definition.GetPocket(i))}(칸 {i}) → 실제 {Describe(definition.GetPocket(landedIndex))}(칸 {landedIndex})");
                 }
             }
 

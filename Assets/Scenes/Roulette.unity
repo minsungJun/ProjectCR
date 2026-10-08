@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab82393d0dca4ab4e99b2ffb9141e715, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ProjectCR::ProjectCR.RouletteGame
-  definition: {fileID: 11400000, guid: 4cb9b81fa117c3b46a88ec7f33226e96, type: 2}
+  definition: {fileID: 11400000, guid: 72cbfda85a27086479dc338e676e04c1, type: 2}
   balance: {fileID: 11400000, guid: 17402ebc411f8f64da65401a882a6131, type: 2}
   presenter: {fileID: 2062854714}
   hud: {fileID: 2083983754}

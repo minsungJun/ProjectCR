@@ -23,15 +23,16 @@ namespace ProjectCR.Tests
 
         private static float AngleDifference(float a, float b) => Mathf.Abs(Mathf.DeltaAngle(a, b));
 
-        [Test]
-        public void EndAngle_MatchesEveryPocket_FromAnyStart()
+        [TestCase(37)]
+        [TestCase(38)]
+        public void EndAngle_MatchesEveryPocket_FromAnyStart(int pocketCount)
         {
             float[] starts = { 0f, 47.3f, 180f, 359.9f, -720f, 1234.5f };
             int[] revolutions = { 0, 3, 8 };
 
-            for (int pocket = 0; pocket < 37; pocket++)
+            for (int pocket = 0; pocket < pocketCount; pocket++)
             {
-                float target = pocket * 360f / 37f;
+                float target = pocket * 360f / pocketCount;
                 foreach (float start in starts)
                 {
                     foreach (int revs in revolutions)

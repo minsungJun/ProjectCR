@@ -14,6 +14,7 @@
         <ui:VisualElement class="bet-panel">
             <ui:Label class="panel-title" text="번호 선택" />
             <ui:VisualElement name="number-grid" class="number-grid" />
+            <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
 
             <ui:VisualElement class="row">
                 <ui:Label class="field-label" text="선택 번호" />

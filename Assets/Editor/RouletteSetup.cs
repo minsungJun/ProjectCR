@@ -15,7 +15,7 @@ namespace ProjectCR.Editor
     /// 다시 돌려도 된다. 에셋은 있으면 내용만 갱신해서 GUID와 씬 참조가 유지된다.
     ///
     /// 진짜 모델로 바꿀 때 지킬 규약(Docs/ProjectCR 설계.md):
-    /// 피벗은 휠 중심·Y 위, 0번 칸 중심이 로컬 +Z, 위에서 볼 때 시계 방향 유럽식 순서, 칸별 Renderer.
+    /// 피벗은 휠 중심·Y 위, 0번 칸 중심이 로컬 +Z, 위에서 볼 때 시계 방향 해골 휠 순서(해골은 0의 정반대), 칸별 Renderer.
     /// </summary>
     public static class RouletteSetup
     {
@@ -25,7 +25,7 @@ namespace ProjectCR.Editor
         private const string PrefabFolder = "Assets/Prefabs";
         private const string UIFolder = "Assets/UI";
 
-        private const string DefinitionPath = DataFolder + "/RouletteDefinition_European.asset";
+        private const string DefinitionPath = DataFolder + "/RouletteDefinition_Skull38.asset";
         private const string BalancePath = DataFolder + "/GameBalance.asset";
         private const string MotionPath = DataFolder + "/SpinMotionSettings.asset";
         private const string RoulettePrefabPath = PrefabFolder + "/RouletteRoot.prefab";
@@ -46,6 +46,9 @@ namespace ProjectCR.Editor
         private const float BallRadius = 0.03f;
         private const float TrackRadius = 1.12f;
         private const float TrackHeight = 0.15f;
+
+        // 해골 칸 라벨. 내장 폰트에 ☠ 글리프가 없으면 비어 보이므로 그때는 "X"로 바꾼다.
+        private const string SkullLabel = "☠";
 
         // 볼 그릇 단면 (반경, 높이). 안쪽 경사 → 볼 트랙 → 벽 → 윗면 → 바깥 옆면.
         private static readonly Vector2[] BowlProfile =
@@ -73,7 +76,7 @@ namespace ProjectCR.Editor
             EnsureFolder(DataFolder);
             EnsureFolder(UIFolder);
 
-            LoadOrCreate<RouletteDefinition>(DefinitionPath, definition => definition.ResetToEuropean());
+            LoadOrCreate<RouletteDefinition>(DefinitionPath, definition => definition.ResetToSkullWheel());
             LoadOrCreate<GameBalance>(BalancePath, null);
             LoadOrCreate<SpinMotionSettings>(MotionPath, null);
 
@@ -106,6 +109,7 @@ namespace ProjectCR.Editor
             var red = Mat("Pocket_Red", new Color(0.62f, 0.07f, 0.09f), 0.45f);
             var black = Mat("Pocket_Black", new Color(0.05f, 0.05f, 0.06f), 0.45f);
             var green = Mat("Pocket_Green", new Color(0.04f, 0.42f, 0.17f), 0.45f);
+            var skull = Mat("Pocket_Skull", new Color(0.02f, 0.02f, 0.025f), 0.3f);
             var wood = Mat("Wheel_Wood", new Color(0.36f, 0.19f, 0.08f), 0.35f);
             var metal = Mat("Wheel_Metal", new Color(0.78f, 0.62f, 0.3f), 0.7f, 0.85f);
             var bowl = Mat("Bowl_Wood", new Color(0.24f, 0.12f, 0.05f), 0.3f);
@@ -157,7 +161,8 @@ namespace ProjectCR.Editor
                 {
                     PocketDefinition pocket = definition.GetPocket(i);
                     float angle = i * span;
-                    Material material = pocket.Color == PocketColor.Red ? red
+                    Material material = pocket.IsSkull ? skull
+                        : pocket.Color == PocketColor.Red ? red
                         : pocket.Color == PocketColor.Black ? black
                         : green;
 
@@ -167,7 +172,15 @@ namespace ProjectCR.Editor
                     pocketObject.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
                     renderers[i] = pocketObject.GetComponent<Renderer>();
 
-                    CreateLabel(pocketObject.transform, pocket.Number.ToString(), font);
+                    if (pocket.IsSkull)
+                    {
+                        // 콘셉트 시안처럼 검은 칸 위 아이보리 해골. 임시 모델이라 아이콘 대신 글자로 둔다.
+                        CreateLabel(pocketObject.transform, SkullLabel, font, new Color(0.96f, 0.93f, 0.82f), 1.35f);
+                    }
+                    else
+                    {
+                        CreateLabel(pocketObject.transform, pocket.Number.ToString(), font, Color.white, 1f);
+                    }
 
                     // 칸막이: 이 칸과 다음 칸 사이
                     float separatorAngle = angle + span * 0.5f;
@@ -402,7 +415,7 @@ namespace ProjectCR.Editor
         /// 번호 라벨. 임시 모델이라 TMP 리소스를 가져오지 않고 내장 TextMesh를 쓴다.
         /// 칸 기준 바깥 번호 띠 위에 눕히고, 글자 위쪽이 휠 바깥을 향하게 한다.
         /// </summary>
-        private static void CreateLabel(Transform pocket, string text, Font font)
+        private static void CreateLabel(Transform pocket, string text, Font font, Color color, float scale)
         {
             var label = new GameObject("Label");
             label.transform.SetParent(pocket, false);
@@ -413,10 +426,10 @@ namespace ProjectCR.Editor
             mesh.text = text;
             mesh.font = font;
             mesh.fontSize = 64;
-            mesh.characterSize = 0.009f;
+            mesh.characterSize = 0.009f * scale;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
-            mesh.color = Color.white;
+            mesh.color = color;
             label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
         }
 

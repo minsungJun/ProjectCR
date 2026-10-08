@@ -14,6 +14,7 @@ namespace ProjectCR
     public class RouletteHud : MonoBehaviour
     {
         private const int HistoryLength = 12;
+        private const string SkullMark = "☠";
 
         public event Action<int> NumberClicked;
         public event Action<long> StakeAdjusted;
@@ -133,6 +134,7 @@ namespace ProjectCR
         public void ShowSpinning()
         {
             resultLabel.text = "회전 중…";
+            resultLabel.RemoveFromClassList("result--skull");
         }
 
         public void ShowBetError(BetError error)
@@ -143,6 +145,7 @@ namespace ProjectCR
         public void ShowMessage(string message)
         {
             resultLabel.text = message;
+            resultLabel.RemoveFromClassList("result--skull");
         }
 
         public void ShowSettlement(SettlementResult settlement)
@@ -155,22 +158,29 @@ namespace ProjectCR
                     numbers.Append(" · ");
                 }
 
-                numbers.Append($"{ball.Ball.Number} ({ball.Ball.Color.ToKorean()})");
+                numbers.Append(ball.Ball.IsSkull
+                    ? $"{SkullMark} 해골"
+                    : $"{ball.Ball.Number} ({ball.Ball.Color.ToKorean()})");
             }
 
-            int wins = settlement.WinCount;
             string verdict;
-            if (wins == 0)
+            switch (settlement.Outcome)
             {
-                verdict = $"낙첨 −{settlement.Bet.Stake:N0}";
-            }
-            else
-            {
-                string count = settlement.Balls.Count > 1 ? $"공 {wins}개 " : string.Empty;
-                verdict = $"{count}적중! 지급 {settlement.TotalPayout:N0} (순이익 +{settlement.Net:N0})";
+                case SpinOutcome.SkullBust:
+                    // 맞힌 공이 있어도 해골이 하나라도 있으면 지급 0. 이유를 일반 낙첨과 구분해 보여 준다.
+                    verdict = $"해골 낙첨 · 지급 0 (−{settlement.Bet.Stake:N0})";
+                    break;
+                case SpinOutcome.Win:
+                    string count = settlement.Balls.Count > 1 ? $"공 {settlement.WinCount}개 " : string.Empty;
+                    verdict = $"{count}적중! 지급 {settlement.TotalPayout:N0} (순이익 +{settlement.Net:N0})";
+                    break;
+                default:
+                    verdict = $"낙첨 · 지급 0 (−{settlement.Bet.Stake:N0})";
+                    break;
             }
 
             resultLabel.text = $"결과 {numbers} — {verdict}";
+            resultLabel.EnableInClassList("result--skull", settlement.IsSkullBust);
 
             history.Insert(0, settlement.Spin);
             if (history.Count > HistoryLength)
@@ -238,7 +248,7 @@ namespace ProjectCR
             {
                 foreach (BallResult ball in spin.Balls)
                 {
-                    text.Append(ball.Number).Append(' ');
+                    text.Append(ball.IsSkull ? SkullMark : ball.Number.ToString()).Append(' ');
                 }
 
                 text.Append("| ");

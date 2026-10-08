@@ -126,6 +126,13 @@
     border-width: 3px;
 }
 
+.skull-notice {
+    margin-top: -4px;
+    margin-bottom: 12px;
+    font-size: 17px;
+    color: rgb(232, 224, 200);
+}
+
 .row {
     flex-direction: row;
     align-items: center;
@@ -223,6 +230,10 @@
     font-size: 30px;
     -unity-font-style: bold;
     white-space: normal;
+}
+
+.result--skull {
+    color: rgb(255, 120, 110);
 }
 
 .history {

@@ -43,8 +43,13 @@ namespace ProjectCR
     /// 정산은 진행 중인 회전의 Id와 맞을 때 한 번만 실행된다.
     ///
     /// 한 회전의 순서(아이템이 끼어들 자리):
-    /// 베팅 확정·차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
-    /// → 연출 → <see cref="CompleteSpin"/>(정산) → 라운드 종료 시 <see cref="SubmitPayment"/>.
+    /// 베팅 검증 → 확정·차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
+    /// → 모든 공의 연출 완료 → <see cref="CompleteSpin"/>(전체 결과 평가 → 정산 → 기록) → 다음 진행
+    /// → 라운드 종료 시 <see cref="SubmitPayment"/>.
+    ///
+    /// <b>해골은 상태를 바꾸지 않는다.</b> 해골 회전은 지급 0으로 정산되는 정상 회전 종료이고,
+    /// 회전 수 1회를 쓰고 일반 회전과 같은 규칙으로 Betting 또는 RoundPayment로 간다.
+    /// GameOver는 납부 실패에서만 생긴다.
     /// </summary>
     public sealed class GameFlowController
     {
@@ -77,6 +82,12 @@ namespace ProjectCR
 
         public ActiveSpin CurrentSpin { get; private set; }
         public SettlementResult LastSettlement { get; private set; }
+
+        /// <summary>정산까지 끝난 회전 수(게임 전체).</summary>
+        public int SpinsPlayed { get; private set; }
+
+        /// <summary>지급 0으로 끝난 회전이 연속 몇 번인가. 해골 낙첨도 센다. 당첨하면 0.</summary>
+        public int ConsecutiveLosses { get; private set; }
         public PaymentOutcome? LastPayment { get; private set; }
 
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
@@ -154,11 +165,14 @@ namespace ProjectCR
                 return false;
             }
 
+            // 전체 결과 평가 → 정산. 해골이면 지급 0이고 이미 뺀 베팅금은 돌려주지 않는다.
             ActiveSpin spin = CurrentSpin;
             settlement = PayoutCalculator.Calculate(spin.Bet, spin.Result, spin.Config.PayoutMultiplier, Wallet.MaxMoney);
             Wallet.Add(settlement.TotalPayout);
 
             LastSettlement = settlement;
+            SpinsPlayed++;
+            ConsecutiveLosses = settlement.Outcome == SpinOutcome.Win ? 0 : ConsecutiveLosses + 1;
             CurrentSpin = null;
             Bet.Unlock(Wallet.Balance);
 

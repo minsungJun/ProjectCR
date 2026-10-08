@@ -6,6 +6,7 @@ namespace ProjectCR
         NotInBettingPhase,
         NoNumberSelected,
         InvalidNumber,
+        SkullNotBettable,
         NonPositive,
         BelowMinimum,
         InsufficientFunds,
@@ -23,6 +24,8 @@ namespace ProjectCR
                     return "번호를 먼저 고르세요.";
                 case BetError.InvalidNumber:
                     return "휠에 없는 번호입니다.";
+                case BetError.SkullNotBettable:
+                    return "해골에는 베팅할 수 없습니다.";
                 case BetError.NonPositive:
                     return "베팅 금액은 0보다 커야 합니다.";
                 case BetError.BelowMinimum:
@@ -79,6 +82,12 @@ namespace ProjectCR
                 return BetError.NotInBettingPhase;
             }
 
+            if (number == RouletteDefinition.SkullNumber)
+            {
+                return BetError.SkullNotBettable;
+            }
+
+            // 해골은 번호 조회에서 빠져 있어서 여기서도 걸러진다.
             if (!definition.ContainsNumber(number))
             {
                 return BetError.InvalidNumber;

@@ -8,7 +8,14 @@ namespace ProjectCR.Tests
     {
         private readonly List<Object> created = new List<Object>();
 
+        /// <summary>게임에서 쓰는 38칸 해골 휠.</summary>
         public RouletteDefinition Definition()
+        {
+            return Track(RouletteDefinition.CreateSkullWheel());
+        }
+
+        /// <summary>해골 없는 37칸 유럽식 휠. 비교용.</summary>
+        public RouletteDefinition European()
         {
             return Track(RouletteDefinition.CreateEuropean());
         }

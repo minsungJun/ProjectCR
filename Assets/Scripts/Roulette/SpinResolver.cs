@@ -63,7 +63,8 @@ namespace ProjectCR
         }
 
         /// <summary>
-        /// 이미 추첨된 결과의 공 i를 numbers[i] 번호로 바꾼다. 음수이거나 휠에 없는 번호는 건너뛴다.
+        /// 이미 추첨된 결과의 공 i를 numbers[i] 번호로 바꾼다. -1이나 휠에 없는 번호는 건너뛰고,
+        /// <see cref="RouletteDefinition.SkullNumber"/>(-2)는 해골 칸으로 바꾼다.
         ///
         /// 디버그 지정 번호가 쓰는 길이다. 추첨을 먼저 하고 덮어쓰므로 난수 소비 순서는 그대로다.
         /// "결과 변환" 아이템이 들어올 자리도 여기다.
@@ -78,7 +79,7 @@ namespace ProjectCR
             var balls = new List<BallResult>(original.Balls);
             for (int i = 0; i < balls.Count && i < numbers.Count; i++)
             {
-                int pocketIndex = numbers[i] >= 0 ? definition.IndexOfNumber(numbers[i]) : -1;
+                int pocketIndex = definition.IndexOfPocketFor(numbers[i]);
                 if (pocketIndex >= 0)
                 {
                     balls[i] = BallResult.FromPocket(definition, i, pocketIndex);

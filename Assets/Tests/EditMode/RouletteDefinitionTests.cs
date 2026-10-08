@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 namespace ProjectCR.Tests
 {
+    /// <summary>해골 없는 37칸 유럽식 휠. 해골 휠의 번호 칸 배치가 여기서 출발한다.</summary>
     public class RouletteDefinitionTests
     {
         private TestAssets assets;
@@ -13,7 +14,7 @@ namespace ProjectCR.Tests
         public void SetUp()
         {
             assets = new TestAssets();
-            definition = assets.Definition();
+            definition = assets.European();
         }
 
         [TearDown]

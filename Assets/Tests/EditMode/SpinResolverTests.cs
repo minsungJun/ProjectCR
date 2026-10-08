@@ -71,7 +71,7 @@ namespace ProjectCR.Tests
         [Test]
         public void SingleWeightedPocket_IsAlwaysPicked()
         {
-            var weights = new int[37];
+            var weights = new int[definition.PocketCount];
             weights[definition.IndexOfNumber(0)] = 5;
             var rng = new Random(3);
 
@@ -91,9 +91,9 @@ namespace ProjectCR.Tests
         public void EqualWeights_AreRoughlyUniform()
         {
             SpinConfig config = SpinConfig.Create(definition, balance);
-            var counts = new int[37];
+            var counts = new int[definition.PocketCount];
             var rng = new Random(2026);
-            const int draws = 37 * 2000;
+            int draws = definition.PocketCount * 2000;
 
             for (int i = 0; i < draws; i++)
             {

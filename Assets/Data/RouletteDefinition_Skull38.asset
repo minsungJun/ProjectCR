@@ -10,117 +10,158 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d283c233d7115294ea1f00e28d9bbaf2, type: 3}
-  m_Name: RouletteDefinition_European
+  m_Name: RouletteDefinition_Skull38
   m_EditorClassIdentifier: ProjectCR::ProjectCR.RouletteDefinition
   pockets:
-  - number: 0
+  - kind: 0
+    number: 0
     color: 0
     baseWeight: 1
-  - number: 32
+  - kind: 0
+    number: 32
     color: 1
     baseWeight: 1
-  - number: 15
+  - kind: 0
+    number: 15
     color: 2
     baseWeight: 1
-  - number: 19
+  - kind: 0
+    number: 19
     color: 1
     baseWeight: 1
-  - number: 4
+  - kind: 0
+    number: 4
     color: 2
     baseWeight: 1
-  - number: 21
+  - kind: 0
+    number: 21
     color: 1
     baseWeight: 1
-  - number: 2
+  - kind: 0
+    number: 2
     color: 2
     baseWeight: 1
-  - number: 25
+  - kind: 0
+    number: 25
     color: 1
     baseWeight: 1
-  - number: 17
+  - kind: 0
+    number: 17
     color: 2
     baseWeight: 1
-  - number: 34
+  - kind: 0
+    number: 34
     color: 1
     baseWeight: 1
-  - number: 6
+  - kind: 0
+    number: 6
     color: 2
     baseWeight: 1
-  - number: 27
+  - kind: 0
+    number: 27
     color: 1
     baseWeight: 1
-  - number: 13
+  - kind: 0
+    number: 13
     color: 2
     baseWeight: 1
-  - number: 36
+  - kind: 0
+    number: 36
     color: 1
     baseWeight: 1
-  - number: 11
+  - kind: 0
+    number: 11
     color: 2
     baseWeight: 1
-  - number: 30
+  - kind: 0
+    number: 30
     color: 1
     baseWeight: 1
-  - number: 8
+  - kind: 0
+    number: 8
     color: 2
     baseWeight: 1
-  - number: 23
+  - kind: 0
+    number: 23
     color: 1
     baseWeight: 1
-  - number: 10
+  - kind: 0
+    number: 10
     color: 2
     baseWeight: 1
-  - number: 5
+  - kind: 1
+    number: -2
+    color: 3
+    baseWeight: 1
+  - kind: 0
+    number: 5
     color: 1
     baseWeight: 1
-  - number: 24
+  - kind: 0
+    number: 24
     color: 2
     baseWeight: 1
-  - number: 16
+  - kind: 0
+    number: 16
     color: 1
     baseWeight: 1
-  - number: 33
+  - kind: 0
+    number: 33
     color: 2
     baseWeight: 1
-  - number: 1
+  - kind: 0
+    number: 1
     color: 1
     baseWeight: 1
-  - number: 20
+  - kind: 0
+    number: 20
     color: 2
     baseWeight: 1
-  - number: 14
+  - kind: 0
+    number: 14
     color: 1
     baseWeight: 1
-  - number: 31
+  - kind: 0
+    number: 31
     color: 2
     baseWeight: 1
-  - number: 9
+  - kind: 0
+    number: 9
     color: 1
     baseWeight: 1
-  - number: 22
+  - kind: 0
+    number: 22
     color: 2
     baseWeight: 1
-  - number: 18
+  - kind: 0
+    number: 18
     color: 1
     baseWeight: 1
-  - number: 29
+  - kind: 0
+    number: 29
     color: 2
     baseWeight: 1
-  - number: 7
+  - kind: 0
+    number: 7
     color: 1
     baseWeight: 1
-  - number: 28
+  - kind: 0
+    number: 28
     color: 2
     baseWeight: 1
-  - number: 12
+  - kind: 0
+    number: 12
     color: 1
     baseWeight: 1
-  - number: 35
+  - kind: 0
+    number: 35
     color: 2
     baseWeight: 1
-  - number: 3
+  - kind: 0
+    number: 3
     color: 1
     baseWeight: 1
-  - number: 26
+  - kind: 0
+    number: 26
     color: 2
     baseWeight: 1

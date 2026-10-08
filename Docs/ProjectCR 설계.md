@@ -6,7 +6,7 @@ created: 2026-10-08
 # ProjectCR 설계
 
 3D 룰렛 로그라이크. 라운드마다 정해진 회전 수 안에 돈을 불려 납부금을 내야 다음 라운드로 간다.
-지금은 기본 룰렛(숫자 하나 베팅) + 라운드·납부까지 있다. 아이템은 아직 없다.
+지금은 38칸 해골 휠(0~36 + 해골), 숫자 하나 베팅, 라운드·납부까지 있다. 아이템은 아직 없다.
 
 ## 핵심 원칙
 
@@ -20,16 +20,16 @@ created: 2026-10-08
 
 | 파일 | 역할 |
 |---|---|
-| `Roulette/RouletteDefinition` (SO) | 칸 배열. **배열 인덱스 = 휠 위 순서**(위에서 볼 때 시계 방향, 0번이 인덱스 0). 번호·색·기본 가중치 |
+| `Roulette/RouletteDefinition` (SO) | 칸 배열. **배열 인덱스 = 휠 위 순서**(위에서 볼 때 시계 방향, 0번이 인덱스 0). 칸 종류(번호/해골)·번호·색·기본 가중치. 에셋은 `Data/RouletteDefinition_Skull38.asset` |
 | `Flow/GameBalance` (SO) | 밸런스 임시값 전부: 초기 자금, 최소 베팅, 지급 배수, 공 수, 라운드 회전 수, 납부금 공식 |
 | `Roulette/SpinConfig` | 회전 1회분 복사본: 공 수, 칸별 가중치, 지급 배수 |
 | `Roulette/SpinResolver` | 공별 독립 가중치 추첨, 디버그 지정 번호 덮어쓰기 |
 | `Economy/Wallet` | 돈(long). 상한 999,999,999,999에서 포화 |
 | `Economy/BetManager` | 번호·금액 선택, 검증(`BetError`), 확정 시 1회 차감 후 잠금 |
-| `Economy/PayoutCalculator` | 공별 판정·지급 합산. `checked` 곱셈, 넘치면 상한 |
+| `Economy/PayoutCalculator` | 회전 전체 평가(해골 먼저) → 공별 판정·지급 합산. 결과 이유 `SpinOutcome`. `checked` 곱셈, 넘치면 상한 |
 | `Flow/RoundManager` | 라운드, 남은 회전, 납부 |
-| `Flow/GameFlowController` | 상태 전환 `Betting → Spinning → (Betting | RoundPayment) → GameOver`. 순수 C#라 EditMode 테스트 |
-| `Flow/RouletteGame` (MB) | 씬 진입점. HUD ↔ Flow ↔ Presenter 연결, 디버그 옵션, 37칸 순회 검증 |
+| `Flow/GameFlowController` | 상태 전환 `Betting → Spinning → (Betting | RoundPayment) → GameOver`. 회전 기록(`SpinsPlayed`, `ConsecutiveLosses`). 순수 C#라 EditMode 테스트 |
+| `Flow/RouletteGame` (MB) | 씬 진입점. HUD ↔ Flow ↔ Presenter 연결, 디버그 옵션, 전체 칸 순회 검증 |
 | `View/RoulettePresenter` (MB) | 휠 회전, 공 궤적, 안착, 당첨 칸 강조 |
 | `View/BallTrajectory` | 휠 로컬 상대 각도 계산(아래) |
 | `View/SpinMotionSettings` (SO) | 단계 시간, AnimationCurve(각도·반경·높이·바운스), 휠 속도 |
@@ -40,13 +40,33 @@ created: 2026-10-08
 한 회전의 순서와 아이템이 끼어들 자리:
 
 ```
-베팅 확정·차감 → BuildSpinConfig()   ← 회전 전: 공 수, 칸 가중치, 지급 배율
-              → SpinResolver.Resolve
-              → ApplyResultOverrides() ← 결과 확정 후: 재추첨, 결과 변환 (지금은 디버그 지정 번호)
-              → presenter.Play(result)
-              → CompleteSpin(id)        ← 정산: 배율·색상 보너스
-              → SubmitPayment()         ← 라운드 종료: 납부금 할인, 추가 보상
+베팅 검증 → 확정·차감 → BuildSpinConfig()   ← 회전 전: 공 수, 칸 가중치, 지급 배율
+                     → SpinResolver.Resolve
+                     → ApplyResultOverrides() ← 결과 확정 후: 재추첨, 결과 변환 (지금은 디버그 지정 번호)
+                     → presenter.Play(result) ← 모든 공의 연출이 끝날 때까지. 해골이어도 중단하지 않는다
+                     → CompleteSpin(id)        ← 전체 결과 평가(해골 먼저) → 정산(배율·보너스) → 기록
+                     → 다음 진행(Betting 또는 RoundPayment)
+                     → SubmitPayment()         ← 라운드 종료: 납부금 할인, 추가 보상
 ```
+
+## 해골 칸
+
+38칸 = 0~36 + 해골. 해골은 인덱스 19, 0의 정반대(10과 5 사이)다. 콘셉트 시안과 같은 배치.
+
+- 데이터: `PocketKind.Skull`, 번호 `RouletteDefinition.SkullNumber`(-2), 색 `PocketColor.None`.
+  번호 조회(`IndexOfNumber`/`ContainsNumber`)에서 빠지므로 **베팅할 수 없고**, 색이 없어서 색 베팅에도 걸리지 않는다.
+  번호(-2)로 홀짝 같은 계산을 하기 전에 반드시 `IsSkull`부터 본다(`PayoutCalculator.Covers`).
+- **공 하나라도 해골이면 그 회전의 모든 베팅이 낙첨**이다. 다른 공이 맞혀도 지급 0. 시작 때 뺀 베팅금은 돌려주지 않는다.
+  결과 이유는 `SpinOutcome.SkullBust`로 일반 낙첨(`Lose`)과 구분한다.
+- 해골은 **상태를 바꾸지 않는다.** 정상 회전 종료라 회전 1회를 쓰고 일반 회전과 같이 Betting/RoundPayment로 간다.
+  GameOver는 납부 실패에서만 나온다. 마지막 회전 해골도 그대로 납부 단계로 간다.
+- 공이 여러 개면 모든 공의 연출이 끝난 뒤 한 번만 평가·정산한다. 공별로 먼저 지급하는 경로는 없다.
+- 해골 판정이 정산 맨 앞이라 지급 배율·당첨 보너스·낙첨 환급은 해골 회전에 적용되지 않는다.
+  "해골에도 환급" 같은 효과는 나중에 SkullBust 전용 단계로 따로 붙인다. 해골을 없애는 재추첨·결과 변환은 요구가 생기기 전까지 넣지 않는다.
+- 연속 낙첨 기록(`ConsecutiveLosses`)에는 해골 낙첨도 들어간다.
+- UI: 해골 베팅 칸은 없다. 번호판 아래 고정 문구 "해골: 이번 회전의 모든 베팅 낙첨".
+  결과는 일반 결과 패널에 `결과 ☠ 해골 — 해골 낙첨 · 지급 0 (−베팅액)`, 최근 기록에 ☠. 패배 화면·재시작·즉사 연출과는 연결하지 않는다.
+- 공 1개 기준 해골 확률 1/38. 숫자 베팅 36배를 그대로 두면 기대 환수율이 97.3% → 94.7%로 내려간다.
 
 ## 공이 목표 칸에 들어가는 원리
 
@@ -71,10 +91,12 @@ u ≥ 1이면 커브 값과 상관없이 정확히 끝 각도를 쓴다. 착지�
 진짜 모델로 바꿀 때 지킬 것:
 
 1. 피벗은 휠 중심, Y 위.
-2. 0번 칸 중심이 로컬 +Z, 위에서 볼 때 시계 방향 유럽식 순서. 다르면 앵커 배치로 맞춘다.
+2. 0번 칸 중심이 로컬 +Z, 위에서 볼 때 시계 방향 해골 휠 순서(`RouletteDefinition.SkullWheelOrder`, 해골은 0의 정반대). 다르면 앵커 배치로 맞춘다.
 3. 칸별 Renderer(당첨 강조용, URP Lit `_BaseColor`).
 4. 안착 반경·높이는 앵커 위치에서 읽으므로 모델에 맞춰 앵커만 옮기면 된다. 볼 트랙 반경·높이는 `RoulettePresenter`의 `rimRadius/rimHeight`.
-5. 교체 후 플레이 모드에서 `RouletteGame` 컨텍스트 메뉴 **37칸 순회 검증**을 돌린다.
+5. 교체 후 플레이 모드에서 `RouletteGame` 컨텍스트 메뉴 **전체 칸 순회 검증**을 돌린다.
+
+해골 라벨은 지금 TextMesh의 ☠ 글자(OS 대체 폰트로 보인다)다. 아트 단계에서 아이콘으로 바꾼다.
 
 ## 규칙(임시값)
 
@@ -86,11 +108,11 @@ u ≥ 1이면 커브 값과 상관없이 정확히 끝 각도를 쓴다. 착지�
 
 ## 검증
 
-- 자동: `Assets/Tests/EditMode` 44개 — 칸 배열, 추첨 재현성·분포·가중치 0, 정산·상한, 베팅 오류, 중복 회전·정산, 라운드·납부·이월, 착지 각도(프레임 간격·끊김).
+- 자동: `Assets/Tests/EditMode` 64개 — 칸 배열(37·38칸), 추첨 재현성·분포·가중치 0, 정산·상한, 베팅 오류, 중복 회전·정산, 라운드·납부·이월, 착지 각도(프레임 간격·끊김), 해골 규칙(`SkullRuleTests`).
 - 플레이 모드: `RouletteGame` 컨텍스트 메뉴
-  - **37칸 순회 검증** — 2026-10-08 targetFrameRate 20 / 60 / 제한 없음 × 배속 8에서 불일치 0.
+  - **전체 칸 순회 검증** — 2026-10-08 38칸(해골 포함) targetFrameRate 20 / 60 / 제한 없음 × 배속 8에서 불일치 0.
   - **같은 칸에 공 2개 연출**
-- 디버그 필드(`RouletteGame` 인스펙터): `randomSeed`(0=무작위, 실제 시드는 콘솔), `forcedNumbers`, `extraBallCount`, `payoutMultiplierOverride`, `presentationSpeed`.
+- 디버그 필드(`RouletteGame` 인스펙터): `randomSeed`(0=무작위, 실제 시드는 콘솔), `forcedNumbers`(-1 추첨대로, -2 해골), `extraBallCount`, `payoutMultiplierOverride`, `presentationSpeed`.
 - HUD 오른쪽 위 **시점 전환**: 연출 시점 ↔ 탑다운 정사영.
 
 ## 남은 일
