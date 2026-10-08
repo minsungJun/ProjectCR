@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22352380813bb1841b35175d7416c2df, type: 3}
+  m_Name: Drink_Dozen
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkDefinition
+  group: 1
+  displayName: "\uB354\uC98C \uC704\uC2A4\uD0A4"
+  description: 
+  icon: {fileID: 0}
+  tint: {r: 0.81960785, g: 0.5058824, b: 0.14117648, a: 1}
+  model: {fileID: 0}
+  boostPerStack: 1.5

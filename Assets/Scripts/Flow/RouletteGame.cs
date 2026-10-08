@@ -17,9 +17,15 @@ namespace ProjectCR
         [SerializeField] private RouletteDefinition definition;
         [SerializeField] private GameBalance balance;
 
+        [Tooltip("라운드 통과 보상 음료 목록. 비우면 납부 후 바로 다음 라운드.")]
+        [SerializeField] private DrinkCatalog drinkCatalog;
+
         [Header("연결")]
         [SerializeField] private RoulettePresenter presenter;
         [SerializeField] private RouletteHud hud;
+
+        [Tooltip("음료 선택 창(HUD와 같은 UIDocument).")]
+        [SerializeField] private DrinkSelectionView drinkView;
 
         [Tooltip("3D 테이블 입력(칩 놓기·빼기·칩 고르기). 없으면 테이블 없이 돈다.")]
         [SerializeField] private TableBetInput tableInput;
@@ -52,6 +58,9 @@ namespace ProjectCR
         [FormerlySerializedAs("payoutMultiplierOverride")]
         [SerializeField] private int straightPayoutOverride;
 
+        [Tooltip("새 게임을 이 음료 잔 수로 시작한다(밸런스 시험용). 순서: 컬럼, 더즌, 홀짝, 색상, 높고 낮음, 숫자.")]
+        [SerializeField] private int[] debugStartDrinkStacks = new int[0];
+
         [Tooltip("연출 배속.")]
         [Min(0.1f)]
         [SerializeField] private float presentationSpeed = 1f;
@@ -75,9 +84,14 @@ namespace ProjectCR
             hud.UndoClicked += OnUndoClicked;
             hud.ClearClicked += OnClearClicked;
             hud.SpinClicked += OnSpinClicked;
-            hud.PayClicked += OnPayClicked;
             hud.RestartClicked += StartNewRun;
             hud.ViewToggled += ToggleView;
+
+            if (drinkView != null)
+            {
+                drinkView.Initialize();
+                drinkView.Confirmed += OnDrinkConfirmed;
+            }
 
             if (tableInput != null)
             {
@@ -116,7 +130,18 @@ namespace ProjectCR
                 cameraRig.MoveToBetting();
             }
 
-            flow = new GameFlowController(definition, balance, randomSeed);
+            if (drinkView != null)
+            {
+                drinkView.Hide();
+            }
+
+            // 새 객체라서 돈·라운드·음료 잔 수가 전부 처음으로 돌아간다.
+            flow = new GameFlowController(definition, balance, randomSeed, drinkCatalog);
+            for (int i = 0; i < debugStartDrinkStacks.Length && i < DrinkGroups.Count; i++)
+            {
+                flow.Drinks.SetStacks((DrinkGroup)i, debugStartDrinkStacks[i]);
+            }
+
             ApplyDebugOptions();
             flow.SetChipValue(Math.Max(balance.MinBet, Math.Min(balance.MinBet * 10, flow.Wallet.Balance)));
 
@@ -218,17 +243,121 @@ namespace ProjectCR
 
             if (flow.CompleteSpin(spin.Id, out SettlementResult settlement))
             {
-                Debug.Log($"[RouletteGame] 회전 #{spin.Id} 정산: {settlement.Outcome}, 지급 {settlement.TotalPayout:N0}, 연속 낙첨 {flow.ConsecutiveLosses}");
+                Debug.Log($"[RouletteGame] 회전 #{spin.Id} 정산: {settlement.Outcome}, 지급 {settlement.TotalPayout:N0}, 해골 벌칙 {settlement.SkullPenalty:N0}, 연속 낙첨 {flow.ConsecutiveLosses}");
                 hud.ShowSettlement(settlement);
             }
 
             // 정산과 함께 베팅이 비었으니 판의 칩도 이 갱신에서 사라진다.
             RefreshViews();
 
-            // 결과 칸을 잠시 보여 준 뒤 베팅판으로 돌아간다. 납부 단계면 룰렛에 머문다(납부 후 돌아감).
-            if (cameraRig != null && flow.Phase == GamePhase.Betting)
+            // 결과 칸을 잠시 보여 준 뒤 베팅판으로 돌아간다. 라운드가 끝났으면 룰렛에 머물러 납부를 판정한다.
+            if (flow.Phase == GamePhase.RoundPayment)
+            {
+                yield return ResolvePayment();
+            }
+            else if (cameraRig != null && flow.Phase == GamePhase.Betting)
             {
                 cameraRig.MoveToBetting(cameraRig.ReturnDelay);
+            }
+        }
+
+        /// <summary>
+        /// 마지막 회전 결과를 보여 준 뒤 납부를 한 번 판정한다. 버튼이 없다.
+        /// 성공하면 음료 창, 실패하면 게임 오버 창. 이중 차감은 GameFlowController.SubmitPayment가 상태로 막는다.
+        /// </summary>
+        private IEnumerator ResolvePayment()
+        {
+            int round = flow.Round.Round;
+            long due = flow.Round.CurrentDue;
+            hud.ShowMessage($"라운드 {round} 종료 · 납부금 {due:N0} / 보유 {flow.Wallet.Balance:N0}");
+            yield return new WaitForSeconds(cameraRig != null ? cameraRig.ReturnDelay : 1.5f);
+
+            PaymentOutcome? outcome = flow.SubmitPayment();
+            if (outcome == null)
+            {
+                yield break;
+            }
+
+            Debug.Log($"[RouletteGame] 라운드 {round} 납부 {outcome}: 납부금 {due:N0}, 남은 돈 {flow.Wallet.Balance:N0}");
+
+            if (flow.Phase == GamePhase.DrinkSelection && drinkView != null)
+            {
+                hud.ShowMessage($"라운드 {round} 통과! 납부 {flow.LastPaidDue:N0} · 남은 돈 {flow.Wallet.Balance:N0}");
+                drinkView.Show(flow);
+            }
+            else if (flow.Phase == GamePhase.DrinkSelection)
+            {
+                // 창이 연결되지 않았으면 진행이 막히지 않게 첫 후보를 마신다.
+                Debug.LogWarning("[RouletteGame] 음료 선택 창이 연결되지 않아 첫 후보를 고른다.");
+                OnDrinkConfirmed(0);
+                yield break;
+            }
+            else if (flow.Phase == GamePhase.Betting)
+            {
+                hud.ShowMessage($"납부 완료! 라운드 {flow.Round.Round} 시작 · 이월 {flow.Wallet.Balance:N0}");
+                MoveCameraToBetting();
+            }
+            else if (flow.Phase == GamePhase.RoundPayment)
+            {
+                // 음료 목록이 없고 새 라운드에도 걸 돈이 없다. 다시 판정한다.
+                yield return ResolvePayment();
+                yield break;
+            }
+
+            RefreshViews();
+        }
+
+        private void OnDrinkConfirmed(int offerIndex)
+        {
+            DrinkOffer drink = flow.ConfirmDrink(offerIndex);
+            if (drink == null)
+            {
+                // 이미 확정했거나 상태가 바뀌었다. 창만 상태에 맞춘다.
+                if (flow.Phase != GamePhase.DrinkSelection && drinkView != null)
+                {
+                    drinkView.Hide();
+                }
+
+                return;
+            }
+
+            if (drinkView != null)
+            {
+                drinkView.Hide();
+            }
+
+            if (drink.IsProbability)
+            {
+                int stacks = flow.Probabilities.StacksOf(drink.Target);
+                string target = DrinkOffer.TargetLabel(drink.Target);
+                double chance = flow.BuildSpinConfig().ProbabilityOf(drink.Target);
+                Debug.Log($"[RouletteGame] 확률 음료 {drink.DisplayName}: {drink.Target} {stacks}잔(+{drink.Boost}/잔) → 등장 {chance:P2}");
+                hud.ShowMessage($"{drink.DisplayName} · {target} {stacks}잔째 · 등장 확률 {NumberText.Percent(chance)} · 라운드 {flow.Round.Round} 시작");
+            }
+            else
+            {
+                DrinkGroup group = drink.Group;
+                Debug.Log($"[RouletteGame] 음료 {drink.DisplayName}({group}) {flow.Drinks.StacksOf(group)}잔 → ×{flow.Drinks.MultiplierOf(group)}");
+                hud.ShowMessage($"{drink.DisplayName} {flow.Drinks.StacksOf(group)}잔째 · {group.ToKorean()} ×{NumberText.Multiplier(flow.Drinks.MultiplierOf(group))} · 라운드 {flow.Round.Round} 시작");
+            }
+            RefreshViews();
+
+            if (flow.Phase == GamePhase.Betting)
+            {
+                MoveCameraToBetting();
+            }
+            else if (flow.Phase == GamePhase.RoundPayment)
+            {
+                // 새 라운드에 걸 돈이 없다. 기존 규칙대로 바로 납부 판정.
+                StartCoroutine(ResolvePayment());
+            }
+        }
+
+        private void MoveCameraToBetting()
+        {
+            if (cameraRig != null)
+            {
+                cameraRig.MoveToBetting();
             }
         }
 
@@ -257,22 +386,6 @@ namespace ProjectCR
         private static string Describe(PocketDefinition pocket)
         {
             return pocket.IsSkull ? "해골" : pocket.Number.ToString();
-        }
-
-        private void OnPayClicked()
-        {
-            PaymentOutcome? outcome = flow.SubmitPayment();
-            if (outcome == PaymentOutcome.Paid)
-            {
-                hud.ShowMessage($"납부 완료! 라운드 {flow.Round.Round} 시작 · 이월 {flow.Wallet.Balance:N0}");
-            }
-
-            if (cameraRig != null && flow.Phase == GamePhase.Betting)
-            {
-                cameraRig.MoveToBetting();
-            }
-
-            RefreshViews();
         }
 
         private void ToggleView()

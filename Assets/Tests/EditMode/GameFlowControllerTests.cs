@@ -3,7 +3,7 @@ using NUnit.Framework;
 namespace ProjectCR.Tests
 {
     /// <summary>
-    /// 상태 전환, 중복 방지, 라운드·납부. 기본 밸런스(초기 100, 회전 5, 납부 120 → 180 → 270 → 410) 기준.
+    /// 상태 전환, 중복 방지, 라운드·납부. 기본 밸런스(초기 100, 회전 5, 납부 120 → 300 → 750 → 1,875) 기준.
     /// </summary>
     public class GameFlowControllerTests
     {
@@ -158,9 +158,45 @@ namespace ProjectCR.Tests
         public void Due_GrowsPerRound()
         {
             Assert.AreEqual(120, flow.GameBalance.GetDue(1));
-            Assert.AreEqual(180, flow.GameBalance.GetDue(2));
-            Assert.AreEqual(270, flow.GameBalance.GetDue(3));
-            Assert.AreEqual(410, flow.GameBalance.GetDue(4));
+            Assert.AreEqual(300, flow.GameBalance.GetDue(2));
+            Assert.AreEqual(750, flow.GameBalance.GetDue(3));
+            Assert.AreEqual(1875, flow.GameBalance.GetDue(4));
+        }
+
+        [Test]
+        public void Due_FirstEightRounds_RoundUpToFive()
+        {
+            long[] expected = { 120, 300, 750, 1875, 4690, 11720, 29300, 73245 };
+            for (int round = 1; round <= expected.Length; round++)
+            {
+                Assert.AreEqual(expected[round - 1], flow.GameBalance.GetDue(round), $"라운드 {round}");
+            }
+        }
+
+        [Test]
+        public void Due_StopsAtMaxMoney()
+        {
+            Assert.AreEqual(flow.GameBalance.MaxMoney, flow.GameBalance.GetDue(200));
+        }
+
+        [Test]
+        public void RoundManager_PaysOnce_AndAdvancesOnlyAfterPaying()
+        {
+            var round = new RoundManager(flow.GameBalance);
+            var wallet = new Wallet(500, flow.GameBalance.MaxMoney);
+
+            Assert.IsFalse(round.AdvanceRound(), "납부 전에는 넘어가지 않는다.");
+            Assert.AreEqual(PaymentOutcome.Paid, round.Pay(wallet));
+            Assert.AreEqual(PaymentOutcome.Paid, round.Pay(wallet));
+            Assert.AreEqual(380, wallet.Balance, "두 번 불러도 한 번만 뺀다.");
+            Assert.AreEqual(1, round.Round, "납부만으로는 라운드가 넘어가지 않는다.");
+
+            Assert.IsTrue(round.AdvanceRound());
+            Assert.IsFalse(round.AdvanceRound(), "다음 라운드 납부 전에는 다시 넘어가지 않는다.");
+            Assert.AreEqual(2, round.Round);
+            Assert.AreEqual(5, round.SpinsRemaining);
+            Assert.AreEqual(300, round.CurrentDue);
+            Assert.IsFalse(round.IsPaid);
         }
 
         [Test]
@@ -181,7 +217,7 @@ namespace ProjectCR.Tests
             Assert.AreEqual(2, flow.Round.Round);
             Assert.AreEqual(5, flow.Round.SpinsRemaining);
             Assert.AreEqual(11, flow.Wallet.Balance);
-            Assert.AreEqual(180, flow.Round.CurrentDue);
+            Assert.AreEqual(300, flow.Round.CurrentDue);
 
             Assert.IsNull(flow.SubmitPayment(), "Betting 상태에서는 납부할 수 없다.");
         }

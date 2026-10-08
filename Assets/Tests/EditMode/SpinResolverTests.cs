@@ -64,7 +64,7 @@ namespace ProjectCR.Tests
 
             for (int i = 0; i < 20000; i++)
             {
-                Assert.AreNotEqual(banned, SpinResolver.PickPocket(config.Weights, rng));
+                Assert.AreNotEqual(banned, SpinResolver.PickBall(config, rng));
             }
         }
 
@@ -97,7 +97,7 @@ namespace ProjectCR.Tests
 
             for (int i = 0; i < draws; i++)
             {
-                counts[SpinResolver.PickPocket(config.Weights, rng)]++;
+                counts[SpinResolver.PickBall(config, rng)]++;
             }
 
             for (int i = 0; i < counts.Length; i++)

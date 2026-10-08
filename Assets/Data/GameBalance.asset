@@ -23,7 +23,8 @@ MonoBehaviour:
   dozenColumnTotalPayout: 3
   evenMoneyTotalPayout: 2
   ballCount: 1
+  skullBalanceKeep: 0.5
   spinsPerRound: 5
   firstRoundDue: 120
-  dueGrowth: 1.5
-  dueRoundingUnit: 10
+  dueGrowth: 2.5
+  dueRoundingUnit: 5

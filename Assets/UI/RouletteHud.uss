@@ -243,3 +243,237 @@
     font-size: 24px;
     white-space: normal;
 }
+
+/* ---------- 음료 선택 (라운드 통과 보상) ----------
+   호두나무 판 + 황동 테두리 + 펠트 카드. 카드는 가로 4장, 좁으면 2×2로 줄바꿈한다. */
+
+.drink-modal {
+    background-color: rgba(4, 3, 2, 0.74);
+}
+
+.drink-box {
+    max-width: 92%;
+    max-height: 94%;
+    padding: 28px 36px 28px 36px;
+    align-items: center;
+    background-color: rgb(58, 36, 22);
+    border-width: 3px;
+    border-color: rgb(198, 154, 78);
+    border-radius: 14px;
+}
+
+.drink-header {
+    font-size: 20px;
+    color: rgb(214, 182, 120);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.drink-title {
+    margin-top: 6px;
+    margin-bottom: 18px;
+    font-size: 34px;
+    -unity-font-style: bold;
+    color: rgb(241, 232, 210);
+    -unity-text-align: middle-center;
+}
+
+.drink-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    flex-shrink: 1;
+}
+
+.drink-card {
+    width: 286px;
+    min-height: 410px;
+    margin: 8px;
+    padding: 16px 14px 14px 14px;
+    align-items: center;
+    background-color: rgb(29, 74, 53);
+    border-width: 2px;
+    border-color: rgb(120, 92, 48);
+    border-radius: 10px;
+    transition-property: scale, border-color, background-color;
+    transition-duration: 0.12s;
+}
+
+.drink-card:hover {
+    border-color: rgb(214, 176, 100);
+    background-color: rgb(34, 84, 61);
+}
+
+.drink-card--selected {
+    scale: 1.04 1.04;
+    border-width: 4px;
+    border-color: rgb(255, 214, 120);
+    background-color: rgb(40, 98, 70);
+}
+
+.drink-card--selected:hover {
+    border-color: rgb(255, 214, 120);
+    background-color: rgb(40, 98, 70);
+}
+
+.drink-art {
+    width: 120px;
+    height: 132px;
+    margin-bottom: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* 그림이 없을 때 대신 그리는 병. 색은 음료 강조색. */
+.drink-bottle__neck {
+    width: 22px;
+    height: 34px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.drink-bottle__body {
+    width: 74px;
+    height: 92px;
+    border-radius: 18px;
+    border-width: 2px;
+    border-color: rgba(255, 245, 220, 0.55);
+    align-items: center;
+    justify-content: center;
+}
+
+.drink-bottle__label {
+    width: 56px;
+    height: 30px;
+    background-color: rgba(250, 240, 214, 0.92);
+    border-radius: 4px;
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(58, 36, 22);
+    -unity-text-align: middle-center;
+}
+
+/* 확률 강화 대체 그림: 낮고 넓은 위스키 잔. */
+.drink-glass {
+    width: 92px;
+    height: 84px;
+    padding: 4px 6px 8px 6px;
+    justify-content: flex-end;
+    background-color: rgba(235, 242, 245, 0.18);
+    border-width: 2px;
+    border-top-width: 0px;
+    border-color: rgba(255, 250, 235, 0.6);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.drink-glass__liquid {
+    height: 52px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.drink-glass__label {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(250, 240, 214);
+}
+
+.drink-card--chance {
+    background-color: rgb(24, 58, 66);
+}
+
+.drink-card--chance:hover {
+    background-color: rgb(30, 70, 78);
+}
+
+.drink-card--chance.drink-card--selected,
+.drink-card--chance.drink-card--selected:hover {
+    background-color: rgb(36, 86, 96);
+}
+
+.drink-group--chance {
+    background-color: rgb(120, 196, 206);
+}
+
+.drink-name {
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: rgb(241, 232, 210);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.drink-group {
+    margin-top: 2px;
+    padding: 2px 10px 2px 10px;
+    font-size: 16px;
+    color: rgb(58, 36, 22);
+    background-color: rgb(198, 154, 78);
+    border-radius: 10px;
+}
+
+.drink-effect {
+    min-height: 46px;
+    margin-top: 10px;
+    font-size: 17px;
+    color: rgb(226, 218, 196);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.drink-divider {
+    width: 80%;
+    height: 1px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    background-color: rgba(198, 154, 78, 0.5);
+}
+
+.drink-stat {
+    font-size: 16px;
+    color: rgb(190, 200, 184);
+    -unity-text-align: middle-center;
+}
+
+.drink-stat--after {
+    margin-top: 2px;
+    font-size: 19px;
+    -unity-font-style: bold;
+    color: rgb(255, 214, 120);
+}
+
+.drink-example {
+    margin-top: 8px;
+    font-size: 15px;
+    color: rgb(226, 218, 196);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.drink-hint {
+    margin-top: 12px;
+    font-size: 15px;
+    color: rgb(190, 170, 130);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.drink-confirm {
+    width: 320px;
+    height: 60px;
+    margin-top: 14px;
+    flex-shrink: 0;
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: rgb(36, 22, 10);
+    background-color: rgb(198, 154, 78);
+    border-color: rgb(255, 222, 150);
+}
+
+.drink-confirm:hover {
+    background-color: rgb(226, 182, 100);
+}

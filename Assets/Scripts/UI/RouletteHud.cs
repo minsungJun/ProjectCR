@@ -7,7 +7,8 @@ using UnityEngine.UIElements;
 namespace ProjectCR
 {
     /// <summary>
-    /// 룰렛 화면 UI(상태 바, 베팅 요약·회전 패널, 결과, 납부·게임 오버 창). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
+    /// 룰렛 화면 UI(상태 바, 베팅 요약·회전 패널, 결과, 게임 오버 창). 음료 선택 창은 DrinkSelectionView가 그린다.
+    /// 납부는 버튼 없이 라운드가 끝나면 자동으로 판정한다(RouletteGame). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
     /// 베팅 검증과 중복 방지는 GameFlowController가 한다. 여기서 버튼을 끄는 건 보기 좋으라고 하는 일이다.
     ///
     /// 칩을 놓는 건 3D 테이블에서 한다(TableBetInput). 3D 입력이 HUD 위 클릭을 무시하도록
@@ -24,7 +25,6 @@ namespace ProjectCR
         public event Action UndoClicked;
         public event Action ClearClicked;
         public event Action SpinClicked;
-        public event Action PayClicked;
         public event Action RestartClicked;
         public event Action ViewToggled;
 
@@ -47,11 +47,8 @@ namespace ProjectCR
         private Label errorLabel;
         private Label resultLabel;
         private Label historyLabel;
-        private Label paymentLabel;
         private Label gameOverLabel;
         private Button spinButton;
-        private Button payButton;
-        private VisualElement paymentPanel;
         private VisualElement gameOverPanel;
 
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
@@ -74,15 +71,11 @@ namespace ProjectCR
             errorLabel = root.Q<Label>("bet-error");
             resultLabel = root.Q<Label>("result");
             historyLabel = root.Q<Label>("history");
-            paymentLabel = root.Q<Label>("payment-text");
             gameOverLabel = root.Q<Label>("gameover-text");
-            paymentPanel = root.Q("payment-panel");
             gameOverPanel = root.Q("gameover-panel");
 
             spinButton = root.Q<Button>("spin");
-            payButton = root.Q<Button>("pay");
             spinButton.clicked += () => SpinClicked?.Invoke();
-            payButton.clicked += () => PayClicked?.Invoke();
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
             root.Q<Button>("view-toggle").clicked += () => ViewToggled?.Invoke();
 
@@ -136,16 +129,17 @@ namespace ProjectCR
                 button.SetEnabled(betting);
             }
 
-            // 미리보기와 정산이 같은 SpinConfig 배수를 쓴다.
+            // 미리보기와 정산이 같은 SpinConfig 배수(음료 포함)를 쓴다.
             SpinConfig preview = flow.BuildSpinConfig();
-            previewLabel.text = bet.HasBets ? DescribeBestCase(bet.Bets, preview, flow.Wallet.MaxMoney) : DescribeMultipliers(preview);
+            previewLabel.text = bet.HasBets
+                ? DescribeBestCase(bet.Bets, preview, flow.Wallet.MaxMoney)
+                : DescribeMultipliers(preview, flow.Drinks.TotalStacks);
 
             BetError error = flow.ValidateBet();
             errorLabel.text = betting && error != BetError.None ? error.ToKorean() : string.Empty;
             spinButton.SetEnabled(betting && error == BetError.None);
-            spinButton.text = flow.Phase == GamePhase.Spinning ? "회전 중…" : "회전";
+            spinButton.text = SpinButtonText(flow.Phase);
 
-            RefreshPayment(flow);
             RefreshGameOver(flow);
         }
 
@@ -158,10 +152,21 @@ namespace ProjectCR
                 return;
             }
 
-            int multiplier = flow.BuildSpinConfig().PayoutFor(target);
+            // 기본 배수와 음료 적용 배수를 함께 보여 준다. 숫자는 표시용 반올림.
+            SpinConfig config = flow.BuildSpinConfig();
+            int basePayout = config.PayoutFor(target);
+            decimal final = config.MultiplierFor(target);
+            DrinkGroup group = DrinkGroups.Of(target.Kind);
+            string payout = final > basePayout
+                ? $"{basePayout}배 → {NumberText.Multiplier(final)}배 ({group.ToKorean()} 음료 ×{NumberText.Multiplier(config.GroupBoost(group))})"
+                : $"{basePayout}배";
+
+            // 공 하나 기준 실제 등장 확률(확률 음료 반영, 해골 1/38 고정). 추첨과 같은 식.
+            string chance = $" · 등장 {NumberText.Percent(config.ProbabilityOf(target))}";
+
             long stake = flow.Bet.StakeOn(target);
             string placed = stake > 0 ? $" · 놓인 칩 {stake:N0}" : string.Empty;
-            hoverLabel.text = $"{target.ToKorean(definition)} · {multiplier}배{placed}";
+            hoverLabel.text = $"{target.ToKorean(definition)} · {payout}{chance}{placed}";
         }
 
         public void ShowSpinning()
@@ -199,7 +204,8 @@ namespace ProjectCR
             {
                 case SpinOutcome.SkullBust:
                     // 맞힌 베팅이 있어도 해골이 하나라도 있으면 전부 낙첨. 이유를 일반 낙첨과 구분해 보여 준다.
-                    verdict = $"해골 낙첨 · 지급 0 (−{settlement.TotalStake:N0})";
+                    // 베팅 전부 낙첨 + 남은 보유 금액 절반.
+                    verdict = $"해골 낙첨 · 지급 0 (−{settlement.TotalStake:N0}) · 보유 절반 −{settlement.SkullPenalty:N0}";
                     break;
                 case SpinOutcome.Win:
                     verdict = $"{DescribeWinners(settlement)} 적중! 지급 {settlement.TotalPayout:N0} (손익 {Signed(settlement.Net)})";
@@ -269,14 +275,17 @@ namespace ProjectCR
                 }
 
                 PocketColor color = definition.ColorOfNumber(n);
-                long payout = 0;
+                decimal exact = 0m;
                 foreach (ConfirmedBet bet in bets)
                 {
                     if (bet.Target.CoversNumber(n, color))
                     {
-                        payout += PayoutCalculator.ScaledPayout(bet.Stake, config.PayoutFor(bet.Target), maxMoney);
+                        exact = Math.Min(exact + PayoutCalculator.ExactPayout(bet.Stake, config.MultiplierFor(bet.Target), maxMoney), maxMoney);
                     }
                 }
+
+                // 정산과 같이 합계를 한 번만 버린다.
+                long payout = PayoutCalculator.ToMoney(exact, maxMoney);
 
                 if (payout > best)
                 {
@@ -291,9 +300,14 @@ namespace ProjectCR
                 : $"공 하나 기준 최고 지급 {best:N0} ({bestNumber}이 나오면){balls}";
         }
 
-        private static string DescribeMultipliers(SpinConfig preview)
+        private static string DescribeMultipliers(SpinConfig preview, int drinkStacks)
         {
             string balls = preview.BallCount > 1 ? $" · 공 {preview.BallCount}개, 공마다 따로 지급" : string.Empty;
+            if (drinkStacks > 0)
+            {
+                balls += $" · 음료 {drinkStacks}잔 적용 중(자리에 마우스를 올리면 강화 배수)";
+            }
+
             return $"원금 포함 배수: 숫자 {preview.PayoutOf(PayoutClass.Straight)} · 스플릿 {preview.PayoutOf(PayoutClass.Split)} · " +
                    $"스트리트 {preview.PayoutOf(PayoutClass.Street)} · 코너 {preview.PayoutOf(PayoutClass.Corner)} · " +
                    $"식스 라인 {preview.PayoutOf(PayoutClass.SixLine)} · 더즌·열 {preview.PayoutOf(PayoutClass.DozenColumn)} · " +
@@ -319,43 +333,39 @@ namespace ProjectCR
 
         private static string Signed(long value) => value >= 0 ? $"+{value:N0}" : $"−{-value:N0}";
 
-        private void RefreshPayment(GameFlowController flow)
+        private static string SpinButtonText(GamePhase phase)
         {
-            bool visible = flow.Phase == GamePhase.RoundPayment;
-            paymentPanel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            if (!visible)
+            switch (phase)
             {
-                return;
+                case GamePhase.Spinning:
+                    return "회전 중…";
+                case GamePhase.RoundPayment:
+                    return "납부 판정 중…";
+                case GamePhase.DrinkSelection:
+                    return "음료 선택 중";
+                default:
+                    return "회전";
             }
-
-            long due = flow.Round.CurrentDue;
-            long balance = flow.Wallet.Balance;
-            var text = new StringBuilder();
-            text.AppendLine($"라운드 {flow.Round.Round} 종료");
-            text.AppendLine($"납부금 {due:N0} / 보유 {balance:N0}");
-
-            if (flow.Round.ForfeitedSpins > 0)
-            {
-                text.AppendLine($"베팅할 돈이 없어 남은 회전 {flow.Round.ForfeitedSpins}회가 소멸했습니다.");
-            }
-
-            text.Append(balance >= due
-                ? $"납부 후 {balance - due:N0}을 다음 라운드로 가져갑니다."
-                : "납부금이 부족합니다. 납부하면 게임이 끝납니다.");
-
-            paymentLabel.text = text.ToString();
-            payButton.text = balance >= due ? "납부" : "납부 (부족)";
         }
 
         private void RefreshGameOver(GameFlowController flow)
         {
             bool visible = flow.Phase == GamePhase.GameOver;
             gameOverPanel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            if (visible)
+            if (!visible)
             {
-                gameOverLabel.text =
-                    $"게임 오버\n라운드 {flow.Round.Round}의 납부금 {flow.Round.CurrentDue:N0}을 내지 못했습니다.\n보유 {flow.Wallet.Balance:N0}";
+                return;
             }
+
+            var text = new StringBuilder("게임 오버\n");
+            text.AppendLine($"라운드 {flow.Round.Round}의 납부금 {flow.Round.CurrentDue:N0}을 내지 못했습니다. 보유 {flow.Wallet.Balance:N0}");
+            if (flow.Round.ForfeitedSpins > 0)
+            {
+                text.AppendLine($"걸 돈이 없어 남은 회전 {flow.Round.ForfeitedSpins}회를 쓰지 못했습니다.");
+            }
+
+            text.Append($"마신 음료 {flow.Drinks.TotalStacks}잔");
+            gameOverLabel.text = text.ToString();
         }
 
         private void RefreshHistory()

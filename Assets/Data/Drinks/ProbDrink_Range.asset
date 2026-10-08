@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01f9c52e41eecc14eb4821868a811c19, type: 3}
+  m_Name: ProbDrink_Range
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.ProbabilityDrinkDefinition
+  group: 4
+  displayName: "\uC2A4\uCE74\uC774 \uC704\uC2A4\uD0A4"
+  icon: {fileID: 0}
+  tint: {r: 0.11372549, g: 0.7019608, b: 0.85490197, a: 1}
+  model: {fileID: 6909417971515564840, guid: 1823e5aa728fe3849a66dd8197b2ba4b, type: 3}
+  boostPerStack: 0.37
+  singleNumberBoost: 0.17
+  numberSetBoost: 0.18
+  singleNumberChance: 0.5

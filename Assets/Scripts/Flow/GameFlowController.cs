@@ -11,8 +11,11 @@ namespace ProjectCR
         /// <summary>베팅이 확정·차감되었고 연출이 도는 중. 베팅 변경과 추가 회전을 막는다.</summary>
         Spinning,
 
-        /// <summary>회전을 다 썼거나 베팅할 돈이 없다. 납부를 기다린다.</summary>
+        /// <summary>회전을 다 썼거나 베팅할 돈이 없다. 마지막 결과를 보여 준 뒤 납부를 판정한다.</summary>
         RoundPayment,
+
+        /// <summary>납부에 성공했고 음료를 고르는 중. 베팅·회전·재납부를 막는다. 고르면 다음 라운드.</summary>
+        DrinkSelection,
 
         GameOver,
     }
@@ -48,18 +51,25 @@ namespace ProjectCR
     /// 한 회전의 순서(아이템이 끼어들 자리):
     /// 베팅 검증 → 확정·합계 1회 차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
     /// → 모든 공의 연출 완료 → <see cref="CompleteSpin"/>(전체 결과 평가 → 정산 → 기록) → 다음 진행
-    /// → 라운드 종료 시 <see cref="SubmitPayment"/>.
+    /// → 라운드 종료 시 <see cref="SubmitPayment"/>(납부 1회) → <see cref="ConfirmDrink"/>(음료 1잔, 다음 라운드).
+    /// 음료 목록이 없으면 납부 성공 즉시 다음 라운드로 넘어간다.
     ///
+    /// 해골 회전은 모든 베팅 낙첨에 더해 남은 보유 금액이 절반이 된다(<see cref="GameBalance.SkullKeptBalance"/>).
     /// <b>해골은 상태를 바꾸지 않는다.</b> 해골 회전은 지급 0으로 정산되는 정상 회전 종료이고,
     /// 회전 수 1회를 쓰고 일반 회전과 같은 규칙으로 Betting 또는 RoundPayment로 간다.
-    /// GameOver는 납부 실패에서만 생긴다.
+    /// GameOver는 납부 실패에서만 생긴다. 음료는 해골 판정을 바꾸지 않는다(해골 회전은 음료와 상관없이 지급 0).
+    ///
+    /// 진행 상태(돈, 라운드, 음료 잔 수)는 전부 이 객체에 있다. 새 게임은 새 객체를 만드는 것으로 초기화한다.
     /// </summary>
     public sealed class GameFlowController
     {
+        // 보상 추첨 난수를 결과 추첨 난수와 떼어 놓는 값. 같은 시드면 보상도 같다.
+        private const int RewardSeedSalt = 0x5EED5EED;
+
         private readonly Random rng;
         private int lastSpinId;
 
-        public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed)
+        public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed, DrinkCatalog drinkCatalog = null)
         {
             Definition = definition;
             GameBalance = gameBalance;
@@ -69,6 +79,9 @@ namespace ProjectCR
             Wallet = new Wallet(gameBalance.InitialMoney, gameBalance.MaxMoney);
             Bet = new BetManager(definition, gameBalance.MinBet);
             Round = new RoundManager(gameBalance);
+            Drinks = new DrinkRunState(drinkCatalog);
+            Probabilities = new ProbabilityDrinkRunState();
+            Rewards = new DrinkRewardController(drinkCatalog, Seed ^ RewardSeedSalt);
             Phase = GamePhase.Betting;
         }
 
@@ -81,6 +94,16 @@ namespace ProjectCR
         public Wallet Wallet { get; }
         public BetManager Bet { get; }
         public RoundManager Round { get; }
+
+        /// <summary>이번 게임에서 마신 지급 강화 음료(묶음별 잔 수).</summary>
+        public DrinkRunState Drinks { get; }
+
+        /// <summary>이번 게임에서 마신 확률 강화 음료(대상별 잔 수).</summary>
+        public ProbabilityDrinkRunState Probabilities { get; }
+
+        /// <summary>라운드 통과 보상(음료 후보).</summary>
+        public DrinkRewardController Rewards { get; }
+
         public GamePhase Phase { get; private set; }
 
         public ActiveSpin CurrentSpin { get; private set; }
@@ -92,6 +115,12 @@ namespace ProjectCR
         /// <summary>지급 0으로 끝난 회전이 연속 몇 번인가. 해골 낙첨도 센다. 지급이 하나라도 있으면 0.</summary>
         public int ConsecutiveLosses { get; private set; }
         public PaymentOutcome? LastPayment { get; private set; }
+
+        /// <summary>마지막으로 낸 납부금. 보상 화면 머리글용.</summary>
+        public long LastPaidDue { get; private set; }
+
+        /// <summary>마지막으로 마신 음료. 없으면 null.</summary>
+        public DrinkOffer LastDrink { get; private set; }
 
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
 
@@ -177,6 +206,14 @@ namespace ProjectCR
             settlement = PayoutCalculator.Calculate(spin.Bets, spin.Result, spin.Config, Wallet.MaxMoney);
             Wallet.Add(settlement.TotalPayout);
 
+            // 해골 벌칙: 베팅금을 뺀 뒤 남은 보유 금액을 절반으로(소수점 반올림). 공이 여러 개 해골이어도 회전당 한 번.
+            if (settlement.IsSkullBust)
+            {
+                long penalty = Wallet.Balance - GameBalance.SkullKeptBalance(Wallet.Balance);
+                Wallet.TrySpend(penalty);
+                settlement.ApplySkullPenalty(penalty);
+            }
+
             LastSettlement = settlement;
             SpinsPlayed++;
             ConsecutiveLosses = settlement.Outcome == SpinOutcome.Win ? 0 : ConsecutiveLosses + 1;
@@ -192,7 +229,10 @@ namespace ProjectCR
 
         // ---------- 라운드 ----------
 
-        /// <summary>RoundPayment 상태에서만 동작한다. 성공하면 다음 라운드, 실패하면 GameOver.</summary>
+        /// <summary>
+        /// 납부를 판정한다. RoundPayment 상태에서만 동작하고, 부르는 즉시 상태가 바뀌어 두 번째 호출은 null(이중 차감 없음).
+        /// 성공하면 납부금을 한 번 빼고 음료 선택(목록이 없으면 바로 다음 라운드), 실패하면 아무것도 빼지 않고 GameOver.
+        /// </summary>
         public PaymentOutcome? SubmitPayment()
         {
             if (Phase != GamePhase.RoundPayment)
@@ -200,7 +240,8 @@ namespace ProjectCR
                 return null;
             }
 
-            PaymentOutcome outcome = Round.SubmitPayment(Wallet);
+            long due = Round.CurrentDue;
+            PaymentOutcome outcome = Round.Pay(Wallet);
             LastPayment = outcome;
 
             if (outcome == PaymentOutcome.Insufficient)
@@ -209,9 +250,49 @@ namespace ProjectCR
                 return outcome;
             }
 
-            Bet.Unlock(Wallet.Balance);
-            Phase = NextPhaseAfterSpin();
+            LastPaidDue = due;
+            if (Rewards.HasCatalog && Rewards.CreateOffer().Count > 0)
+            {
+                Phase = GamePhase.DrinkSelection;
+            }
+            else
+            {
+                StartNextRound();
+            }
+
             return outcome;
+        }
+
+        /// <summary>
+        /// 음료 후보 중 하나를 마신다. DrinkSelection 상태에서만 동작하고, 성공하면 한 잔을 더한 뒤 다음 라운드로 넘어간다.
+        /// 지급 강화는 묶음 잔 수 +1, 확률 강화는 후보에 정해진 대상의 잔 수 +1.
+        /// 상태가 맞지 않거나 번호가 틀리면 null이고 아무것도 바뀌지 않는다.
+        /// </summary>
+        public DrinkOffer ConfirmDrink(int offerIndex)
+        {
+            if (Phase != GamePhase.DrinkSelection)
+            {
+                return null;
+            }
+
+            DrinkOffer drink = Rewards.Take(offerIndex);
+            if (drink == null)
+            {
+                return null;
+            }
+
+            if (drink.IsProbability)
+            {
+                Probabilities.AddStack(drink.Target, drink.Boost);
+            }
+            else
+            {
+                Drinks.AddStack(drink.Group);
+            }
+
+            LastDrink = drink;
+            StartNextRound();
+            return drink;
         }
 
         // ---------- 아이템이 끼어들 자리 ----------
@@ -227,6 +308,20 @@ namespace ProjectCR
             if (StraightPayoutOverride > 0)
             {
                 config.StraightPayout = StraightPayoutOverride;
+            }
+
+            // 음료: 묶음 배율 = 한 잔 배율^잔 수. 기본 배수에 곱하는 건 SpinConfig.MultiplierFor.
+            for (int i = 0; i < DrinkGroups.Count; i++)
+            {
+                var group = (DrinkGroup)i;
+                config.SetGroupBoost(group, Drinks.MultiplierOf(group));
+            }
+
+            // 확률 음료: 일반 칸 가중치만 바꾼다. 해골 확률(SkullChance)은 그대로 1/38.
+            // 베팅과 상관없이 지금 효과를 그대로 쓴다(건 칸을 따로 유리하게 하지 않는다).
+            if (Probabilities.Effects.Count > 0)
+            {
+                config.SetWeights(PocketWeightCalculator.Compute(Definition, Probabilities.Effects));
             }
 
             return config;
@@ -252,6 +347,18 @@ namespace ProjectCR
 
             Round.ForfeitRemainingSpins();
             return GamePhase.RoundPayment;
+        }
+
+        /// <summary>
+        /// 납부(와 음료)를 마친 뒤. 라운드 번호 +1, 회전 수를 다시 채우고 판을 비운다. 돈과 음료는 그대로.
+        /// 새 라운드에서도 최소 베팅을 못 내면 기존 규칙대로 남은 회전을 버리고 납부 판정으로 간다.
+        /// </summary>
+        private void StartNextRound()
+        {
+            Round.AdvanceRound();
+            Bet.Unlock(Wallet.Balance);
+            Bet.ClearBets();
+            Phase = NextPhaseAfterSpin();
         }
 
         private BetError WhenBetting(Func<BetError> action)

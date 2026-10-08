@@ -37,6 +37,11 @@ namespace ProjectCR.Editor
         private const string DisplayScreenName = "CRT_Display_Black_Screen";
         private const string HoverMaterialPath = "Assets/Materials/Table_Hover.mat";
 
+        // 해골 칸 색(사용자 지정 #735198). 회전판 칸과 바깥 번호 띠 칸.
+        private const string SkullPocketMaterialPath = "Assets/Materials/CRR_Skull_Pocket.mat";
+        private static readonly Color SkullPocketColor = new Color32(0x73, 0x51, 0x98, 0xFF);
+        private static readonly string[] SkullPocketNames = { "CRR_Pocket_19_SKULL", "CRR_Sector_19_SKULL" };
+
         // 카메라 자리 오브젝트(사용자가 씬에 만든 이름 그대로).
         private const string BettingPoseName = "CameraPostion_BettingBoard";
         private const string RoulettePoseName = "CameraPostion_Roulette";
@@ -152,6 +157,7 @@ namespace ProjectCR.Editor
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 BuildTable(model.transform);
+                ApplySkullPocketMaterial(model.transform);
 
                 PrefabUtility.SaveAsPrefabAsset(root, RoulettePrefabPath);
                 Debug.Log($"[RouletteModelSetup] 칸 {count}개, 트랙 반경 {BallTrajectory.RadiusOf(ballOnTrack):F3} 높이 {ballOnTrack.y:F3}, 공 반지름 {ballRadius:F3}");
@@ -162,6 +168,56 @@ namespace ProjectCR.Editor
             }
 
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 이미 만든 RouletteRoot_CRR 프리팹에서 해골 칸 색만 바꾼다. 프리팹을 다시 빌드하지 않아 씬 오버라이드가 그대로 남는다.
+        /// </summary>
+        [MenuItem("Tools/ProjectCR/Model (CRR)/Skull Pocket Color")]
+        public static void UpdateSkullPocketColor()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(RoulettePrefabPath);
+            try
+            {
+                int changed = ApplySkullPocketMaterial(root.transform);
+                PrefabUtility.SaveAsPrefabAsset(root, RoulettePrefabPath);
+                Debug.Log($"[RouletteModelSetup] 해골 칸 색 #{ColorUtility.ToHtmlStringRGB(SkullPocketColor)} 렌더러 {changed}개");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// 해골 칸(회전판 칸 + 번호 띠 칸)에 전용 머티리얼을 건다. 모델에서는 검은 칸과 같은 CRR_Enamel_Obsidian을 함께 써서
+        /// 그 머티리얼 색을 바꾸면 검은 칸까지 바뀌기 때문이다. 해골 그림(눈·코·이 홈)은 그대로 검정.
+        /// 당첨 강조는 이 머티리얼 색에서 시작한다(RoulettePresenter가 원래 색을 머티리얼에서 읽는다).
+        /// </summary>
+        private static int ApplySkullPocketMaterial(Transform model)
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(SkullPocketMaterialPath);
+            if (material == null)
+            {
+                Renderer source = FindDeep(model, SkullPocketNames[0])?.GetComponent<Renderer>()
+                    ?? throw new InvalidOperationException($"모델에 {SkullPocketNames[0]}이 없다.");
+                material = new Material(source.sharedMaterial) { name = "CRR_Skull_Pocket" };
+                AssetDatabase.CreateAsset(material, SkullPocketMaterialPath);
+            }
+
+            material.SetColor("_BaseColor", SkullPocketColor);
+            EditorUtility.SetDirty(material);
+
+            int changed = 0;
+            foreach (string name in SkullPocketNames)
+            {
+                Renderer renderer = FindDeep(model, name)?.GetComponent<Renderer>()
+                    ?? throw new InvalidOperationException($"모델에 {name}이 없다.");
+                renderer.sharedMaterial = material;
+                changed++;
+            }
+
+            return changed;
         }
 
         [MenuItem("Tools/ProjectCR/Model (CRR)/2. Use In Scene")]
@@ -240,6 +296,9 @@ namespace ProjectCR.Editor
             {
                 sun.transform.rotation = Quaternion.Euler(50f, 150f, 0f);
             }
+
+            // 라운드 통과 보상(음료 목록·선택 창).
+            DrinkSetup.WireScene(DrinkSetup.CreateAssets());
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);

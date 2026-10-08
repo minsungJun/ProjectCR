@@ -1,0 +1,58 @@
+using UnityEngine;
+
+namespace ProjectCR
+{
+    /// <summary>
+    /// 음료 한 종류(정적 데이터). 마실 때마다 묶음 하나의 지급 배율에 boostPerStack을 한 번 더 곱한다.
+    /// 지금 몇 잔 마셨는지는 여기 두지 않는다(<see cref="DrinkRunState"/>).
+    /// </summary>
+    [CreateAssetMenu(fileName = "Drink", menuName = "ProjectCR/Drink")]
+    public class DrinkDefinition : ScriptableObject
+    {
+        [SerializeField] private DrinkGroup group;
+
+        [SerializeField] private string displayName = "음료";
+
+        [Tooltip("카드에 보이는 효과 설명. 비우면 묶음에서 만든다.")]
+        [TextArea(2, 4)]
+        [SerializeField] private string description;
+
+        [Tooltip("카드 그림. 비우면 강조색 병 모양으로 대신 그린다.")]
+        [SerializeField] private Sprite icon;
+
+        [Tooltip("카드 강조색, 대체 그림의 병 색.")]
+        [SerializeField] private Color tint = new Color(0.8f, 0.6f, 0.3f);
+
+        [Tooltip("이 음료의 3D 모델(프리팹). 아직 게임 화면에서는 쓰지 않는다.")]
+        [SerializeField] private GameObject model;
+
+        [Tooltip("한 잔마다 이 묶음의 지급 배율에 곱하는 값. <b>1.5는 처음 시험하는 값이고 통과율은 검증하지 않았다.</b>")]
+        [Min(1f)]
+        [SerializeField] private float boostPerStack = 1.5f;
+
+        public DrinkGroup Group => group;
+        public string DisplayName => displayName;
+        public Sprite Icon => icon;
+        public Color Tint => tint;
+        public GameObject Model => model;
+
+        public string Description => string.IsNullOrWhiteSpace(description)
+            ? $"{group.BetsKorean()} 베팅 지급 ×{NumberText.Multiplier(BoostPerStack)}"
+            : description;
+
+        /// <summary>계산은 decimal로 한다. float 1.5는 decimal 1.5로 정확히 바뀐다.</summary>
+        public decimal BoostPerStack => (decimal)Mathf.Max(1f, boostPerStack);
+
+        /// <summary>코드로 만든다(테스트, 기본 에셋 생성).</summary>
+        public static DrinkDefinition Create(DrinkGroup group, string displayName, Color tint, float boostPerStack = 1.5f)
+        {
+            var drink = CreateInstance<DrinkDefinition>();
+            drink.name = $"Drink_{group}";
+            drink.group = group;
+            drink.displayName = displayName;
+            drink.tint = tint;
+            drink.boostPerStack = boostPerStack;
+            return drink;
+        }
+    }
+}

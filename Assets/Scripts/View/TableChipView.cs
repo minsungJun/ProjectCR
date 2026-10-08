@@ -1,10 +1,12 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace ProjectCR
 {
     /// <summary>
-    /// 3D 테이블 위의 표시: 판에 놓인 칩 더미, 트레이에서 고른 칩, 마우스가 가리키는 자리, 잔액 표시.
+    /// 3D 테이블 위의 표시: 판에 놓인 칩 더미와 더미별 합계 글자, 트레이에서 고른 칩, 마우스가 가리키는 자리,
+    /// 잔액 표시(보유 − 판에 놓은 칩 합계).
     /// 회전이 끝나면 게임 흐름이 베팅을 비우므로, 다음 Refresh에서 판의 칩도 바로 사라진다.
     /// 상태는 읽기만 한다. 베팅 규칙은 GameFlowController에 있다.
     /// </summary>
@@ -39,13 +41,35 @@ namespace ProjectCR
         [Tooltip("마우스가 가리키는 베팅 자리 표시.")]
         [SerializeField] private Transform hoverMarker;
 
-        [Tooltip("잔액 표시 화면의 글자.")]
+        [Tooltip("잔액 표시 화면의 글자. 보유 금액에서 판에 놓은 칩 합계를 뺀 값(이번 회전에 쓸 수 있는 돈)을 보여 준다.")]
         [SerializeField] private TextMesh balanceText;
+
+        [Header("칩 더미 금액")]
+        [Tooltip("칩 더미 위에 띄우는 합계 글자의 크기(TextMesh characterSize, 글꼴 크기 64 기준).")]
+        [Min(0.0001f)]
+        [SerializeField] private float amountLabelSize = 0.0042f;
+
+        [Tooltip("맨 위 칩에서 합계 글자까지 띄우는 거리(m). 화면에서 칩 바로 위에 보이도록 카메라의 위 방향으로 띄운다.")]
+        [SerializeField] private float amountLabelLift = 0.026f;
+
+        [SerializeField] private Color amountLabelColor = new Color(1f, 0.86f, 0.45f);
 
         private readonly Dictionary<BetTarget, List<GameObject>> stacks = new Dictionary<BetTarget, List<GameObject>>();
         private readonly Dictionary<long, Stack<GameObject>> pool = new Dictionary<long, Stack<GameObject>>();
         private readonly Dictionary<GameObject, long> chipValues = new Dictionary<GameObject, long>();
+        private readonly Dictionary<BetTarget, StackLabel> labels = new Dictionary<BetTarget, StackLabel>();
+        private readonly Stack<StackLabel> freeLabels = new Stack<StackLabel>();
         private Vector3[] trayBase;
+
+        /// <summary>칩 더미 위 합계 글자. 읽기 쉽게 어두운 그림자 글자를 뒤에 하나 더 둔다.</summary>
+        private sealed class StackLabel
+        {
+            /// <summary>맨 위 칩 윗면(월드). 글자는 여기서 카메라 위 방향으로 띄운다.</summary>
+            public Vector3 Anchor;
+            public Transform Root;
+            public TextMesh Text;
+            public TextMesh Shadow;
+        }
 
         public TableBetBoard Board => board;
 
@@ -68,8 +92,37 @@ namespace ProjectCR
 
             if (balanceText != null)
             {
-                balanceText.text = flow.Wallet.Balance.ToString("N0");
+                // 놓기만 한 칩은 아직 지갑에서 빠지지 않았으니 여기서 빼서 보여 준다.
+                // 회전이 시작되면(잠김) 합계가 이미 빠졌으므로 또 빼지 않는다.
+                long pending = flow.Bet.IsLocked ? 0 : flow.Bet.TotalStake;
+                balanceText.text = Math.Max(0, flow.Wallet.Balance - pending).ToString("N0");
             }
+        }
+
+        /// <summary>합계 글자가 늘 카메라를 보고 화면에서 칩 위에 있게 한다(시점 전환·카메라 이동 중에도).</summary>
+        private void LateUpdate()
+        {
+            if (labels.Count == 0)
+            {
+                return;
+            }
+
+            Camera view = ActiveCamera();
+            if (view == null)
+            {
+                return;
+            }
+
+            foreach (StackLabel label in labels.Values)
+            {
+                FaceCamera(label, view);
+            }
+        }
+
+        private void FaceCamera(StackLabel label, Camera view)
+        {
+            Transform eye = view.transform;
+            label.Root.SetPositionAndRotation(label.Anchor + eye.up * amountLabelLift, eye.rotation);
         }
 
         public void SetHover(bool visible, BetTarget target)
@@ -108,7 +161,91 @@ namespace ProjectCR
             {
                 ReleaseAll(stacks[target]);
                 stacks.Remove(target);
+                ReleaseLabel(target);
             }
+        }
+
+        /// <summary>더미 맨 위 칩 위에 합계를 띄운다.</summary>
+        private void PlaceLabel(BetTarget target, long amount, int chipCount)
+        {
+            if (!labels.TryGetValue(target, out StackLabel label))
+            {
+                label = freeLabels.Count > 0 ? freeLabels.Pop() : CreateLabel();
+                labels[target] = label;
+            }
+
+            float top = chipHeight * chipScale * Mathf.Max(1, chipCount);
+            label.Anchor = board.WorldPositionOf(target) + board.transform.up * top;
+            label.Root.position = label.Anchor;
+            label.Text.text = amount.ToString("N0");
+            label.Shadow.text = label.Text.text;
+            label.Root.gameObject.SetActive(true);
+
+            Camera view = ActiveCamera();
+            if (view != null)
+            {
+                FaceCamera(label, view);
+            }
+        }
+
+        private void ReleaseLabel(BetTarget target)
+        {
+            if (labels.TryGetValue(target, out StackLabel label))
+            {
+                label.Root.gameObject.SetActive(false);
+                labels.Remove(target);
+                freeLabels.Push(label);
+            }
+        }
+
+        private StackLabel CreateLabel()
+        {
+            var root = new GameObject("StackLabel").transform;
+            root.SetParent(transform, false);
+
+            // 그림자는 글자보다 살짝 뒤(카메라 반대쪽)·아래에 둔다.
+            TextMesh shadow = CreateText(root, "Shadow", new Color(0f, 0f, 0f, 0.85f), new Vector3(0.0004f, -0.0004f, 0.0006f));
+            TextMesh text = CreateText(root, "Text", amountLabelColor, Vector3.zero);
+            return new StackLabel { Root = root, Text = text, Shadow = shadow };
+        }
+
+        private TextMesh CreateText(Transform parent, string name, Color color, Vector3 offset)
+        {
+            Font font = balanceText != null && balanceText.font != null
+                ? balanceText.font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = offset;
+
+            var text = go.AddComponent<TextMesh>();
+            text.font = font;
+            text.fontSize = 64;
+            text.fontStyle = FontStyle.Bold;
+            text.characterSize = amountLabelSize;
+            text.anchor = TextAnchor.LowerCenter;
+            text.alignment = TextAlignment.Center;
+            text.color = color;
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            return text;
+        }
+
+        /// <summary>지금 화면을 그리는 카메라. 시점 전환으로 Main Camera가 꺼져 있으면 켜진 다른 카메라.</summary>
+        private static Camera ActiveCamera()
+        {
+            Camera main = Camera.main;
+            if (main != null && main.isActiveAndEnabled)
+            {
+                return main;
+            }
+
+            foreach (Camera camera in Camera.allCameras)
+            {
+                return camera;
+            }
+
+            return null;
         }
 
         /// <summary>금액을 큰 칩부터 나눠 쌓는다(가장 큰 칩이 아래).</summary>
@@ -138,6 +275,8 @@ namespace ProjectCR
                     chips.Add(chip);
                 }
             }
+
+            PlaceLabel(target, amount, chips.Count);
         }
 
         private void RefreshTray(long chipValue)

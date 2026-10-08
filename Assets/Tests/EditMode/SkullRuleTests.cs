@@ -116,7 +116,7 @@ namespace ProjectCR.Tests
 
             for (int i = 0; i < 38000; i++)
             {
-                if (SpinResolver.PickPocket(config.Weights, rng) == skullIndex)
+                if (SpinResolver.PickBall(config, rng) == skullIndex)
                 {
                     hits++;
                 }
@@ -190,7 +190,9 @@ namespace ProjectCR.Tests
             SettlementResult s = SpinAndSettle(7, 10, Skull);
 
             Assert.AreEqual(SpinOutcome.SkullBust, s.Outcome);
-            Assert.AreEqual(90, flow.Wallet.Balance, "베팅금은 돌려주지 않는다.");
+            Assert.AreEqual(45, flow.Wallet.Balance, "베팅금은 돌려주지 않고, 남은 90의 절반만 남는다.");
+            Assert.AreEqual(45, s.SkullPenalty);
+            Assert.AreEqual(-55, s.Net, "손익 = −베팅금 10 − 벌칙 45.");
             Assert.AreEqual(4, flow.Round.SpinsRemaining);
             Assert.AreEqual(GamePhase.Betting, flow.Phase, "해골은 게임을 끝내지 않는다.");
 
@@ -209,7 +211,7 @@ namespace ProjectCR.Tests
 
             Assert.AreEqual(2, s.Spin.Balls.Count);
             Assert.AreEqual(0, s.TotalPayout);
-            Assert.AreEqual(90, flow.Wallet.Balance);
+            Assert.AreEqual(45, flow.Wallet.Balance);
             Assert.AreEqual(4, flow.Round.SpinsRemaining);
         }
 
@@ -222,7 +224,7 @@ namespace ProjectCR.Tests
             Assert.IsTrue(flow.CompleteSpin(spin.Id, out _));
             Assert.IsFalse(flow.CompleteSpin(spin.Id, out _));
 
-            Assert.AreEqual(90, flow.Wallet.Balance);
+            Assert.AreEqual(45, flow.Wallet.Balance, "절반 벌칙도 한 번만.");
             Assert.AreEqual(4, flow.Round.SpinsRemaining);
             Assert.AreEqual(1, flow.SpinsPlayed);
         }
@@ -230,21 +232,61 @@ namespace ProjectCR.Tests
         [Test]
         public void SkullOnLastSpin_GoesToPayment_ThenPaysAsUsual()
         {
-            SpinAndSettle(7, 1, 7); // 100 − 1 + 36 = 135
+            SpinAndSettle(7, 10, 7); // 100 − 10 + 360 = 450
             for (int i = 0; i < 3; i++)
             {
-                SpinAndSettle(7, 1, 8);
+                SpinAndSettle(7, 1, 8); // 447
             }
 
             Assert.AreEqual(GamePhase.Betting, flow.Phase);
-            SpinAndSettle(7, 1, Skull);
+            SpinAndSettle(7, 1, Skull); // 446 → 절반 223
 
             Assert.AreEqual(GamePhase.RoundPayment, flow.Phase);
-            Assert.AreEqual(131, flow.Wallet.Balance);
+            Assert.AreEqual(223, flow.Wallet.Balance);
             Assert.AreEqual(PaymentOutcome.Paid, flow.SubmitPayment());
             Assert.AreEqual(2, flow.Round.Round);
-            Assert.AreEqual(11, flow.Wallet.Balance);
+            Assert.AreEqual(103, flow.Wallet.Balance);
             Assert.AreEqual(GamePhase.Betting, flow.Phase);
+        }
+
+        [TestCase(9, 46)]   // 91 → 45.5 → 46 (반올림)
+        [TestCase(10, 45)]  // 90 → 45
+        [TestCase(99, 1)]   // 1 → 0.5 → 1
+        public void SkullHalvesRemainingBalance_RoundingHalfUp(long stake, long expected)
+        {
+            SettlementResult s = SpinAndSettle(7, stake, Skull);
+
+            Assert.AreEqual(expected, flow.Wallet.Balance);
+            Assert.AreEqual(100 - stake - expected, s.SkullPenalty);
+        }
+
+        [Test]
+        public void SkullKeptBalance_RoundsHalfAwayFromZero()
+        {
+            Assert.AreEqual(0, flow.GameBalance.SkullKeptBalance(0));
+            Assert.AreEqual(1, flow.GameBalance.SkullKeptBalance(1));
+            Assert.AreEqual(1, flow.GameBalance.SkullKeptBalance(2));
+            Assert.AreEqual(2, flow.GameBalance.SkullKeptBalance(3));
+            Assert.AreEqual(500_000_000_000, flow.GameBalance.SkullKeptBalance(999_999_999_999));
+        }
+
+        [Test]
+        public void TwoSkullBalls_HalveOnlyOnce()
+        {
+            flow.ExtraBallCount = 1;
+            SettlementResult s = SpinAndSettle(7, 10, Skull, Skull);
+
+            Assert.AreEqual(45, flow.Wallet.Balance, "해골 공이 둘이어도 회전당 한 번만 절반.");
+            Assert.AreEqual(45, s.SkullPenalty);
+        }
+
+        [Test]
+        public void NonSkullSpin_HasNoPenalty()
+        {
+            SettlementResult s = SpinAndSettle(7, 10, 8);
+
+            Assert.AreEqual(0, s.SkullPenalty);
+            Assert.AreEqual(90, flow.Wallet.Balance);
         }
 
         [Test]
@@ -257,7 +299,7 @@ namespace ProjectCR.Tests
             }
 
             Assert.AreEqual(GamePhase.RoundPayment, flow.Phase, "해골만 나와도 납부 단계까지는 정상 진행.");
-            Assert.AreEqual(95, flow.Wallet.Balance);
+            Assert.AreEqual(3, flow.Wallet.Balance, "100→99→50, 49→25, 24→12, 11→6, 5→3");
 
             Assert.AreEqual(PaymentOutcome.Insufficient, flow.SubmitPayment());
             Assert.AreEqual(GamePhase.GameOver, flow.Phase);

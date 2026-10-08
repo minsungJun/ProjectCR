@@ -2,7 +2,8 @@
     "name": "ProjectCR.Editor",
     "rootNamespace": "ProjectCR.Editor",
     "references": [
-        "ProjectCR"
+        "ProjectCR",
+        "Unity.RenderPipelines.Universal.Editor"
     ],
     "includePlatforms": [
         "Editor"

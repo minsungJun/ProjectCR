@@ -20,10 +20,28 @@ namespace ProjectCR.Tests
             return Track(RouletteDefinition.CreateEuropean());
         }
 
-        /// <summary>기본값(임시 밸런스): 초기 100, 최소 1, 36배, 공 1, 회전 5, 납부 120 ×1.5 (10단위 올림).</summary>
+        /// <summary>기본값(임시 밸런스): 초기 100, 최소 1, 36배, 공 1, 회전 5, 납부 120 ×2.5 (5단위 올림).</summary>
         public GameBalance Balance()
         {
             return Track(ScriptableObject.CreateInstance<GameBalance>());
+        }
+
+        /// <summary>기본 지급 음료 6종(묶음마다 하나, 한 잔 ×1.5), 후보 offerCount종. withProbability면 확률 음료 6종도 넣는다.</summary>
+        public DrinkCatalog Drinks(int offerCount = 4, bool withProbability = false)
+        {
+            var drinks = DrinkCatalog.CreateDefaultDrinks();
+            foreach (DrinkDefinition drink in drinks)
+            {
+                Track(drink);
+            }
+
+            ProbabilityDrinkDefinition[] chances = withProbability ? ProbabilityDrinkDefinition.CreateDefaults() : new ProbabilityDrinkDefinition[0];
+            foreach (ProbabilityDrinkDefinition drink in chances)
+            {
+                Track(drink);
+            }
+
+            return Track(DrinkCatalog.Create(drinks, offerCount, chances));
         }
 
         public void DestroyAll()

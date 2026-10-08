@@ -22,7 +22,7 @@
                     <ui:Label class="field-label" text="칩" />
                     <ui:Label name="chip-value" class="chip-value" text="0" />
                     <ui:Label name="hover-target" class="hover-target" />
-                    <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
+                    <ui:Label name="skull-notice" class="skull-notice" text="해골: 모든 베팅 낙첨 + 보유 금액 절반" />
                 </ui:VisualElement>
                 <ui:VisualElement class="row">
                     <ui:Label class="field-label" text="베팅" />
@@ -42,10 +42,14 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <ui:VisualElement name="payment-panel" class="modal blocks-input">
-            <ui:VisualElement class="modal__box">
-                <ui:Label name="payment-text" class="modal__text" />
-                <ui:Button name="pay" class="btn btn--primary btn--modal" text="납부" />
+        <!-- 라운드 통과 보상. 카드는 DrinkSelectionView가 후보 수만큼 만든다. -->
+        <ui:VisualElement name="drink-panel" class="modal drink-modal blocks-input">
+            <ui:VisualElement class="drink-box">
+                <ui:Label name="drink-header" class="drink-header" />
+                <ui:Label class="drink-title" text="음료 하나를 선택하세요" />
+                <ui:VisualElement name="drink-cards" class="drink-cards" />
+                <ui:Label name="drink-hint" class="drink-hint" text="카드를 눌러 고른 뒤 확정하세요. 효과는 이번 게임 끝까지 이어집니다. 지급 음료는 곱해서, 확률 음료는 더해서 쌓이고, 해골 확률(1/38)은 바뀌지 않습니다." />
+                <ui:Button name="drink-confirm" class="btn drink-confirm" text="선택 확정" />
             </ui:VisualElement>
         </ui:VisualElement>
 

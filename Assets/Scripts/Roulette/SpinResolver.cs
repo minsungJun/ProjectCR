@@ -5,7 +5,12 @@ namespace ProjectCR
 {
     /// <summary>
     /// 공별 당첨 칸을 추첨한다. 3D 연출과 무관하게 결과를 먼저 정하고, 연출은 이 결과에 맞춰 멈춘다.
-    /// 공마다 독립 추첨이라 같은 칸에 여러 공이 걸릴 수 있다.
+    /// 공마다 독립 추첨이라 같은 칸에 여러 공이 걸릴 수 있다. 모든 공이 같은 회전 설정(같은 확률)을 쓴다.
+    ///
+    /// 공 하나의 추첨(<see cref="PickBall"/>):
+    /// 1. 해골 여부를 <see cref="SpinConfig.SkullChance"/>(1/38)로 먼저 정한다.
+    /// 2. 해골이 아니면 일반 칸(0~36)만 가중치로 추첨한다. 해골은 가중치 목록에 들어가지 않는다.
+    /// 그래서 숫자 확률을 올려도 해골 위험은 그대로다. 확률식은 <see cref="PocketWeightCalculator.Probabilities"/>와 같다.
     /// </summary>
     public static class SpinResolver
     {
@@ -14,11 +19,64 @@ namespace ProjectCR
             var balls = new List<BallResult>(config.BallCount);
             for (int i = 0; i < config.BallCount; i++)
             {
-                int pocketIndex = PickPocket(config.Weights, rng);
+                int pocketIndex = PickBall(config, rng);
                 balls.Add(BallResult.FromPocket(config.Definition, i, pocketIndex));
             }
 
             return new SpinResult(balls);
+        }
+
+        /// <summary>공 하나의 칸 인덱스. 해골이 있는 휠이면 난수를 늘 두 번(해골 판정, 일반 칸) 써서 소비 순서가 결과와 무관하다.</summary>
+        public static int PickBall(SpinConfig config, Random rng)
+        {
+            int skullIndex = config.Definition.IndexOfSkull();
+            if (skullIndex >= 0)
+            {
+                bool skull = rng.NextDouble() < config.SkullChance;
+                int number = PickNumberPocket(config.Weights, skullIndex, rng);
+                return skull ? skullIndex : number;
+            }
+
+            return PickNumberPocket(config.Weights, -1, rng);
+        }
+
+        /// <summary>해골 칸을 뺀 가중치 비례 추첨. 음수 가중치는 0으로 본다. 합이 0이면 예외.</summary>
+        private static int PickNumberPocket(IReadOnlyList<double> weights, int skullIndex, Random rng)
+        {
+            double total = 0d;
+            int last = -1;
+            for (int i = 0; i < weights.Count; i++)
+            {
+                if (i != skullIndex && weights[i] > 0d)
+                {
+                    total += weights[i];
+                    last = i;
+                }
+            }
+
+            if (total <= 0d)
+            {
+                throw new InvalidOperationException("추첨 가중치 합이 0이다.");
+            }
+
+            double roll = rng.NextDouble() * total;
+            for (int i = 0; i < weights.Count; i++)
+            {
+                if (i == skullIndex || weights[i] <= 0d)
+                {
+                    continue;
+                }
+
+                if (roll < weights[i])
+                {
+                    return i;
+                }
+
+                roll -= weights[i];
+            }
+
+            // 부동소수 오차로 끝까지 왔으면 마지막 양수 칸.
+            return last;
         }
 
         /// <summary>가중치 비례 추첨. 음수 가중치는 0으로 본다. 합이 0이면 예외.</summary>

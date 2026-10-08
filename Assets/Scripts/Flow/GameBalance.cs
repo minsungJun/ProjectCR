@@ -47,6 +47,11 @@ namespace ProjectCR
         [Tooltip("회전마다 굴리는 공 수. 아이템이 늘리는 값의 기준.")]
         [SerializeField] private int ballCount = 1;
 
+        [Header("해골")]
+        [Tooltip("해골에 걸리면 베팅금을 뺀 뒤 남은 보유 금액에 곱해 남기는 비율. 0.5면 절반(소수점 반올림). 회전당 한 번.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float skullBalanceKeep = 0.5f;
+
         [Header("라운드")]
         [Tooltip("라운드당 회전 횟수.")]
         [SerializeField] private int spinsPerRound = 5;
@@ -55,10 +60,10 @@ namespace ProjectCR
         [SerializeField] private long firstRoundDue = 120;
 
         [Tooltip("라운드가 하나 지날 때마다 납부금에 곱하는 값.")]
-        [SerializeField] private float dueGrowth = 1.5f;
+        [SerializeField] private float dueGrowth = 2.5f;
 
-        [Tooltip("납부금을 이 단위로 올림한다.")]
-        [SerializeField] private long dueRoundingUnit = 10;
+        [Tooltip("납부금을 이 단위로 올림한다. 증가율 2.5, 단위 5면 120, 300, 750, 1,875, 4,690, 11,720, 29,300, 73,245…")]
+        [SerializeField] private long dueRoundingUnit = 5;
 
         public long InitialMoney => initialMoney;
         public long MaxMoney => maxMoney;
@@ -90,8 +95,25 @@ namespace ProjectCR
         }
         public int BallCount => ballCount;
         public int SpinsPerRound => spinsPerRound;
+        public float SkullBalanceKeep => skullBalanceKeep;
 
-        /// <summary>round는 1부터. due(n) = 올림(firstRoundDue × dueGrowth^(n−1), 단위).</summary>
+        /// <summary>해골 벌칙 뒤 남는 보유 금액 = 반올림(balance × skullBalanceKeep). 0.5에서 91 → 46.</summary>
+        public long SkullKeptBalance(long balance)
+        {
+            if (balance <= 0)
+            {
+                return 0;
+            }
+
+            decimal kept = Math.Round(balance * (decimal)Mathf.Clamp01(skullBalanceKeep), MidpointRounding.AwayFromZero);
+            return Math.Min(balance, (long)kept);
+        }
+
+        /// <summary>
+        /// round는 1부터. due(n) = 올림(firstRoundDue × dueGrowth^(n−1), 단위).
+        /// 앞 라운드 납부금에 곱해 가지 않고 매번 공식으로 계산해서 올림 오차가 쌓이지 않는다.
+        /// 라운드 끝은 없다. 상한(maxMoney)에 닿으면 거기서 멈춘다(기본값 기준 약 26라운드).
+        /// </summary>
         public long GetDue(int round)
         {
             double raw = firstRoundDue * Math.Pow(dueGrowth, Math.Max(0, round - 1));
@@ -113,6 +135,7 @@ namespace ProjectCR
             dozenColumnTotalPayout = Math.Max(1, dozenColumnTotalPayout);
             evenMoneyTotalPayout = Math.Max(1, evenMoneyTotalPayout);
             ballCount = Math.Max(1, ballCount);
+            skullBalanceKeep = Mathf.Clamp01(skullBalanceKeep);
             spinsPerRound = Math.Max(1, spinsPerRound);
             firstRoundDue = Math.Max(0, firstRoundDue);
             dueGrowth = Mathf.Max(1f, dueGrowth);

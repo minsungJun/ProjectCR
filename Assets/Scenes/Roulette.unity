@@ -278,8 +278,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.RouletteGame
   definition: {fileID: 11400000, guid: 72cbfda85a27086479dc338e676e04c1, type: 2}
   balance: {fileID: 11400000, guid: 17402ebc411f8f64da65401a882a6131, type: 2}
+  drinkCatalog: {fileID: 11400000, guid: fe0d12bcb8a513d42a57f5cf8a6e55c0, type: 2}
   presenter: {fileID: 942192219}
   hud: {fileID: 2083983754}
+  drinkView: {fileID: 2083983757}
   tableInput: {fileID: 217825617}
   tableView: {fileID: 942192220}
   cameraRig: {fileID: 1345680696}
@@ -289,6 +291,7 @@ MonoBehaviour:
   forcedNumbers: 
   extraBallCount: 0
   straightPayoutOverride: 0
+  debugStartDrinkStacks: 
   presentationSpeed: 1
   verificationSpeed: 8
 --- !u!4 &217825616
@@ -332,6 +335,46 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.6282
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.8337
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.4102
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.000000092256634
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.00000014771356
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.8481643
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.52973324
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 116.024994
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1146002133214347695, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 180
+      objectReference: {fileID: 0}
     - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -371,6 +414,18 @@ PrefabInstance:
     - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4470359751644438357, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_Anchor
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4470359751644438357, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_FontSize
+      value: 74
+      objectReference: {fileID: 0}
+    - target: {fileID: 4470359751644438357, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_Alignment
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5432395833028427138, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
       propertyPath: m_Name
@@ -780,6 +835,7 @@ GameObject:
   - component: {fileID: 2083983756}
   - component: {fileID: 2083983755}
   - component: {fileID: 2083983754}
+  - component: {fileID: 2083983757}
   m_Layer: 0
   m_Name: HUD
   m_TagString: Untagged
@@ -837,6 +893,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2083983757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2083983753}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23ed960205865ad478b2eb6409e006ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkSelectionView
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
