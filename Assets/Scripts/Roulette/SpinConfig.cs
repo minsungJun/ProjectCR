@@ -11,7 +11,7 @@ namespace ProjectCR
     public sealed class SpinConfig
     {
         private int ballCount;
-        private readonly int[] payouts = new int[3];
+        private readonly int[] payouts = new int[Enum.GetValues(typeof(PayoutClass)).Length];
 
         private SpinConfig(RouletteDefinition definition, int ballCount, int[] weights)
         {
@@ -52,6 +52,12 @@ namespace ProjectCR
             set => payouts[(int)PayoutClass.EvenMoney] = Math.Max(0, value);
         }
 
+        /// <summary>배수 묶음별 원금 포함 총 지급 배수.</summary>
+        public int PayoutOf(PayoutClass payoutClass) => payouts[(int)payoutClass];
+
+        /// <summary>배수 묶음 하나의 배수를 바꾼다. 아이템이 쓰는 길.</summary>
+        public void SetPayout(PayoutClass payoutClass, int multiplier) => payouts[(int)payoutClass] = Math.Max(0, multiplier);
+
         /// <summary>이 베팅이 맞았을 때의 원금 포함 총 지급 배수. UI 미리보기와 정산이 같이 쓴다.</summary>
         public int PayoutFor(BetTarget target) => target.IsNone ? 0 : payouts[(int)target.PayoutClass];
 
@@ -63,12 +69,13 @@ namespace ProjectCR
                 weights[i] = definition.GetPocket(i).BaseWeight;
             }
 
-            return new SpinConfig(definition, balance.BallCount, weights)
+            var config = new SpinConfig(definition, balance.BallCount, weights);
+            foreach (PayoutClass payoutClass in (PayoutClass[])Enum.GetValues(typeof(PayoutClass)))
             {
-                StraightPayout = balance.StraightTotalPayout,
-                DozenColumnPayout = balance.DozenColumnTotalPayout,
-                EvenMoneyPayout = balance.EvenMoneyTotalPayout,
-            };
+                config.SetPayout(payoutClass, balance.TotalPayoutOf(payoutClass));
+            }
+
+            return config;
         }
     }
 }

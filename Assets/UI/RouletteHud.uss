@@ -84,6 +84,11 @@
     flex-direction: row;
 }
 
+/* 줄 아랫변의 스트리트·식스 라인 클릭 점이 들어갈 자리. */
+.board-row--numbers {
+    padding-bottom: 10px;
+}
+
 /* 더즌·색 줄은 0 칸 폭만큼 들여 번호 열에 맞춘다. */
 .board-row--indent {
     margin-left: 39px;
@@ -147,6 +152,58 @@
 
 .cell:hover {
     border-color: rgba(255, 255, 255, 0.6);
+}
+
+.cell--covered {
+    border-color: rgba(255, 209, 64, 0.8);
+}
+
+/* 안쪽 베팅 클릭 점. 크기는 RouletteHud.cs의 HotspotSize와 같다. */
+.inside-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.hotspot {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    align-items: center;
+    justify-content: center;
+}
+
+.hotspot:hover {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hotspot__dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.hotspot:hover > .hotspot__dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: rgba(255, 209, 64, 0.9);
+}
+
+.hotspot.cell--selected > .hotspot__dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: rgb(255, 255, 255);
+    background-color: var(--gold);
 }
 
 .cell--selected {

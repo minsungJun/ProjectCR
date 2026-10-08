@@ -12,7 +12,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="bet-panel">
-            <ui:Label class="panel-title" text="베팅 선택 (회전당 하나)" />
+            <ui:Label class="panel-title" text="베팅 선택 (회전당 하나) · 칸 사이 점 = 안쪽 베팅" />
             <ui:VisualElement name="number-grid" class="number-grid" />
             <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
 

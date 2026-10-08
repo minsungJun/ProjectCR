@@ -16,6 +16,12 @@ namespace ProjectCR
         private const int HistoryLength = 12;
         private const string SkullMark = "☠";
 
+        // 번호판 칸 간격(px). RouletteHud.uss의 .cell 크기(37×44)와 margin(1)에 맞춘 값이다. 바꾸면 같이 바꿀 것.
+        private const float ColumnPitch = 39f;
+        private const float RowPitch = 46f;
+        private const float ZeroCellPitch = 39f;
+        private const float HotspotSize = 16f;
+
         public event Action<BetTarget> TargetClicked;
         public event Action<long> StakeAdjusted;
         public event Action StakeHalved;
@@ -27,6 +33,7 @@ namespace ProjectCR
         public event Action ViewToggled;
 
         private readonly Dictionary<BetTarget, Button> targetButtons = new Dictionary<BetTarget, Button>();
+        private readonly Dictionary<int, Button> numberCells = new Dictionary<int, Button>();
         private readonly List<Button> stakeButtons = new List<Button>();
         private readonly List<SpinResult> history = new List<SpinResult>();
 
@@ -110,6 +117,14 @@ namespace ProjectCR
                 pair.Value.EnableInClassList("cell--selected", pair.Key == selection);
             }
 
+            // 안쪽·바깥 베팅을 고르면 그 베팅에 포함되는 숫자 칸을 표시한다.
+            foreach (KeyValuePair<int, Button> pair in numberCells)
+            {
+                bool covered = !selection.IsNone && !selection.IsStraight &&
+                               selection.CoversNumber(pair.Key, definition.ColorOfNumber(pair.Key));
+                pair.Value.EnableInClassList("cell--covered", covered);
+            }
+
             foreach (Button button in stakeButtons)
             {
                 button.SetEnabled(betting);
@@ -121,7 +136,7 @@ namespace ProjectCR
             long payout = PayoutCalculator.ScaledPayout(flow.Bet.Stake, multiplier, flow.Wallet.MaxMoney);
             string ballNote = preview.BallCount > 1 ? $" · 공 {preview.BallCount}개, 맞힌 공마다 지급" : string.Empty;
             previewLabel.text = selection.IsNone || flow.Bet.Stake <= 0
-                ? $"원금 포함 숫자 {preview.StraightPayout}배 · 더즌·열 {preview.DozenColumnPayout}배 · 색·홀짝·1–18/19–36 {preview.EvenMoneyPayout}배{ballNote}"
+                ? $"원금 포함 배수: 숫자 {preview.PayoutOf(PayoutClass.Straight)} · 스플릿 {preview.PayoutOf(PayoutClass.Split)} · 스트리트 {preview.PayoutOf(PayoutClass.Street)} · 코너 {preview.PayoutOf(PayoutClass.Corner)} · 식스 라인 {preview.PayoutOf(PayoutClass.SixLine)} · 더즌·열 {preview.PayoutOf(PayoutClass.DozenColumn)} · 색·홀짝·1–18/19–36 {preview.PayoutOf(PayoutClass.EvenMoney)}{ballNote}"
                 : $"적중 시 지급 {payout:N0} ({multiplier}배, 원금 포함) · 순이익 +{payout - flow.Bet.Stake:N0}{ballNote}";
 
             BetError error = flow.ValidateBet();
@@ -270,6 +285,7 @@ namespace ProjectCR
         /// <summary>
         /// 테이블식 베팅판.
         /// 1행: 0(세로) | 12열 × 3행 번호(위 3·6·…·36, 아래 1·4·…·34) | 열 베팅(위 3열, 아래 1열)
+        ///      번호 위에 안쪽 베팅 클릭 점(칸 경계·모서리·줄 아랫변, InsideBets 위치)
         /// 2행: 더즌 1–12 / 13–24 / 25–36
         /// 3행: 1–18 / 짝수 / 빨강 / 검정 / 홀수 / 19–36
         /// 해골 칸은 베팅할 수 없어 판에 없다.
@@ -278,8 +294,10 @@ namespace ProjectCR
         {
             board.Clear();
             targetButtons.Clear();
+            numberCells.Clear();
 
             var numbersRow = Row(board);
+            numbersRow.AddToClassList("board-row--numbers");
 
             Button zero = MakeNumberCell(0);
             zero.AddToClassList("cell--zero");
@@ -307,6 +325,25 @@ namespace ProjectCR
             columnBets.Add(MakeOutsideCell(BetKind.Column3, "outside--column"));
             columnBets.Add(MakeOutsideCell(BetKind.Column2, "outside--column"));
             columnBets.Add(MakeOutsideCell(BetKind.Column1, "outside--column"));
+
+            // 번호 칸 위에 겹쳐 놓는 안쪽 베팅 클릭 점. 마지막에 넣어 번호 칸보다 위에 그린다.
+            var overlay = new VisualElement { pickingMode = PickingMode.Ignore };
+            overlay.AddToClassList("inside-overlay");
+            numbersRow.Add(overlay);
+
+            foreach (InsideBetSpot spot in InsideBets.All)
+            {
+                // 누르는 영역은 16px로 두고, 보이는 건 가운데 작은 점만. 번호를 가리지 않게 한다.
+                var hotspot = new Button();
+                hotspot.AddToClassList("hotspot");
+                var dot = new VisualElement { pickingMode = PickingMode.Ignore };
+                dot.AddToClassList("hotspot__dot");
+                hotspot.Add(dot);
+                hotspot.style.left = ZeroCellPitch + spot.X * ColumnPitch - HotspotSize * 0.5f;
+                hotspot.style.top = spot.Y * RowPitch - HotspotSize * 0.5f;
+                Bind(hotspot, spot.Target);
+                overlay.Add(hotspot);
+            }
 
             var dozensRow = Row(board);
             dozensRow.AddToClassList("board-row--indent");
@@ -353,6 +390,7 @@ namespace ProjectCR
             if (definition.ContainsNumber(number))
             {
                 Bind(button, BetTarget.Straight(number));
+                numberCells[number] = button;
             }
             else
             {

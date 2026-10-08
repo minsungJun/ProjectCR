@@ -16,6 +16,10 @@ MonoBehaviour:
   maxMoney: 999999999999
   minBet: 1
   straightTotalPayout: 36
+  splitTotalPayout: 18
+  streetTotalPayout: 12
+  cornerTotalPayout: 9
+  sixLineTotalPayout: 6
   dozenColumnTotalPayout: 3
   evenMoneyTotalPayout: 2
   ballCount: 1

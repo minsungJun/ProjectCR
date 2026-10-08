@@ -26,6 +26,18 @@ namespace ProjectCR
         [Tooltip("숫자 하나 베팅의 <b>원금 포함 총 지급 배수</b>. 36이면 100을 걸어 맞혔을 때 3,600을 받는다(순이익 3,500).")]
         [SerializeField] private int straightTotalPayout = 36;
 
+        [Tooltip("스플릿(붙은 두 숫자)의 원금 포함 총 지급 배수. 표준 18.")]
+        [SerializeField] private int splitTotalPayout = 18;
+
+        [Tooltip("스트리트(한 줄 세 숫자)·트리오(0·1·2, 0·2·3)의 원금 포함 총 지급 배수. 표준 12.")]
+        [SerializeField] private int streetTotalPayout = 12;
+
+        [Tooltip("코너(네 숫자)·퍼스트 포(0·1·2·3)의 원금 포함 총 지급 배수. 표준 9.")]
+        [SerializeField] private int cornerTotalPayout = 9;
+
+        [Tooltip("식스 라인(두 줄 여섯 숫자)의 원금 포함 총 지급 배수. 표준 6.")]
+        [SerializeField] private int sixLineTotalPayout = 6;
+
         [Tooltip("더즌(1–12 등)·컬럼(1열 등)의 원금 포함 총 지급 배수. 12칸에 걸리므로 표준은 3.")]
         [SerializeField] private int dozenColumnTotalPayout = 3;
 
@@ -54,6 +66,28 @@ namespace ProjectCR
         public int StraightTotalPayout => straightTotalPayout;
         public int DozenColumnTotalPayout => dozenColumnTotalPayout;
         public int EvenMoneyTotalPayout => evenMoneyTotalPayout;
+
+        /// <summary>배수 묶음별 원금 포함 총 지급 배수.</summary>
+        public int TotalPayoutOf(PayoutClass payoutClass)
+        {
+            switch (payoutClass)
+            {
+                case PayoutClass.Straight:
+                    return straightTotalPayout;
+                case PayoutClass.Split:
+                    return splitTotalPayout;
+                case PayoutClass.Street:
+                    return streetTotalPayout;
+                case PayoutClass.Corner:
+                    return cornerTotalPayout;
+                case PayoutClass.SixLine:
+                    return sixLineTotalPayout;
+                case PayoutClass.DozenColumn:
+                    return dozenColumnTotalPayout;
+                default:
+                    return evenMoneyTotalPayout;
+            }
+        }
         public int BallCount => ballCount;
         public int SpinsPerRound => spinsPerRound;
 
@@ -72,6 +106,10 @@ namespace ProjectCR
             maxMoney = Math.Max(1, maxMoney);
             minBet = Math.Max(1, minBet);
             straightTotalPayout = Math.Max(1, straightTotalPayout);
+            splitTotalPayout = Math.Max(1, splitTotalPayout);
+            streetTotalPayout = Math.Max(1, streetTotalPayout);
+            cornerTotalPayout = Math.Max(1, cornerTotalPayout);
+            sixLineTotalPayout = Math.Max(1, sixLineTotalPayout);
             dozenColumnTotalPayout = Math.Max(1, dozenColumnTotalPayout);
             evenMoneyTotalPayout = Math.Max(1, evenMoneyTotalPayout);
             ballCount = Math.Max(1, ballCount);

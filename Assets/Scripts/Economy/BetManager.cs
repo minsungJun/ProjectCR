@@ -7,6 +7,7 @@ namespace ProjectCR
         NoTargetSelected,
         InvalidNumber,
         SkullNotBettable,
+        InvalidTarget,
         NonPositive,
         BelowMinimum,
         InsufficientFunds,
@@ -26,6 +27,8 @@ namespace ProjectCR
                     return "휠에 없는 번호입니다.";
                 case BetError.SkullNotBettable:
                     return "해골에는 베팅할 수 없습니다.";
+                case BetError.InvalidTarget:
+                    return "번호판에서 걸 수 없는 조합입니다.";
                 case BetError.NonPositive:
                     return "베팅 금액은 0보다 커야 합니다.";
                 case BetError.BelowMinimum:
@@ -58,7 +61,7 @@ namespace ProjectCR
     }
 
     /// <summary>
-    /// 회전 하나에 거는 베팅(숫자 하나 또는 바깥 베팅 하나)의 선택·검증·확정.
+    /// 회전 하나에 거는 베팅(숫자 하나, 안쪽 베팅 하나, 또는 바깥 베팅 하나)의 선택·검증·확정.
     /// 확정하면 잠기고, 정산이 끝나 <see cref="Unlock"/>될 때까지 대상과 금액을 바꿀 수 없다.
     /// </summary>
     public sealed class BetManager
@@ -180,6 +183,12 @@ namespace ProjectCR
 
                     // 해골은 번호 조회에서 빠져 있어서 여기서도 걸러진다.
                     return definition.ContainsNumber(target.Number) ? BetError.None : BetError.InvalidNumber;
+                case BetKind.Split:
+                case BetKind.Street:
+                case BetKind.Corner:
+                case BetKind.SixLine:
+                    // 번호판에서 실제로 붙어 있는 조합만 받는다.
+                    return InsideBets.IsValid(target) ? BetError.None : BetError.InvalidTarget;
                 default:
                     return BetError.None;
             }
