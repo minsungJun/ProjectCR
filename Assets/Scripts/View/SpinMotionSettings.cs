@@ -17,6 +17,9 @@ namespace ProjectCR
 
         /// <summary>당첨 칸 근처에서 작은 바운스 후 정지.</summary>
         Settle,
+
+        /// <summary>공은 칸에 들어갔고, 휠이 감속해 결과 칸을 정해진 자리(6시)에 세우는 중.</summary>
+        WheelStop,
     }
 
     /// <summary>
@@ -84,11 +87,21 @@ namespace ProjectCR
         [Tooltip("공 i는 트랙에서 이만큼(× i) 안쪽 레인을 돈다.")]
         [Min(0f)] public float multiBallLaneSpacing = 0.07f;
 
-        [Header("휠 (도/초)")]
+        [Header("휠")]
+        [Tooltip("첫 회전 전 대기 중 속도(도/초). 한 번 돌고 나면 휠은 결과 칸을 세운 채 멈춰 있다.")]
         public float idleWheelSpeed = 12f;
+
+        [Tooltip("회전 중 평소 속도(도/초). 결과 칸을 제자리에 세우려고 실제로는 이 값 근처에서 조금 달라진다.")]
         public float spinWheelSpeed = 120f;
-        [Min(0.01f)] public float wheelAcceleration = 240f;
-        [Min(0.01f)] public float wheelDeceleration = 25f;
+
+        [Tooltip("휠이 멈췄을 때 결과 칸(공 1번이 든 칸)이 올 자리. RouletteRoot 기준 각도, 180 = 6시(카메라 쪽).")]
+        public float restAngle = 180f;
+
+        [Tooltip("마지막 공이 안착한 뒤 휠이 완전히 멈출 때까지 걸리는 시간(초). 결과는 휠이 멈춘 뒤 표시된다.")]
+        [Min(0f)] public float wheelStopDelay = 1f;
+
+        [Tooltip("휠이 일정 속도에서 0까지 감속하는 시간(초). 공이 안쪽으로 떨어지는 동안 함께 느려진다.")]
+        [Min(0.1f)] public float wheelStopDecelDuration = 3f;
 
         [Header("당첨 강조")]
         public Color highlightColor = new Color(1f, 0.82f, 0.25f, 1f);

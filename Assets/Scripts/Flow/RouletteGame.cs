@@ -249,7 +249,8 @@ namespace ProjectCR
         // ---------- 검증 ----------
 
         /// <summary>
-        /// 모든 칸(해골 포함)을 휠 순서대로 하나씩 강제로 굴려, 공에 가장 가까운 앵커가 목표 칸인지 확인한다.
+        /// 모든 칸(해골 포함)을 휠 순서대로 하나씩 강제로 굴려, 공에 가장 가까운 앵커가 목표 칸인지,
+        /// 휠이 멈췄을 때 그 칸이 정해진 자리(6시)에 있는지 확인한다.
         /// 돈과 라운드는 건드리지 않는다. 플레이 모드에서만 동작한다.
         /// </summary>
         [ContextMenu("전체 칸 순회 검증")]
@@ -282,6 +283,8 @@ namespace ProjectCR
             presenter.SpeedMultiplier = verificationSpeed;
 
             int mismatches = 0;
+            int restMisses = 0;
+            float worstRestError = 0f;
             for (int i = 0; i < definition.PocketCount; i++)
             {
                 int number = definition.GetPocket(i).Number;
@@ -293,13 +296,21 @@ namespace ProjectCR
                     mismatches++;
                     Debug.LogError($"[검증] 목표 {Describe(definition.GetPocket(i))}(칸 {i}) → 실제 {Describe(definition.GetPocket(landedIndex))}(칸 {landedIndex})");
                 }
+
+                float restError = Mathf.Abs(Mathf.DeltaAngle(presenter.PocketAngleOnTable(i), presenter.RestAngle));
+                worstRestError = Mathf.Max(worstRestError, restError);
+                if (restError > 0.5f)
+                {
+                    restMisses++;
+                    Debug.LogError($"[검증] {Describe(definition.GetPocket(i))}(칸 {i})이 {presenter.PocketAngleOnTable(i):F1}°에서 멈춤(목표 {presenter.RestAngle}°)");
+                }
             }
 
             presenter.SpeedMultiplier = previousSpeed;
             verifying = false;
 
             string frameRate = Application.targetFrameRate > 0 ? Application.targetFrameRate.ToString() : "제한 없음";
-            Debug.Log($"[검증] {definition.PocketCount}칸 순회 완료. 불일치 {mismatches}개. targetFrameRate {frameRate}, 배속 {verificationSpeed}");
+            Debug.Log($"[검증] {definition.PocketCount}칸 순회 완료. 안착 불일치 {mismatches}개, 정지 위치 어긋남 {restMisses}개(최대 오차 {worstRestError:F3}°). targetFrameRate {frameRate}, 배속 {verificationSpeed}");
         }
     }
 }

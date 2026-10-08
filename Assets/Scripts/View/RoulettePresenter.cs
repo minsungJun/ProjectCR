@@ -10,6 +10,9 @@ namespace ProjectCR
     ///
     /// 공은 휠 로컬 좌표로 계산한다(BallTrajectory). 그래서 휠 속도·프레임 속도와 상관없이 목표 칸에 들어간다.
     /// 안착하면 공을 해당 PocketAnchor 자식으로 붙여 이후로는 칸을 따라 돈다.
+    ///
+    /// 휠은 회전을 시작할 때 정지 각도까지 계획한다(WheelSpinPlan). 결과 칸(공 1번이 든 칸)이
+    /// <see cref="SpinMotionSettings.restAngle"/>(기본 6시)에 오도록 멈추고, 다음 회전까지 그대로 서 있는다.
     /// </summary>
     [DisallowMultipleComponent]
     public class RoulettePresenter : MonoBehaviour
@@ -43,9 +46,24 @@ namespace ProjectCR
 
         private MaterialPropertyBlock block;
         private Color[] baseColors;
-        private float wheelSpeed;
-        private float wheelTargetSpeed;
         private float highlightTime;
+
+        private enum WheelState
+        {
+            /// <summary>첫 회전 전. 천천히 돈다.</summary>
+            Idle,
+
+            /// <summary>계획대로 돌다가 결과 칸을 제자리에 세운다.</summary>
+            Planned,
+
+            /// <summary>결과 칸을 세운 채 멈춰 있다.</summary>
+            Parked,
+        }
+
+        private WheelState wheelState = WheelState.Idle;
+        private WheelSpinPlan wheelPlan;
+        private float wheelElapsed;
+        private float wheelAngle;
 
         /// <summary>연출 배속. 37칸 순회 검증처럼 빨리 돌릴 때 쓴다.</summary>
         public float SpeedMultiplier { get; set; } = 1f;
@@ -56,6 +74,25 @@ namespace ProjectCR
         public SpinStage CurrentStage { get; private set; }
 
         public int PocketCount => pocketAnchors.Length;
+
+        /// <summary>결과 칸이 멈출 자리(RouletteRoot 기준 각도).</summary>
+        public float RestAngle => motion.restAngle;
+
+        public float WheelSpeed
+        {
+            get
+            {
+                switch (wheelState)
+                {
+                    case WheelState.Idle:
+                        return motion.idleWheelSpeed;
+                    case WheelState.Planned:
+                        return wheelPlan.SpeedAt(wheelElapsed);
+                    default:
+                        return 0f;
+                }
+            }
+        }
 
         private struct BallPlan
         {
@@ -75,8 +112,7 @@ namespace ProjectCR
             CacheBaseColors();
             ValidateLayout();
 
-            wheelSpeed = motion.idleWheelSpeed;
-            wheelTargetSpeed = motion.idleWheelSpeed;
+            wheelAngle = wheelPivot.localEulerAngles.y;
 
             EnsureBalls(1);
             ParkBallsOnTrack(1);
@@ -86,16 +122,31 @@ namespace ProjectCR
         {
             float dt = Time.deltaTime * SpeedMultiplier;
 
-            // 휠은 deltaTime 적분이라 프레임마다 조금씩 다르게 돈다. 공은 휠 로컬로 계산하므로 착지에는 영향이 없다.
-            float rate = wheelTargetSpeed > wheelSpeed ? motion.wheelAcceleration : motion.wheelDeceleration;
-            wheelSpeed = Mathf.MoveTowards(wheelSpeed, wheelTargetSpeed, rate * dt);
-            wheelPivot.Rotate(0f, wheelSpeed * dt, 0f, Space.Self);
+            switch (wheelState)
+            {
+                case WheelState.Idle:
+                    wheelAngle = Mathf.Repeat(wheelAngle + motion.idleWheelSpeed * dt, 360f);
+                    break;
+                case WheelState.Planned:
+                    // 경과 시간으로 각도를 구하므로 프레임 속도와 상관없이 정해진 각도에서 멈춘다.
+                    wheelElapsed += dt;
+                    wheelAngle = wheelPlan.AngleAt(wheelElapsed);
+                    if (wheelElapsed >= wheelPlan.Duration)
+                    {
+                        wheelAngle = Mathf.Repeat(wheelPlan.EndAngle, 360f);
+                        wheelState = WheelState.Parked;
+                    }
+
+                    break;
+            }
+
+            wheelPivot.localRotation = Quaternion.Euler(0f, wheelAngle, 0f);
 
             UpdateHighlight(dt);
         }
 
         /// <summary>
-        /// 결과의 공마다 목표 칸으로 들어가는 연출. 모든 공이 안착하면 끝난다.
+        /// 결과의 공마다 목표 칸으로 들어가는 연출. 모든 공이 안착하고 휠이 결과 칸을 제자리에 세우면 끝난다.
         /// 코루틴 안에서 yield return으로 기다린다.
         /// </summary>
         public IEnumerator Play(SpinResult result)
@@ -127,7 +178,13 @@ namespace ProjectCR
                 balls[i].gameObject.SetActive(false);
             }
 
-            wheelTargetSpeed = motion.spinWheelSpeed;
+            float lastLanding = 0f;
+            foreach (BallPlan plan in plans)
+            {
+                lastLanding = Mathf.Max(lastLanding, plan.Duration);
+            }
+
+            PlanWheel(result.Balls[0].PocketIndex, lastLanding + motion.wheelStopDelay);
 
             var landed = new bool[count];
             int landedCount = 0;
@@ -162,10 +219,41 @@ namespace ProjectCR
                 }
             }
 
-            wheelTargetSpeed = motion.idleWheelSpeed;
-            CurrentStage = SpinStage.None;
+            // 공은 다 들어갔다. 휠이 결과 칸을 제자리에 세울 때까지 기다린다.
             Highlight(result);
+            CurrentStage = SpinStage.WheelStop;
+            while (wheelState == WheelState.Planned)
+            {
+                yield return null;
+            }
+
+            CurrentStage = SpinStage.None;
             IsPlaying = false;
+        }
+
+        /// <summary>칸의 지금 각도(RouletteRoot 기준, 0~360). 결과 칸이 제자리에 섰는지 확인할 때 쓴다.</summary>
+        public float PocketAngleOnTable(int pocketIndex)
+        {
+            Vector3 local = transform.InverseTransformPoint(pocketAnchors[pocketIndex].transform.position);
+            return BallTrajectory.AngleOf(local);
+        }
+
+        /// <summary>
+        /// 지금 각도·속도에서 출발해, duration 뒤에 targetPocket이 restAngle에 오도록 멈추는 휠 계획을 세운다.
+        /// 휠 각도 + 칸의 휠 로컬 각도 = 테이블 위 각도.
+        /// </summary>
+        private void PlanWheel(int targetPocket, float duration)
+        {
+            Vector3 pocketLocal = wheelPivot.InverseTransformPoint(pocketAnchors[targetPocket].transform.position);
+            float pocketAngle = BallTrajectory.AngleOf(pocketLocal);
+            float startSpeed = WheelSpeed;
+
+            wheelAngle = Mathf.Repeat(wheelAngle, 360f);
+            wheelPlan = WheelSpinPlan.Create(
+                wheelAngle, startSpeed, motion.restAngle - pocketAngle, motion.spinWheelSpeed,
+                motion.launchDuration, duration, motion.wheelStopDecelDuration);
+            wheelElapsed = 0f;
+            wheelState = WheelState.Planned;
         }
 
         /// <summary>
@@ -175,7 +263,7 @@ namespace ProjectCR
         {
             IsPlaying = false;
             CurrentStage = SpinStage.None;
-            wheelTargetSpeed = motion.idleWheelSpeed;
+            wheelState = WheelState.Idle;
             ClearHighlight();
 
             foreach (Transform ball in balls)
