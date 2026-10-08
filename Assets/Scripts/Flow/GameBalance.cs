@@ -26,6 +26,12 @@ namespace ProjectCR
         [Tooltip("숫자 하나 베팅의 <b>원금 포함 총 지급 배수</b>. 36이면 100을 걸어 맞혔을 때 3,600을 받는다(순이익 3,500).")]
         [SerializeField] private int straightTotalPayout = 36;
 
+        [Tooltip("더즌(1–12 등)·컬럼(1열 등)의 원금 포함 총 지급 배수. 12칸에 걸리므로 표준은 3.")]
+        [SerializeField] private int dozenColumnTotalPayout = 3;
+
+        [Tooltip("빨강·검정, 홀·짝, 1–18·19–36의 원금 포함 총 지급 배수. 18칸에 걸리므로 표준은 2. 0과 해골에서는 진다.")]
+        [SerializeField] private int evenMoneyTotalPayout = 2;
+
         [Tooltip("회전마다 굴리는 공 수. 아이템이 늘리는 값의 기준.")]
         [SerializeField] private int ballCount = 1;
 
@@ -46,6 +52,8 @@ namespace ProjectCR
         public long MaxMoney => maxMoney;
         public long MinBet => minBet;
         public int StraightTotalPayout => straightTotalPayout;
+        public int DozenColumnTotalPayout => dozenColumnTotalPayout;
+        public int EvenMoneyTotalPayout => evenMoneyTotalPayout;
         public int BallCount => ballCount;
         public int SpinsPerRound => spinsPerRound;
 
@@ -64,6 +72,8 @@ namespace ProjectCR
             maxMoney = Math.Max(1, maxMoney);
             minBet = Math.Max(1, minBet);
             straightTotalPayout = Math.Max(1, straightTotalPayout);
+            dozenColumnTotalPayout = Math.Max(1, dozenColumnTotalPayout);
+            evenMoneyTotalPayout = Math.Max(1, evenMoneyTotalPayout);
             ballCount = Math.Max(1, ballCount);
             spinsPerRound = Math.Max(1, spinsPerRound);
             firstRoundDue = Math.Max(0, firstRoundDue);

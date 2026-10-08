@@ -4,7 +4,7 @@ namespace ProjectCR
     {
         None,
         NotInBettingPhase,
-        NoNumberSelected,
+        NoTargetSelected,
         InvalidNumber,
         SkullNotBettable,
         NonPositive,
@@ -20,8 +20,8 @@ namespace ProjectCR
             {
                 case BetError.NotInBettingPhase:
                     return "지금은 베팅할 수 없습니다.";
-                case BetError.NoNumberSelected:
-                    return "번호를 먼저 고르세요.";
+                case BetError.NoTargetSelected:
+                    return "번호나 바깥 베팅을 먼저 고르세요.";
                 case BetError.InvalidNumber:
                     return "휠에 없는 번호입니다.";
                 case BetError.SkullNotBettable:
@@ -41,19 +41,25 @@ namespace ProjectCR
     /// <summary>회전 시작 시 확정되어 이미 차감된 베팅.</summary>
     public readonly struct ConfirmedBet
     {
-        public ConfirmedBet(int number, long stake)
+        public ConfirmedBet(BetTarget target, long stake)
         {
-            Number = number;
+            Target = target;
             Stake = stake;
         }
 
-        public int Number { get; }
+        /// <summary>숫자 하나 베팅. 테스트와 디버그에서 짧게 쓰려고 둔다.</summary>
+        public ConfirmedBet(int number, long stake)
+            : this(BetTarget.Straight(number), stake)
+        {
+        }
+
+        public BetTarget Target { get; }
         public long Stake { get; }
     }
 
     /// <summary>
-    /// 숫자 하나 베팅의 선택·검증·확정.
-    /// 확정하면 잠기고, 정산이 끝나 <see cref="Unlock"/>될 때까지 번호와 금액을 바꿀 수 없다.
+    /// 회전 하나에 거는 베팅(숫자 하나 또는 바깥 베팅 하나)의 선택·검증·확정.
+    /// 확정하면 잠기고, 정산이 끝나 <see cref="Unlock"/>될 때까지 대상과 금액을 바꿀 수 없다.
     /// </summary>
     public sealed class BetManager
     {
@@ -68,32 +74,32 @@ namespace ProjectCR
             this.minBet = minBet;
         }
 
-        public int SelectedNumber { get; private set; } = NoSelection;
+        public BetTarget Selection { get; private set; } = BetTarget.None;
+
+        /// <summary>숫자 베팅이면 그 번호, 아니면 <see cref="NoSelection"/>.</summary>
+        public int SelectedNumber => Selection.IsStraight ? Selection.Number : NoSelection;
 
         /// <summary>입력된 금액. 검증 전 값이라 잘못된 값일 수 있다.</summary>
         public long Stake { get; private set; }
 
         public bool IsLocked { get; private set; }
 
-        public BetError SelectNumber(int number)
+        public BetError SelectNumber(int number) => SelectTarget(BetTarget.Straight(number));
+
+        public BetError SelectTarget(BetTarget target)
         {
             if (IsLocked)
             {
                 return BetError.NotInBettingPhase;
             }
 
-            if (number == RouletteDefinition.SkullNumber)
+            BetError error = ValidateTarget(target);
+            if (error != BetError.None)
             {
-                return BetError.SkullNotBettable;
+                return error;
             }
 
-            // 해골은 번호 조회에서 빠져 있어서 여기서도 걸러진다.
-            if (!definition.ContainsNumber(number))
-            {
-                return BetError.InvalidNumber;
-            }
-
-            SelectedNumber = number;
+            Selection = target;
             return BetError.None;
         }
 
@@ -115,14 +121,10 @@ namespace ProjectCR
                 return BetError.NotInBettingPhase;
             }
 
-            if (SelectedNumber == NoSelection)
+            BetError targetError = ValidateTarget(Selection);
+            if (targetError != BetError.None)
             {
-                return BetError.NoNumberSelected;
-            }
-
-            if (!definition.ContainsNumber(SelectedNumber))
-            {
-                return BetError.InvalidNumber;
+                return targetError;
             }
 
             if (Stake <= 0)
@@ -159,9 +161,28 @@ namespace ProjectCR
                 return BetError.InsufficientFunds;
             }
 
-            bet = new ConfirmedBet(SelectedNumber, Stake);
+            bet = new ConfirmedBet(Selection, Stake);
             IsLocked = true;
             return BetError.None;
+        }
+
+        private BetError ValidateTarget(BetTarget target)
+        {
+            switch (target.Kind)
+            {
+                case BetKind.None:
+                    return BetError.NoTargetSelected;
+                case BetKind.Straight:
+                    if (target.Number == RouletteDefinition.SkullNumber)
+                    {
+                        return BetError.SkullNotBettable;
+                    }
+
+                    // 해골은 번호 조회에서 빠져 있어서 여기서도 걸러진다.
+                    return definition.ContainsNumber(target.Number) ? BetError.None : BetError.InvalidNumber;
+                default:
+                    return BetError.None;
+            }
         }
 
         /// <summary>정산 후 호출. 다음 베팅을 위해 번호와 금액은 남겨 두고, 금액만 잔액에 맞춰 줄인다.</summary>

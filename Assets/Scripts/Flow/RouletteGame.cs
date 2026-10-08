@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace ProjectCR
 {
@@ -37,9 +38,10 @@ namespace ProjectCR
         [Min(0)]
         [SerializeField] private int extraBallCount;
 
-        [Tooltip("0보다 크면 지급 배수를 이 값으로 바꾼다. 배율 변경 확인용.")]
+        [Tooltip("0보다 크면 숫자 하나 베팅의 지급 배수를 이 값으로 바꾼다. 배율 변경 확인용.")]
         [Min(0)]
-        [SerializeField] private int payoutMultiplierOverride;
+        [FormerlySerializedAs("payoutMultiplierOverride")]
+        [SerializeField] private int straightPayoutOverride;
 
         [Tooltip("연출 배속.")]
         [Min(0.1f)]
@@ -61,7 +63,7 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
-            hud.NumberClicked += OnNumberClicked;
+            hud.TargetClicked += OnTargetClicked;
             hud.StakeAdjusted += OnStakeAdjusted;
             hud.StakeHalved += OnStakeHalved;
             hud.StakeDoubled += OnStakeDoubled;
@@ -111,14 +113,18 @@ namespace ProjectCR
         {
             flow.ForcedNumbers = forcedNumbers.Count > 0 ? forcedNumbers.ToArray() : null;
             flow.ExtraBallCount = extraBallCount;
-            flow.PayoutMultiplierOverride = payoutMultiplierOverride;
+            flow.StraightPayoutOverride = straightPayoutOverride;
             presenter.SpeedMultiplier = presentationSpeed;
         }
 
-        private void OnNumberClicked(int number)
+        private void OnTargetClicked(BetTarget target)
         {
-            flow.SelectNumber(number);
+            BetError error = flow.SelectTarget(target);
             hud.Refresh(flow);
+            if (error != BetError.None)
+            {
+                hud.ShowBetError(error);
+            }
         }
 
         private void OnStakeAdjusted(long delta) => SetStakeClamped(flow.Bet.Stake + delta);
@@ -152,7 +158,7 @@ namespace ProjectCR
                 return;
             }
 
-            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {spin.Bet.Number}번에 {spin.Bet.Stake:N0} → 결과 {Describe(spin.Result)}");
+            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {spin.Bet.Target.ToKorean(definition)}에 {spin.Bet.Stake:N0} → 결과 {Describe(spin.Result)}");
 
             hud.ShowSpinning();
             hud.Refresh(flow);

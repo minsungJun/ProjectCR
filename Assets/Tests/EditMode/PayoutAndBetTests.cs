@@ -71,8 +71,8 @@ namespace ProjectCR.Tests
         [Test]
         public void Overflow_SaturatesAtMax()
         {
-            Assert.AreEqual(Max, PayoutCalculator.StraightPayout(Max, 36, Max));
-            Assert.AreEqual(Max, PayoutCalculator.StraightPayout(long.MaxValue / 2, 36, Max));
+            Assert.AreEqual(Max, PayoutCalculator.ScaledPayout(Max, 36, Max));
+            Assert.AreEqual(Max, PayoutCalculator.ScaledPayout(long.MaxValue / 2, 36, Max));
             Assert.AreEqual(Max, PayoutCalculator.Calculate(new ConfirmedBet(1, Max / 40), SpinResult.FromNumbers(definition, 1, 1), 36, Max).TotalPayout);
         }
 
@@ -100,7 +100,7 @@ namespace ProjectCR.Tests
             var bet = new BetManager(definition, 5);
 
             bet.SetStake(10);
-            Assert.AreEqual(BetError.NoNumberSelected, bet.TryConfirm(wallet, out _));
+            Assert.AreEqual(BetError.NoTargetSelected, bet.TryConfirm(wallet, out _));
 
             Assert.AreEqual(BetError.InvalidNumber, bet.SelectNumber(37));
             Assert.AreEqual(BetError.InvalidNumber, bet.SelectNumber(-3));
@@ -128,7 +128,7 @@ namespace ProjectCR.Tests
             bet.SetStake(100);
 
             Assert.AreEqual(BetError.None, bet.TryConfirm(wallet, out ConfirmedBet confirmed));
-            Assert.AreEqual(7, confirmed.Number);
+            Assert.AreEqual(7, confirmed.Target.Number);
             Assert.AreEqual(100, confirmed.Stake);
             Assert.AreEqual(0, wallet.Balance);
 

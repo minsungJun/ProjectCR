@@ -83,6 +83,7 @@ namespace ProjectCR
     /// </summary>
     public static class PayoutCalculator
     {
+        /// <param name="payoutMultiplier">이 베팅 종류의 원금 포함 배수. 보통 <see cref="SpinConfig.PayoutFor"/>.</param>
         public static SettlementResult Calculate(ConfirmedBet bet, SpinResult spin, int payoutMultiplier, long maxMoney)
         {
             var balls = new List<BallPayout>(spin.Balls.Count);
@@ -101,7 +102,7 @@ namespace ProjectCR
             foreach (BallResult ball in spin.Balls)
             {
                 bool isWin = Covers(bet, ball);
-                long amount = isWin ? StraightPayout(bet.Stake, payoutMultiplier, maxMoney) : 0;
+                long amount = isWin ? ScaledPayout(bet.Stake, payoutMultiplier, maxMoney) : 0;
                 balls.Add(new BallPayout(ball, isWin, amount));
                 total = SaturatingAdd(total, amount, maxMoney);
             }
@@ -109,14 +110,11 @@ namespace ProjectCR
             return new SettlementResult(bet, spin, balls, total, total > 0 ? SpinOutcome.Win : SpinOutcome.Lose);
         }
 
-        /// <summary>베팅이 이 공의 칸을 포함하는가. 해골 칸은 어떤 베팅에도 포함되지 않는다.</summary>
-        public static bool Covers(ConfirmedBet bet, BallResult ball)
-        {
-            return !ball.IsSkull && ball.Number == bet.Number;
-        }
+        /// <summary>베팅이 이 공의 칸을 포함하는가. 해골 칸은 어떤 베팅에도 포함되지 않는다(<see cref="BetTarget.Covers"/>).</summary>
+        public static bool Covers(ConfirmedBet bet, BallResult ball) => bet.Target.Covers(ball);
 
         /// <summary>stake × multiplier. 상한을 넘거나 long이 넘치면 상한으로 자른다.</summary>
-        public static long StraightPayout(long stake, int multiplier, long maxMoney)
+        public static long ScaledPayout(long stake, int multiplier, long maxMoney)
         {
             if (stake <= 0 || multiplier <= 0)
             {

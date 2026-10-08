@@ -100,14 +100,19 @@ namespace ProjectCR
         /// <summary>회전마다 GameBalance.BallCount에 더할 공 수.</summary>
         public int ExtraBallCount { get; set; }
 
-        /// <summary>0보다 크면 지급 배수를 이 값으로 바꾼다.</summary>
-        public int PayoutMultiplierOverride { get; set; }
+        /// <summary>0보다 크면 숫자 하나 베팅의 지급 배수를 이 값으로 바꾼다.</summary>
+        public int StraightPayoutOverride { get; set; }
 
         // ---------- 베팅 ----------
 
         public BetError SelectNumber(int number)
         {
             return Phase == GamePhase.Betting ? Bet.SelectNumber(number) : BetError.NotInBettingPhase;
+        }
+
+        public BetError SelectTarget(BetTarget target)
+        {
+            return Phase == GamePhase.Betting ? Bet.SelectTarget(target) : BetError.NotInBettingPhase;
         }
 
         public BetError SetStake(long stake)
@@ -167,7 +172,7 @@ namespace ProjectCR
 
             // 전체 결과 평가 → 정산. 해골이면 지급 0이고 이미 뺀 베팅금은 돌려주지 않는다.
             ActiveSpin spin = CurrentSpin;
-            settlement = PayoutCalculator.Calculate(spin.Bet, spin.Result, spin.Config.PayoutMultiplier, Wallet.MaxMoney);
+            settlement = PayoutCalculator.Calculate(spin.Bet, spin.Result, spin.Config.PayoutFor(spin.Bet.Target), Wallet.MaxMoney);
             Wallet.Add(settlement.TotalPayout);
 
             LastSettlement = settlement;
@@ -214,9 +219,9 @@ namespace ProjectCR
         {
             SpinConfig config = SpinConfig.Create(Definition, GameBalance);
             config.BallCount += ExtraBallCount;
-            if (PayoutMultiplierOverride > 0)
+            if (StraightPayoutOverride > 0)
             {
-                config.PayoutMultiplier = PayoutMultiplierOverride;
+                config.StraightPayout = StraightPayoutOverride;
             }
 
             return config;

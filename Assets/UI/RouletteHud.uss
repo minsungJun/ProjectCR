@@ -76,8 +76,17 @@
 }
 
 .number-grid {
-    flex-direction: row;
+    flex-direction: column;
     margin-bottom: 12px;
+}
+
+.board-row {
+    flex-direction: row;
+}
+
+/* 더즌·색 줄은 0 칸 폭만큼 들여 번호 열에 맞춘다. */
+.board-row--indent {
+    margin-left: 39px;
 }
 
 .grid-columns {
@@ -89,7 +98,7 @@
 }
 
 .cell {
-    width: 40px;
+    width: 37px;
     height: 44px;
     margin: 1px;
     padding: 0;
@@ -103,6 +112,25 @@
 
 .cell--zero {
     height: 136px;
+}
+
+.outside {
+    background-color: rgb(30, 70, 46);
+    font-size: 16px;
+}
+
+.outside--column {
+    width: 50px;
+}
+
+.outside--dozen {
+    width: 154px;
+    height: 36px;
+}
+
+.outside--even {
+    width: 76px;
+    height: 36px;
 }
 
 .cell--red {

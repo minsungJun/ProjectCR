@@ -59,7 +59,7 @@ namespace ProjectCR.Tests
 
             Assert.AreEqual(BetError.NotInBettingPhase, flow.SelectNumber(9));
             Assert.AreEqual(BetError.NotInBettingPhase, flow.SetStake(50));
-            Assert.AreEqual(7, flow.CurrentSpin.Bet.Number);
+            Assert.AreEqual(7, flow.CurrentSpin.Bet.Target.Number);
             Assert.AreEqual(10, flow.CurrentSpin.Bet.Stake);
         }
 
@@ -132,7 +132,7 @@ namespace ProjectCR.Tests
         public void ExtraBallAndMultiplier_ChargeOnceAndSumPayouts()
         {
             flow.ExtraBallCount = 1;
-            flow.PayoutMultiplierOverride = 72;
+            flow.StraightPayoutOverride = 72;
             flow.ForcedNumbers = new[] { 7, 7 };
             flow.SelectNumber(7);
             flow.SetStake(10);

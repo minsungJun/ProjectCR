@@ -11,13 +11,12 @@ namespace ProjectCR
     public sealed class SpinConfig
     {
         private int ballCount;
-        private int payoutMultiplier;
+        private readonly int[] payouts = new int[3];
 
-        private SpinConfig(RouletteDefinition definition, int ballCount, int payoutMultiplier, int[] weights)
+        private SpinConfig(RouletteDefinition definition, int ballCount, int[] weights)
         {
             Definition = definition;
             BallCount = ballCount;
-            PayoutMultiplier = payoutMultiplier;
             Weights = weights;
         }
 
@@ -32,12 +31,29 @@ namespace ProjectCR
         /// <summary>칸 인덱스 기준 추첨 가중치. 음수는 0으로 친다.</summary>
         public int[] Weights { get; }
 
-        /// <summary>숫자 베팅의 원금 포함 총 지급 배수.</summary>
-        public int PayoutMultiplier
+        /// <summary>숫자 하나 베팅의 원금 포함 총 지급 배수.</summary>
+        public int StraightPayout
         {
-            get => payoutMultiplier;
-            set => payoutMultiplier = Math.Max(0, value);
+            get => payouts[(int)PayoutClass.Straight];
+            set => payouts[(int)PayoutClass.Straight] = Math.Max(0, value);
         }
+
+        /// <summary>더즌·컬럼의 원금 포함 총 지급 배수.</summary>
+        public int DozenColumnPayout
+        {
+            get => payouts[(int)PayoutClass.DozenColumn];
+            set => payouts[(int)PayoutClass.DozenColumn] = Math.Max(0, value);
+        }
+
+        /// <summary>빨강·검정, 홀·짝, 로우·하이의 원금 포함 총 지급 배수.</summary>
+        public int EvenMoneyPayout
+        {
+            get => payouts[(int)PayoutClass.EvenMoney];
+            set => payouts[(int)PayoutClass.EvenMoney] = Math.Max(0, value);
+        }
+
+        /// <summary>이 베팅이 맞았을 때의 원금 포함 총 지급 배수. UI 미리보기와 정산이 같이 쓴다.</summary>
+        public int PayoutFor(BetTarget target) => target.IsNone ? 0 : payouts[(int)target.PayoutClass];
 
         public static SpinConfig Create(RouletteDefinition definition, GameBalance balance)
         {
@@ -47,7 +63,12 @@ namespace ProjectCR
                 weights[i] = definition.GetPocket(i).BaseWeight;
             }
 
-            return new SpinConfig(definition, balance.BallCount, balance.StraightTotalPayout, weights);
+            return new SpinConfig(definition, balance.BallCount, weights)
+            {
+                StraightPayout = balance.StraightTotalPayout,
+                DozenColumnPayout = balance.DozenColumnTotalPayout,
+                EvenMoneyPayout = balance.EvenMoneyTotalPayout,
+            };
         }
     }
 }

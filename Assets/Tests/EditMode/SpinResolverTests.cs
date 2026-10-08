@@ -126,7 +126,7 @@ namespace ProjectCR.Tests
             SpinConfig config = SpinConfig.Create(definition, balance);
             config.Weights[0] = 100;
             config.BallCount = 4;
-            config.PayoutMultiplier = 72;
+            config.StraightPayout = 72;
 
             Assert.AreEqual(1, definition.GetPocket(0).BaseWeight);
             Assert.AreEqual(1, balance.BallCount);

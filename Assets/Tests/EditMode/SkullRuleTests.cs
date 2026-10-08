@@ -201,7 +201,7 @@ namespace ProjectCR.Tests
         public void TwoBallsWithSkull_UsesOneSpin_ChargesOnce_PaysZero()
         {
             flow.ExtraBallCount = 1;
-            flow.PayoutMultiplierOverride = 72;
+            flow.StraightPayoutOverride = 72;
 
             SettlementResult s = SpinAndSettle(7, 10, 7, Skull);
 

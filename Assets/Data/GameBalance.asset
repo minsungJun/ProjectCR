@@ -16,6 +16,8 @@ MonoBehaviour:
   maxMoney: 999999999999
   minBet: 1
   straightTotalPayout: 36
+  dozenColumnTotalPayout: 3
+  evenMoneyTotalPayout: 2
   ballCount: 1
   spinsPerRound: 5
   firstRoundDue: 120

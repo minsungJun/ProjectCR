@@ -16,7 +16,7 @@ namespace ProjectCR
         private const int HistoryLength = 12;
         private const string SkullMark = "☠";
 
-        public event Action<int> NumberClicked;
+        public event Action<BetTarget> TargetClicked;
         public event Action<long> StakeAdjusted;
         public event Action StakeHalved;
         public event Action StakeDoubled;
@@ -26,10 +26,11 @@ namespace ProjectCR
         public event Action RestartClicked;
         public event Action ViewToggled;
 
-        private readonly Dictionary<int, Button> numberButtons = new Dictionary<int, Button>();
+        private readonly Dictionary<BetTarget, Button> targetButtons = new Dictionary<BetTarget, Button>();
         private readonly List<Button> stakeButtons = new List<Button>();
         private readonly List<SpinResult> history = new List<SpinResult>();
 
+        private RouletteDefinition definition;
         private Label roundLabel;
         private Label spinsLabel;
         private Label dueLabel;
@@ -51,6 +52,7 @@ namespace ProjectCR
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
         public void Initialize(RouletteDefinition definition)
         {
+            this.definition = definition;
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
             roundLabel = root.Q<Label>("round");
@@ -84,7 +86,7 @@ namespace ProjectCR
             BindStake(root, "stake-double", () => StakeDoubled?.Invoke());
             BindStake(root, "stake-max", () => StakeMaxed?.Invoke());
 
-            BuildNumberGrid(root.Q("number-grid"), definition);
+            BuildBoard(root.Q("number-grid"));
         }
 
         public void Refresh(GameFlowController flow)
@@ -98,16 +100,14 @@ namespace ProjectCR
             moneyLabel.text = $"보유 {balance:N0}";
             seedLabel.text = $"seed {flow.Seed}";
 
-            int selected = flow.Bet.SelectedNumber;
-            selectedLabel.text = selected == BetManager.NoSelection
-                ? "—"
-                : $"{selected} ({flow.Definition.ColorOfNumber(selected).ToKorean()})";
+            BetTarget selection = flow.Bet.Selection;
+            selectedLabel.text = selection.ToKorean(definition);
             stakeLabel.text = flow.Bet.Stake.ToString("N0");
 
-            foreach (KeyValuePair<int, Button> pair in numberButtons)
+            foreach (KeyValuePair<BetTarget, Button> pair in targetButtons)
             {
                 pair.Value.SetEnabled(betting);
-                pair.Value.EnableInClassList("cell--selected", pair.Key == selected);
+                pair.Value.EnableInClassList("cell--selected", pair.Key == selection);
             }
 
             foreach (Button button in stakeButtons)
@@ -115,12 +115,14 @@ namespace ProjectCR
                 button.SetEnabled(betting);
             }
 
+            // 미리보기와 정산이 같은 SpinConfig 배수를 쓴다.
             SpinConfig preview = flow.BuildSpinConfig();
-            long payout = PayoutCalculator.StraightPayout(flow.Bet.Stake, preview.PayoutMultiplier, flow.Wallet.MaxMoney);
+            int multiplier = preview.PayoutFor(selection);
+            long payout = PayoutCalculator.ScaledPayout(flow.Bet.Stake, multiplier, flow.Wallet.MaxMoney);
             string ballNote = preview.BallCount > 1 ? $" · 공 {preview.BallCount}개, 맞힌 공마다 지급" : string.Empty;
-            previewLabel.text = selected == BetManager.NoSelection || flow.Bet.Stake <= 0
-                ? $"숫자 적중 시 원금 포함 {preview.PayoutMultiplier}배{ballNote}"
-                : $"적중 시 지급 {payout:N0} ({preview.PayoutMultiplier}배, 원금 포함) · 순이익 +{payout - flow.Bet.Stake:N0}{ballNote}";
+            previewLabel.text = selection.IsNone || flow.Bet.Stake <= 0
+                ? $"원금 포함 숫자 {preview.StraightPayout}배 · 더즌·열 {preview.DozenColumnPayout}배 · 색·홀짝·1–18/19–36 {preview.EvenMoneyPayout}배{ballNote}"
+                : $"적중 시 지급 {payout:N0} ({multiplier}배, 원금 포함) · 순이익 +{payout - flow.Bet.Stake:N0}{ballNote}";
 
             BetError error = flow.ValidateBet();
             errorLabel.text = betting && error != BetError.None ? error.ToKorean() : string.Empty;
@@ -163,6 +165,7 @@ namespace ProjectCR
                     : $"{ball.Ball.Number} ({ball.Ball.Color.ToKorean()})");
             }
 
+            string target = settlement.Bet.Target.ToKorean(definition);
             string verdict;
             switch (settlement.Outcome)
             {
@@ -171,11 +174,11 @@ namespace ProjectCR
                     verdict = $"해골 낙첨 · 지급 0 (−{settlement.Bet.Stake:N0})";
                     break;
                 case SpinOutcome.Win:
-                    string count = settlement.Balls.Count > 1 ? $"공 {settlement.WinCount}개 " : string.Empty;
-                    verdict = $"{count}적중! 지급 {settlement.TotalPayout:N0} (순이익 +{settlement.Net:N0})";
+                    string count = settlement.Balls.Count > 1 ? $" 공 {settlement.WinCount}개" : string.Empty;
+                    verdict = $"{target}{count} 적중! 지급 {settlement.TotalPayout:N0} (순이익 +{settlement.Net:N0})";
                     break;
                 default:
-                    verdict = $"낙첨 · 지급 0 (−{settlement.Bet.Stake:N0})";
+                    verdict = $"{target} 낙첨 · 지급 0 (−{settlement.Bet.Stake:N0})";
                     break;
             }
 
@@ -264,19 +267,27 @@ namespace ProjectCR
             stakeButtons.Add(button);
         }
 
-        /// <summary>테이블식 배치: 0이 왼쪽 세로 칸, 그 오른쪽에 12열 × 3행(위 3·6·…·36, 아래 1·4·…·34).</summary>
-        private void BuildNumberGrid(VisualElement grid, RouletteDefinition definition)
+        /// <summary>
+        /// 테이블식 베팅판.
+        /// 1행: 0(세로) | 12열 × 3행 번호(위 3·6·…·36, 아래 1·4·…·34) | 열 베팅(위 3열, 아래 1열)
+        /// 2행: 더즌 1–12 / 13–24 / 25–36
+        /// 3행: 1–18 / 짝수 / 빨강 / 검정 / 홀수 / 19–36
+        /// 해골 칸은 베팅할 수 없어 판에 없다.
+        /// </summary>
+        private void BuildBoard(VisualElement board)
         {
-            grid.Clear();
-            numberButtons.Clear();
+            board.Clear();
+            targetButtons.Clear();
 
-            Button zero = MakeCell(0, definition);
+            var numbersRow = Row(board);
+
+            Button zero = MakeNumberCell(0);
             zero.AddToClassList("cell--zero");
-            grid.Add(zero);
+            numbersRow.Add(zero);
 
             var columns = new VisualElement();
             columns.AddToClassList("grid-columns");
-            grid.Add(columns);
+            numbersRow.Add(columns);
 
             for (int column = 0; column < 12; column++)
             {
@@ -286,12 +297,42 @@ namespace ProjectCR
 
                 for (int row = 0; row < 3; row++)
                 {
-                    columnElement.Add(MakeCell(column * 3 + (3 - row), definition));
+                    columnElement.Add(MakeNumberCell(column * 3 + (3 - row)));
                 }
             }
+
+            var columnBets = new VisualElement();
+            columnBets.AddToClassList("grid-column");
+            numbersRow.Add(columnBets);
+            columnBets.Add(MakeOutsideCell(BetKind.Column3, "outside--column"));
+            columnBets.Add(MakeOutsideCell(BetKind.Column2, "outside--column"));
+            columnBets.Add(MakeOutsideCell(BetKind.Column1, "outside--column"));
+
+            var dozensRow = Row(board);
+            dozensRow.AddToClassList("board-row--indent");
+            dozensRow.Add(MakeOutsideCell(BetKind.Dozen1, "outside--dozen"));
+            dozensRow.Add(MakeOutsideCell(BetKind.Dozen2, "outside--dozen"));
+            dozensRow.Add(MakeOutsideCell(BetKind.Dozen3, "outside--dozen"));
+
+            var evenRow = Row(board);
+            evenRow.AddToClassList("board-row--indent");
+            evenRow.Add(MakeOutsideCell(BetKind.Low, "outside--even"));
+            evenRow.Add(MakeOutsideCell(BetKind.Even, "outside--even"));
+            evenRow.Add(MakeOutsideCell(BetKind.Red, "outside--even", "cell--red"));
+            evenRow.Add(MakeOutsideCell(BetKind.Black, "outside--even", "cell--black"));
+            evenRow.Add(MakeOutsideCell(BetKind.Odd, "outside--even"));
+            evenRow.Add(MakeOutsideCell(BetKind.High, "outside--even"));
         }
 
-        private Button MakeCell(int number, RouletteDefinition definition)
+        private static VisualElement Row(VisualElement parent)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("board-row");
+            parent.Add(row);
+            return row;
+        }
+
+        private Button MakeNumberCell(int number)
         {
             var button = new Button { text = number.ToString() };
             button.AddToClassList("cell");
@@ -311,8 +352,7 @@ namespace ProjectCR
 
             if (definition.ContainsNumber(number))
             {
-                button.clicked += () => NumberClicked?.Invoke(number);
-                numberButtons[number] = button;
+                Bind(button, BetTarget.Straight(number));
             }
             else
             {
@@ -320,6 +360,26 @@ namespace ProjectCR
             }
 
             return button;
+        }
+
+        private Button MakeOutsideCell(BetKind kind, params string[] classes)
+        {
+            var button = new Button { text = BetTarget.OutsideLabel(kind) };
+            button.AddToClassList("cell");
+            button.AddToClassList("outside");
+            foreach (string name in classes)
+            {
+                button.AddToClassList(name);
+            }
+
+            Bind(button, BetTarget.Outside(kind));
+            return button;
+        }
+
+        private void Bind(Button button, BetTarget target)
+        {
+            button.clicked += () => TargetClicked?.Invoke(target);
+            targetButtons[target] = button;
         }
     }
 }
