@@ -7,9 +7,10 @@ using UnityEngine.UIElements;
 namespace ProjectCR
 {
     /// <summary>
-    /// 룰렛 화면 UI(상태 바, 베팅 요약·회전 패널, 결과, 게임 오버 창). 음료 선택 창은 DrinkSelectionView가 그린다.
+    /// 룰렛 화면 UI: 왼쪽 위 결과 안내(당첨·낙첨·진행 문구), 오른쪽 위 옵션(시점 전환), 판 위 호버 툴팁, 게임 오버 창.
+    /// 음료 선택 창은 DrinkSelectionView, 서비스 창은 ShopView가 그린다. 보유 금액·납부금·남은 회전·회전/서비스/전체 회수 버튼은
+    /// 테이블 태블릿(TabletPanel)에 있다(2026-10-09 위아래 임시 HUD 띠 제거).
     /// 납부는 버튼 없이 라운드가 끝나면 자동으로 판정한다(RouletteGame). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
-    /// 베팅 검증과 중복 방지는 GameFlowController가 한다. 여기서 버튼을 끄는 건 보기 좋으라고 하는 일이다.
     ///
     /// 칩을 놓는 건 3D 테이블에서 한다(TableBetInput). 3D 입력이 HUD 위 클릭을 무시하도록
     /// <see cref="IsPointerOverUi"/>를 제공한다. 입력을 막는 요소에는 USS 클래스 blocks-input을 붙인다.
@@ -17,41 +18,38 @@ namespace ProjectCR
     [RequireComponent(typeof(UIDocument))]
     public class RouletteHud : MonoBehaviour
     {
-        private const int HistoryLength = 12;
-        private const int BetListLength = 6;
         private const string SkullMark = "☠";
+
+        // 결과 아래에 보여 주는 이전 숫자 수(공 단위, 최근 것부터).
+        private const int HistoryLength = 5;
         private const string BlocksInputClass = "blocks-input";
 
-        public event Action UndoClicked;
-        public event Action ClearClicked;
-        public event Action SpinClicked;
-        public event Action ShopClicked;
+        // 호버 툴팁: 커서에서 띄우는 거리와 화면 가장자리 여백(패널 px).
+        private const float TooltipOffset = 26f;
+        private const float TooltipMargin = 12f;
+
         public event Action RestartClicked;
         public event Action ViewToggled;
-
-        private readonly List<Button> betButtons = new List<Button>();
-        private readonly List<SpinResult> history = new List<SpinResult>();
 
         private RouletteDefinition definition;
         private UIDocument document;
 
-        private Label roundLabel;
-        private Label spinsLabel;
-        private Label dueLabel;
-        private Label moneyLabel;
-        private Label seedLabel;
-        private Label chipLabel;
-        private Label hoverLabel;
-        private Label betSummaryLabel;
-        private Label betListLabel;
-        private Label previewLabel;
-        private Label errorLabel;
         private Label resultLabel;
-        private Label historyLabel;
+        private VisualElement resultBalls;
+        private VisualElement resultHistory;
+
+        // 지금 결과 줄에 보이는 회전의 공들, 그리고 그 이전에 나온 공들(최근 것이 앞).
+        private IReadOnlyList<BallResult> shownBalls;
+        private readonly List<BallResult> history = new List<BallResult>();
         private Label gameOverLabel;
-        private Button spinButton;
-        private Button shopButton;
         private VisualElement gameOverPanel;
+        private VisualElement optionsMenu;
+        private VisualElement betTooltip;
+        private Label tooltipKind;
+        private Label tooltipBase;
+        private Label tooltipFinal;
+        private Label tooltipTargets;
+        private Label tooltipStake;
 
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
         public void Initialize(RouletteDefinition definition)
@@ -60,34 +58,33 @@ namespace ProjectCR
             document = GetComponent<UIDocument>();
             VisualElement root = document.rootVisualElement;
 
-            roundLabel = root.Q<Label>("round");
-            spinsLabel = root.Q<Label>("spins");
-            dueLabel = root.Q<Label>("due");
-            moneyLabel = root.Q<Label>("money");
-            seedLabel = root.Q<Label>("seed");
-            chipLabel = root.Q<Label>("chip-value");
-            hoverLabel = root.Q<Label>("hover-target");
-            betSummaryLabel = root.Q<Label>("bet-summary");
-            betListLabel = root.Q<Label>("bet-list");
-            previewLabel = root.Q<Label>("payout-preview");
-            errorLabel = root.Q<Label>("bet-error");
             resultLabel = root.Q<Label>("result");
-            historyLabel = root.Q<Label>("history");
+            resultBalls = root.Q("result-balls");
+            resultHistory = root.Q("result-history");
             gameOverLabel = root.Q<Label>("gameover-text");
             gameOverPanel = root.Q("gameover-panel");
+            betTooltip = root.Q("bet-tooltip");
+            tooltipKind = root.Q<Label>("bet-tooltip-kind");
+            tooltipBase = root.Q<Label>("bet-tooltip-base");
+            tooltipFinal = root.Q<Label>("bet-tooltip-final");
+            tooltipTargets = root.Q<Label>("bet-tooltip-targets");
+            tooltipStake = root.Q<Label>("bet-tooltip-stake");
 
-            spinButton = root.Q<Button>("spin");
-            shopButton = root.Q<Button>("shop");
-            shopButton.clicked += () => ShopClicked?.Invoke();
-            spinButton.clicked += () => SpinClicked?.Invoke();
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
-            root.Q<Button>("view-toggle").clicked += () => ViewToggled?.Invoke();
 
-            BindBetButton(root, "bet-undo", () => UndoClicked?.Invoke());
-            BindBetButton(root, "bet-clear", () => ClearClicked?.Invoke());
-
-            ShowHover(BetTarget.None, null);
+            // 옵션: 누르면 메뉴를 열고 닫는다. 메뉴 항목을 누르면 실행하고 닫는다.
+            optionsMenu = root.Q("options-menu");
+            root.Q<Button>("options").clicked += () => SetOptionsOpen(!optionsMenu.ClassListContains(OptionsOpenClass));
+            root.Q<Button>("view-toggle").clicked += () =>
+            {
+                SetOptionsOpen(false);
+                ViewToggled?.Invoke();
+            };
         }
+
+        private const string OptionsOpenClass = "options-menu--open";
+
+        private void SetOptionsOpen(bool open) => optionsMenu.EnableInClassList(OptionsOpenClass, open);
 
         /// <summary>화면 좌표(Input System, 왼쪽 아래 원점)가 입력을 막는 HUD 요소 위인가.</summary>
         public bool IsPointerOverUi(Vector2 screenPosition)
@@ -112,324 +109,202 @@ namespace ProjectCR
 
         public void Refresh(GameFlowController flow)
         {
-            bool betting = flow.Phase == GamePhase.Betting;
-            long balance = flow.Wallet.Balance;
-            BetManager bet = flow.Bet;
-
-            roundLabel.text = $"라운드 {flow.Round.Round}";
-            spinsLabel.text = $"남은 회전 {flow.Round.SpinsRemaining}/{flow.GameBalance.SpinsPerRound}";
-            dueLabel.text = $"납부금 {flow.Round.CurrentDue:N0}";
-            moneyLabel.text = $"보유 {balance:N0}";
-            seedLabel.text = $"seed {flow.Seed}";
-
-            chipLabel.text = bet.ChipValue.ToString("N0");
-            betSummaryLabel.text = bet.HasBets
-                ? $"{bet.Count}개 · 합계 {bet.TotalStake:N0} · 남는 돈 {balance - bet.TotalStake:N0}"
-                : "없음";
-            betListLabel.text = DescribeBets(bet.Bets);
-
-            foreach (Button button in betButtons)
-            {
-                button.SetEnabled(betting);
-            }
-
-            // 미리보기와 정산이 같은 SpinConfig 배수(음료 포함)를 쓴다.
-            SpinConfig preview = flow.BuildSpinConfig();
-            previewLabel.text = bet.HasBets
-                ? DescribeBestCase(bet.Bets, preview, flow.Wallet.MaxMoney)
-                : DescribeMultipliers(preview, flow.Drinks.TotalStacks);
-
-            // 회전 전 안내: 다음 회전에 걸린 아이템·교차 강화(큰 효과 목록은 따로 두지 않는다).
-            string nextSpin = DescribeNextSpin(flow, preview);
-            if (nextSpin.Length > 0)
-            {
-                previewLabel.text = $"다음 회전: {nextSpin} · {previewLabel.text}";
-            }
-
-            BetError error = flow.ValidateBet();
-            errorLabel.text = betting && error != BetError.None ? error.ToKorean() : string.Empty;
-            spinButton.SetEnabled(betting && error == BetError.None);
-
-            // 상점은 베팅을 고칠 수 있을 때만(회전·정산·납부·음료 선택·게임 오버 중에는 꺼진다).
-            // 상점은 라운드가 끝난 뒤 새 라운드의 첫 회전 전에만 열린다.
-            shopButton.SetEnabled(flow.CanEnterShop);
-            shopButton.tooltip = flow.CanEnterShop ? string.Empty : "라운드를 통과한 뒤, 다음 라운드 첫 회전 전에만 열 수 있습니다";
-            spinButton.text = SpinButtonText(flow.Phase);
-
             RefreshGameOver(flow);
         }
 
-        /// <summary>테이블에서 마우스가 가리키는 베팅 자리와 그 배수.</summary>
-        public void ShowHover(BetTarget target, GameFlowController flow)
+        /// <summary>
+        /// 판 위 호버 툴팁 내용. 첫 줄 = 베팅 이름 · (강화 시 기본 배율 →) 최종 배율, 둘째 줄 = 대상, 셋째 줄 = 칩 한 개 예상 지급액.
+        /// showPayout이 false면 이름과 대상만(상점의 숫자 집중 대상 고르기).
+        /// </summary>
+        public void ShowBetTooltip(BetHoverInfo info, bool showPayout)
         {
-            if (target.IsNone || flow == null)
+            if (betTooltip == null)
             {
-                hoverLabel.text = "판을 누르면 칩을 놓고, 오른쪽 클릭은 뺍니다. 트레이 칩을 누르면 칩 금액이 바뀝니다.";
                 return;
             }
 
-            // 기본 배수와 음료 적용 배수를 함께 보여 준다. 숫자는 표시용 반올림.
-            SpinConfig config = flow.BuildSpinConfig();
-            int basePayout = config.PayoutFor(target);
-            decimal final = config.MultiplierFor(target);
-            DrinkGroup group = DrinkGroups.Of(target.Kind);
-            // 강화 내역: 음료 배율(×) 그리고 상점 강화(집중 + 다음 회전 교차, +%).
-            var boosts = new List<string>();
-            if (config.GroupBoost(group) != 1m)
+            bool boosted = showPayout && info.IsBoosted;
+            tooltipKind.text = showPayout ? $"{info.KindName} ·" : info.KindName;
+            tooltipBase.text = $"×{info.BasePayout} →";
+            tooltipBase.style.display = boosted ? DisplayStyle.Flex : DisplayStyle.None;
+            tooltipFinal.text = $"×{NumberText.Multiplier(info.Multiplier)}";
+            tooltipFinal.style.display = showPayout ? DisplayStyle.Flex : DisplayStyle.None;
+            tooltipFinal.EnableInClassList("bet-tooltip__final--boosted", boosted);
+            tooltipTargets.text = info.Targets;
+
+            string stake = $"칩 {info.ChipValue:N0} → 당첨 시 {info.ExpectedPayout:N0} 지급";
+            if (info.BallCount > 1)
             {
-                boosts.Add($"음료 ×{NumberText.Multiplier(config.GroupBoost(group))}");
+                stake += " (공 1개 기준)";
             }
 
-            decimal focus = flow.Upgrades.PayoutIncrease(group);
-            decimal cross = flow.Cross.Pending(group);
-            if (focus > 0m)
+            if (!info.Affordable)
             {
-                boosts.Add($"집중 +{NumberText.Multiplier(focus * 100m)}%");
+                stake += " · 잔액 부족";
             }
 
-            if (cross > 0m)
-            {
-                boosts.Add($"교차 다음 회전 +{NumberText.Multiplier(cross * 100m)}%");
-            }
-
-            string payout = final != basePayout
-                ? $"{basePayout}배 → {NumberText.Multiplier(final)}배 ({group.ToKorean()} {string.Join(", ", boosts)})"
-                : $"{basePayout}배";
-
-            // 공 하나 기준 실제 등장 확률(확률 음료 반영, 해골 1/38 고정). 추첨과 같은 식.
-            string chance = $" · 등장 {NumberText.Percent(config.ProbabilityOf(target))}";
-
-            long stake = flow.Bet.StakeOn(target);
-            string placed = stake > 0 ? $" · 놓인 칩 {stake:N0}" : string.Empty;
-            hoverLabel.text = $"{target.ToKorean(definition)} · {payout}{chance}{placed}";
+            tooltipStake.text = stake;
+            tooltipStake.EnableInClassList("bet-tooltip__stake--short", !info.Affordable);
+            tooltipStake.style.display = showPayout ? DisplayStyle.Flex : DisplayStyle.None;
+            betTooltip.style.display = DisplayStyle.Flex;
         }
 
-        public void ShowSpinning()
+        /// <summary>
+        /// 툴팁을 커서(화면 좌표, Input System = 왼쪽 아래 원점) 위쪽에 놓는다. 좌우는 화면 안으로 밀고, 위가 모자라면 커서 아래로 뒤집는다.
+        /// 크기가 아직 계산되지 않았으면(처음 뜬 프레임) 엉뚱한 자리에 보이지 않게 한 프레임 숨긴다.
+        /// </summary>
+        public void MoveBetTooltip(Vector2 screenPosition)
         {
-            resultLabel.text = "회전 중…";
-            resultLabel.RemoveFromClassList("result--skull");
+            if (betTooltip?.panel == null || betTooltip.parent == null)
+            {
+                return;
+            }
+
+            Vector2 panelPoint = RuntimePanelUtils.ScreenToPanel(betTooltip.panel, new Vector2(screenPosition.x, Screen.height - screenPosition.y));
+            Vector2 point = betTooltip.parent.WorldToLocal(panelPoint);
+            float width = betTooltip.resolvedStyle.width;
+            float height = betTooltip.resolvedStyle.height;
+            if (float.IsNaN(width) || float.IsNaN(height) || width <= 0f || height <= 0f)
+            {
+                betTooltip.style.visibility = Visibility.Hidden;
+                return;
+            }
+
+            Rect area = betTooltip.parent.layout;
+            float left = Mathf.Clamp(point.x - width * 0.5f, TooltipMargin, Mathf.Max(TooltipMargin, area.width - width - TooltipMargin));
+            float top = point.y - TooltipOffset - height;
+            if (top < TooltipMargin)
+            {
+                top = Mathf.Min(point.y + TooltipOffset, area.height - height - TooltipMargin);
+            }
+
+            betTooltip.style.left = left;
+            betTooltip.style.top = top;
+            betTooltip.style.visibility = Visibility.Visible;
         }
 
-        public void ShowBetError(BetError error)
+        public void HideBetTooltip()
         {
-            errorLabel.text = error.ToKorean();
+            if (betTooltip != null)
+            {
+                betTooltip.style.display = DisplayStyle.None;
+                betTooltip.style.visibility = Visibility.Hidden;
+            }
         }
 
         public void ShowMessage(string message)
         {
+            SetResultBalls(null);
             resultLabel.text = message;
             resultLabel.RemoveFromClassList("result--skull");
+            resultLabel.RemoveFromClassList("result--gain");
         }
 
         public void ShowSettlement(SettlementResult settlement)
         {
-            var numbers = new StringBuilder();
-            foreach (BallResult ball in settlement.Spin.Balls)
+            // 결과 줄에 있던 회전은 "이전 숫자"로 내려간다(한 회전의 공 여러 개는 결과 줄과 같은 순서로).
+            if (shownBalls != null)
             {
-                if (numbers.Length > 0)
+                for (int i = shownBalls.Count - 1; i >= 0; i--)
                 {
-                    numbers.Append(" · ");
+                    history.Insert(0, shownBalls[i]);
                 }
 
-                numbers.Append(ball.IsSkull ? $"{SkullMark} 해골" : $"{ball.Number} ({ball.Color.ToKorean()})");
+                if (history.Count > HistoryLength)
+                {
+                    history.RemoveRange(HistoryLength, history.Count - HistoryLength);
+                }
+
+                RefreshHistory();
             }
 
-            string verdict;
-            switch (settlement.Outcome)
-            {
-                case SpinOutcome.SkullBust:
-                    // 맞힌 베팅이 있어도 해골이 하나라도 있으면 전부 낙첨. 이유를 일반 낙첨과 구분해 보여 준다.
-                    // 베팅 전부 낙첨 + 남은 보유 금액 절반.
-                    verdict = $"해골 낙첨 · 지급 0 (−{settlement.TotalStake:N0}) · 보유 절반 −{settlement.SkullPenalty:N0}";
-                    break;
-                case SpinOutcome.Win:
-                    verdict = $"{DescribeWinners(settlement)} 적중! 지급 {settlement.TotalPayout:N0} (손익 {Signed(settlement.Net)})";
-                    break;
-                default:
-                    verdict = $"모두 낙첨 · 지급 0 (−{settlement.TotalStake:N0})";
-                    break;
-            }
+            // 나온 숫자는 칸 색 배경의 패로 보여 준다(글자로 "(빨강)"을 붙이지 않는다).
+            shownBalls = settlement.Spin.Balls;
+            SetResultBalls(settlement.Spin.Balls);
 
-            // 아이템·교차 강화 결과.
-            if (settlement.ShieldsUsed > 0)
-            {
-                verdict += $" · 방패 {settlement.ShieldsUsed}개로 해골을 막음";
-            }
-
-            if (settlement.InsuranceRefund > 0)
-            {
-                verdict += $" · 보험 환급 +{settlement.InsuranceRefund:N0}";
-            }
-
-            foreach (CrossTrigger trigger in settlement.CrossTriggers)
-            {
-                verdict += $" · 교차 발동 {ShopItemDefinition.GroupCode(trigger.Target)} +{NumberText.Multiplier(trigger.Increase * 100m)}%(다음 회전)";
-            }
-
-            resultLabel.text = $"결과 {numbers} — {verdict}";
-            resultLabel.EnableInClassList("result--skull", settlement.IsSkullBust);
-
-            history.Insert(0, settlement.Spin);
-            if (history.Count > HistoryLength)
-            {
-                history.RemoveAt(history.Count - 1);
-            }
-
-            RefreshHistory();
-        }
-
-        public void ClearHistory()
-        {
-            history.Clear();
-            RefreshHistory();
+            // 숫자 뒤에는 이번 회전 손익만: 지급 − 건 금액 − 해골 벌칙 + 보험 환급(SettlementResult.Net).
+            long net = settlement.Net;
+            resultLabel.text = Signed(net);
+            resultLabel.EnableInClassList("result--gain", net > 0);
+            resultLabel.EnableInClassList("result--skull", net < 0);
         }
 
         // ---------- 문구 ----------
 
-        private string DescribeBets(IReadOnlyList<ConfirmedBet> bets)
-        {
-            if (bets.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            var text = new StringBuilder();
-            for (int i = 0; i < bets.Count && i < BetListLength; i++)
-            {
-                if (i > 0)
-                {
-                    text.Append(" · ");
-                }
-
-                text.Append($"{bets[i].Target.ToKorean(definition)} {bets[i].Stake:N0}");
-            }
-
-            if (bets.Count > BetListLength)
-            {
-                text.Append($" 외 {bets.Count - BetListLength}개");
-            }
-
-            return text.ToString();
-        }
-
-        /// <summary>공 하나가 들어갔을 때 지급이 가장 큰 숫자와 그 금액.</summary>
-        private string DescribeBestCase(IReadOnlyList<ConfirmedBet> bets, SpinConfig config, long maxMoney)
-        {
-            long best = 0;
-            int bestNumber = -1;
-
-            for (int n = 0; n <= 36; n++)
-            {
-                if (!definition.ContainsNumber(n))
-                {
-                    continue;
-                }
-
-                PocketColor color = definition.ColorOfNumber(n);
-                decimal exact = 0m;
-                foreach (ConfirmedBet bet in bets)
-                {
-                    if (bet.Target.CoversNumber(n, color))
-                    {
-                        exact = Math.Min(exact + PayoutCalculator.ExactPayout(bet.Stake, config.MultiplierFor(bet.Target), maxMoney), maxMoney);
-                    }
-                }
-
-                // 정산과 같이 합계를 한 번만 버린다.
-                long payout = PayoutCalculator.ToMoney(exact, maxMoney);
-
-                if (payout > best)
-                {
-                    best = payout;
-                    bestNumber = n;
-                }
-            }
-
-            string balls = config.BallCount > 1 ? $" · 공 {config.BallCount}개, 공마다 따로 지급" : string.Empty;
-            return bestNumber < 0
-                ? $"지급 가능한 칸이 없습니다{balls}"
-                : $"공 하나 기준 최고 지급 {best:N0} ({bestNumber}이 나오면){balls}";
-        }
-
-        private static string DescribeMultipliers(SpinConfig preview, int drinkStacks)
-        {
-            string balls = preview.BallCount > 1 ? $" · 공 {preview.BallCount}개, 공마다 따로 지급" : string.Empty;
-            if (drinkStacks > 0)
-            {
-                balls += $" · 음료 {drinkStacks}잔 적용 중(자리에 마우스를 올리면 강화 배수)";
-            }
-
-            return $"원금 포함 배수: 숫자 {preview.PayoutOf(PayoutClass.Straight)} · 스플릿 {preview.PayoutOf(PayoutClass.Split)} · " +
-                   $"스트리트 {preview.PayoutOf(PayoutClass.Street)} · 코너 {preview.PayoutOf(PayoutClass.Corner)} · " +
-                   $"식스 라인 {preview.PayoutOf(PayoutClass.SixLine)} · 더즌·열 {preview.PayoutOf(PayoutClass.DozenColumn)} · " +
-                   $"색·홀짝·1–18/19–36 {preview.PayoutOf(PayoutClass.EvenMoney)}{balls}";
-        }
-
-        private string DescribeWinners(SettlementResult settlement)
-        {
-            var winners = new List<string>();
-            foreach (BetPayout bet in settlement.Bets)
-            {
-                if (bet.IsWin)
-                {
-                    string times = bet.Hits > 1 ? $" ×{bet.Hits}" : string.Empty;
-                    winners.Add(bet.Bet.Target.ToKorean(definition) + times);
-                }
-            }
-
-            return winners.Count > 3
-                ? $"{string.Join(", ", winners.GetRange(0, 3))} 외 {winners.Count - 3}개"
-                : string.Join(", ", winners);
-        }
-
-        /// <summary>다음 회전에 걸린 것: 공 수, 장착 방패, 보험, 교차 강화.</summary>
-        private static string DescribeNextSpin(GameFlowController flow, SpinConfig preview)
-        {
-            var parts = new List<string>();
-            if (flow.Inventory.RoundExtraBalls > 0)
-            {
-                parts.Add($"공 {preview.BallCount}개");
-            }
-
-            if (flow.Inventory.Shields > 0)
-            {
-                parts.Add($"방패 {flow.Inventory.Shields}");
-            }
-
-            if (flow.Inventory.Insurances > 0)
-            {
-                parts.Add($"보험 (남은 {flow.Inventory.Insurances}장)");
-            }
-
-            for (int i = 0; i < DrinkGroups.Count; i++)
-            {
-                decimal pending = flow.Cross.Pending((DrinkGroup)i);
-                if (pending > 0m)
-                {
-                    parts.Add($"{ShopItemDefinition.GroupCode((DrinkGroup)i)} +{NumberText.Multiplier(pending * 100m)}%(교차)");
-                }
-            }
-
-            return string.Join(" · ", parts);
-        }
-
         private static string Signed(long value) => value >= 0 ? $"+{value:N0}" : $"−{-value:N0}";
 
-        private static string SpinButtonText(GamePhase phase)
+        /// <summary>새 게임: 결과 줄과 이전 숫자를 비운다.</summary>
+        public void ClearHistory()
         {
-            switch (phase)
+            shownBalls = null;
+            history.Clear();
+            RefreshHistory();
+        }
+
+        private void RefreshHistory()
+        {
+            if (resultHistory == null)
             {
-                case GamePhase.Spinning:
-                    return "회전 중…";
-                case GamePhase.RoundPayment:
-                    return "납부 판정 중…";
-                case GamePhase.DrinkSelection:
-                    return "음료 선택 중";
-                case GamePhase.Shopping:
-                    return "상점 이용 중";
-                default:
-                    return "회전";
+                return;
             }
+
+            resultHistory.Clear();
+            resultHistory.style.display = history.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            if (history.Count == 0)
+            {
+                return;
+            }
+
+            var label = new Label("이전") { pickingMode = PickingMode.Ignore };
+            label.AddToClassList("result-history__label");
+            resultHistory.Add(label);
+            foreach (BallResult ball in history)
+            {
+                Label badge = MakeBallBadge(ball);
+                badge.AddToClassList("result-ball--small");
+                resultHistory.Add(badge);
+            }
+        }
+
+        private static Label MakeBallBadge(BallResult ball)
+        {
+            var badge = new Label(ball.IsSkull ? SkullMark : ball.Number.ToString()) { pickingMode = PickingMode.Ignore };
+            badge.AddToClassList("result-ball");
+            badge.AddToClassList(ball.IsSkull ? "result-ball--skull"
+                : ball.Color == PocketColor.Red ? "result-ball--red"
+                : ball.Color == PocketColor.Black ? "result-ball--black"
+                : "result-ball--green");
+            return badge;
+        }
+
+        /// <summary>결과 숫자 패를 다시 만든다. null이면 숨긴다(진행 안내 문구일 때).</summary>
+        private void SetResultBalls(IReadOnlyList<BallResult> balls)
+        {
+            if (resultBalls == null)
+            {
+                return;
+            }
+
+            resultBalls.Clear();
+            resultBalls.style.display = balls != null && balls.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            if (balls == null)
+            {
+                return;
+            }
+
+            var prefix = new Label("결과") { pickingMode = PickingMode.Ignore };
+            prefix.AddToClassList("result-prefix");
+            resultBalls.Add(prefix);
+
+            foreach (BallResult ball in balls)
+            {
+                resultBalls.Add(MakeBallBadge(ball));
+            }
+
+            // 숫자와 손익 사이 구분선(손익의 +/− 색과 섞이지 않게 따로 흐린 색으로).
+            var separator = new Label("─") { pickingMode = PickingMode.Ignore };
+            separator.AddToClassList("result-separator");
+            resultBalls.Add(separator);
         }
 
         private void RefreshGameOver(GameFlowController flow)
@@ -450,34 +325,6 @@ namespace ProjectCR
 
             text.Append($"마신 음료 {flow.Drinks.TotalStacks}잔");
             gameOverLabel.text = text.ToString();
-        }
-
-        private void RefreshHistory()
-        {
-            var text = new StringBuilder("최근 ");
-            if (history.Count == 0)
-            {
-                text.Append("—");
-            }
-
-            foreach (SpinResult spin in history)
-            {
-                foreach (BallResult ball in spin.Balls)
-                {
-                    text.Append(ball.IsSkull ? SkullMark : ball.Number.ToString()).Append(' ');
-                }
-
-                text.Append("| ");
-            }
-
-            historyLabel.text = text.ToString().TrimEnd(' ', '|');
-        }
-
-        private void BindBetButton(VisualElement root, string name, Action onClick)
-        {
-            Button button = root.Q<Button>(name);
-            button.clicked += onClick;
-            betButtons.Add(button);
         }
     }
 }

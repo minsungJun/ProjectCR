@@ -1,46 +1,21 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="RouletteHud.uss" />
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
-        <ui:VisualElement class="topbar blocks-input">
-            <ui:Label name="round" class="stat" text="라운드 1" />
-            <ui:Label name="spins" class="stat" text="남은 회전" />
-            <ui:Label name="due" class="stat" text="납부금" />
-            <ui:Label name="money" class="stat stat--money" text="보유" />
-            <ui:VisualElement class="spacer" picking-mode="Ignore" />
-            <ui:Label name="seed" class="seed" text="seed" />
-            <ui:Button name="view-toggle" class="btn btn--small" text="시점 전환" />
+        <!-- 오른쪽 위 옵션: 누르면 작은 메뉴(시점 전환)가 열린다. -->
+        <ui:VisualElement class="options blocks-input">
+            <ui:Button name="options" class="btn btn--small options-button" text="옵션" />
+            <ui:VisualElement name="options-menu" class="options-menu">
+                <ui:Button name="view-toggle" class="btn btn--small options-item" text="시점 전환" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
-        <ui:VisualElement class="result-panel" picking-mode="Ignore">
-            <ui:Label name="result" class="result" picking-mode="Ignore" />
-            <ui:Label name="history" class="history" picking-mode="Ignore" />
-        </ui:VisualElement>
-
-        <ui:VisualElement class="control-panel blocks-input">
-            <ui:VisualElement class="info">
-                <ui:VisualElement class="row">
-                    <ui:Label class="field-label" text="칩" />
-                    <ui:Label name="chip-value" class="chip-value" text="0" />
-                    <ui:Label name="hover-target" class="hover-target" />
-                    <ui:Label name="skull-notice" class="skull-notice" text="해골: 모든 베팅 낙첨 + 보유 금액 절반" />
-                </ui:VisualElement>
-                <ui:VisualElement class="row">
-                    <ui:Label class="field-label" text="베팅" />
-                    <ui:Label name="bet-summary" class="field-value" text="없음" />
-                    <ui:Label name="bet-list" class="bet-list" />
-                </ui:VisualElement>
-                <ui:VisualElement class="row">
-                    <ui:Label name="payout-preview" class="preview" />
-                    <ui:Label name="bet-error" class="error" />
-                </ui:VisualElement>
+        <!-- 회전 결과(나온 숫자 · 손익)와 그 아래 이전에 나온 숫자 5개. 게임 시작 때만 안내 문구. -->
+        <ui:VisualElement class="result-area" picking-mode="Ignore">
+            <ui:VisualElement class="result-panel" picking-mode="Ignore">
+                <ui:VisualElement name="result-balls" class="result-balls" picking-mode="Ignore" />
+                <ui:Label name="result" class="result" picking-mode="Ignore" />
             </ui:VisualElement>
-
-            <ui:VisualElement class="button-row">
-                <ui:Button name="bet-undo" class="btn btn--wide" text="마지막 칩 취소" />
-                <ui:Button name="bet-clear" class="btn btn--wide" text="전체 취소" />
-                <ui:Button name="shop" class="btn btn--wide btn--shop" text="서비스" />
-                <ui:Button name="spin" class="btn btn--primary" text="회전" />
-            </ui:VisualElement>
+            <ui:VisualElement name="result-history" class="result-history" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <!-- 라운드 통과 보상. 카드는 DrinkSelectionView가 후보 수만큼 만든다. -->
@@ -77,6 +52,17 @@
                     <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical" />
                 </ui:VisualElement>
             </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 판 위 호버 안내. 커서를 따라다니고 입력을 받지 않는다(blocks-input 없음, picking Ignore). 내용은 RouletteHud.ShowBetTooltip. -->
+        <ui:VisualElement name="bet-tooltip" class="bet-tooltip" picking-mode="Ignore">
+            <ui:VisualElement class="bet-tooltip__head" picking-mode="Ignore">
+                <ui:Label name="bet-tooltip-kind" class="bet-tooltip__kind" picking-mode="Ignore" />
+                <ui:Label name="bet-tooltip-base" class="bet-tooltip__base" picking-mode="Ignore" />
+                <ui:Label name="bet-tooltip-final" class="bet-tooltip__final" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Label name="bet-tooltip-targets" class="bet-tooltip__targets" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-stake" class="bet-tooltip__stake" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <ui:VisualElement name="gameover-panel" class="modal blocks-input">

@@ -42,6 +42,9 @@ namespace ProjectCR
         [Tooltip("마우스가 가리키는 베팅 자리 표시.")]
         [SerializeField] private Transform hoverMarker;
 
+        [Tooltip("마우스가 가리키는 베팅의 포함 칸 강조. 비우면 칸 강조 없이 자리 표시만 한다.")]
+        [SerializeField] private BetHighlightView highlight;
+
         [Tooltip("잔액 표시 화면의 글자. 보유 금액에서 판에 놓은 칩 합계를 뺀 값(이번 회전에 쓸 수 있는 돈)을 보여 준다.")]
         [SerializeField] private TextMesh balanceText;
 
@@ -143,15 +146,29 @@ namespace ProjectCR
             label.Root.SetPositionAndRotation(label.Anchor + eye.up * amountLabelLift, eye.rotation);
         }
 
-        public void SetHover(bool visible, BetTarget target)
+        /// <summary>호버 표시: 칩 놓는 자리 원판 + (정의가 있으면) 포함 칸 강조. 숨기면 둘 다 끈다.</summary>
+        public void SetHover(bool visible, BetTarget target, RouletteDefinition definition = null)
         {
+            bool show = visible && !target.IsNone;
+            if (highlight != null)
+            {
+                if (show && definition != null)
+                {
+                    highlight.Show(target, definition);
+                }
+                else
+                {
+                    highlight.Hide();
+                }
+            }
+
             if (hoverMarker == null)
             {
                 return;
             }
 
-            hoverMarker.gameObject.SetActive(visible && !target.IsNone);
-            if (visible && !target.IsNone)
+            hoverMarker.gameObject.SetActive(show);
+            if (show)
             {
                 hoverMarker.position = board.WorldPositionOf(target) + board.transform.up * 0.0005f;
             }

@@ -87,11 +87,7 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
-            hud.UndoClicked += OnUndoClicked;
-            hud.ClearClicked += OnClearClicked;
-            hud.SpinClicked += OnSpinClicked;
             hud.RestartClicked += StartNewRun;
-            hud.ShopClicked += OnShopClicked;
 
             if (shopView != null)
             {
@@ -114,7 +110,6 @@ namespace ProjectCR
                 tableInput.TargetRemoveRequested += OnTargetRemoveRequested;
                 tableInput.ChipSelected += OnChipSelected;
                 tableInput.TabletPressed += OnTabletPressed;
-                tableInput.HoverChanged += OnHoverChanged;
             }
 
             ApplyView();
@@ -280,7 +275,6 @@ namespace ProjectCR
         {
             pickingSlot = slot;
             shopView.SetPicking(true);
-            hud.ShowMessage("숫자 집중 대상: 판에서 숫자 하나나 조합(0이 든 조합 제외)을 누르세요 · 오른쪽 클릭은 취소");
         }
 
         private void FinishPick(BetTarget target)
@@ -302,23 +296,92 @@ namespace ProjectCR
                 }
             }
 
-            hud.ShowMessage("상점 이용 중");
             shopView.Refresh(flow);
         }
-
-        private void OnUndoClicked() => ApplyBetAction(flow.UndoLastChip());
 
         private void OnClearClicked() => ApplyBetAction(flow.ClearBets());
 
         /// <summary>트레이에서 고른 칩 금액. 보유보다 큰 칩도 고를 수 있고, 놓을 때 막힌다.</summary>
         private void OnChipSelected(long value) => ApplyBetAction(flow.SetChipValue(value));
 
-        private void OnHoverChanged(BetTarget target)
+        // ---------- 판 위 호버 안내(툴팁 + 칸 강조) ----------
+
+        private BetTarget guideTarget = BetTarget.None;
+        private bool guideShown;
+        private bool guidePicking;
+        private bool guideDirty = true;
+
+        private void LateUpdate()
         {
-            hud.ShowHover(target, flow);
+            UpdateBetGuide();
+        }
+
+        private void OnDisable()
+        {
+            HideBetGuide();
+        }
+
+        /// <summary>
+        /// 매 프레임 표시 여부를 정한다: 베팅 중(또는 상점의 숫자 집중 대상 고르기 중)이고, 검증·카메라 이동 중이 아니고, 판 위 대상이 있을 때만.
+        /// 그래서 회전·해골 재회전·결과 연출·정산·납부·음료·서비스 창·게임 오버 동안은 숨는다.
+        /// 내용은 대상이 바뀌었거나 RefreshViews(칩 금액·베팅·구매·음료)가 있었을 때만 다시 만들고, 위치는 매 프레임 커서를 따라간다.
+        /// 대상은 TableBetInput이 클릭에 쓰는 바로 그 값이다.
+        /// </summary>
+        private void UpdateBetGuide()
+        {
+            if (flow == null || tableInput == null)
+            {
+                return;
+            }
+
+            BetTarget target = tableInput.CurrentHover;
+            bool picking = pickingSlot >= 0;
+            bool allowed = !verifying
+                           && (cameraRig == null || !cameraRig.IsMoving)
+                           && (flow.Phase == GamePhase.Betting || (picking && flow.Phase == GamePhase.Shopping));
+            if (!allowed || target.IsNone)
+            {
+                HideBetGuide();
+                return;
+            }
+
+            if (!guideShown || guideDirty || target != guideTarget || picking != guidePicking)
+            {
+                long chip = flow.Bet.ChipValue;
+                BetHoverInfo info = BetHoverInfo.Create(target, flow.BuildSpinConfig(), chip, flow.Wallet.MaxMoney,
+                    flow.Wallet.CanAfford(flow.Bet.TotalStake + chip));
+                hud.ShowBetTooltip(info, !picking);
+                if (tableView != null)
+                {
+                    tableView.SetHover(true, target, definition);
+                }
+
+                guideTarget = target;
+                guidePicking = picking;
+                guideDirty = false;
+                guideShown = true;
+            }
+
+            hud.MoveBetTooltip(tableInput.PointerScreen);
+        }
+
+        private void HideBetGuide()
+        {
+            if (!guideShown)
+            {
+                return;
+            }
+
+            guideShown = false;
+            guideTarget = BetTarget.None;
+            if (hud != null)
+            {
+                hud.HideBetTooltip();
+            }
+
             if (tableView != null)
             {
-                tableView.SetHover(true, target);
+                tableView.SetHover(false, BetTarget.None);
             }
         }
 
@@ -327,12 +390,13 @@ namespace ProjectCR
             RefreshViews();
             if (error != BetError.None)
             {
-                hud.ShowBetError(error);
+                Debug.Log($"[RouletteGame] 베팅 거절: {error}");
             }
         }
 
         private void RefreshViews()
         {
+            guideDirty = true;
             hud.Refresh(flow);
             if (tableView != null)
             {
@@ -352,13 +416,12 @@ namespace ProjectCR
             BetError error = flow.TryBeginSpin(out ActiveSpin spin);
             if (error != BetError.None)
             {
-                hud.ShowBetError(error);
+                Debug.Log($"[RouletteGame] 회전 거절: {error}");
                 return;
             }
 
             Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {Describe(spin.Bets)} → 결과 {Describe(spin.Result)}");
 
-            hud.ShowSpinning();
             RefreshViews();
             StartCoroutine(RunSpin(spin));
         }
@@ -405,7 +468,6 @@ namespace ProjectCR
         {
             int round = flow.Round.Round;
             long due = flow.Round.CurrentDue;
-            hud.ShowMessage($"라운드 {round} 종료 · 납부금 {due:N0} / 보유 {flow.Wallet.Balance:N0}");
             yield return new WaitForSeconds(cameraRig != null ? cameraRig.ReturnDelay : 1.5f);
 
             PaymentOutcome? outcome = flow.SubmitPayment();
@@ -418,8 +480,6 @@ namespace ProjectCR
 
             if (flow.Phase == GamePhase.DrinkSelection && drinkView != null)
             {
-                string refund = flow.LastPaymentRefund > 0 ? $" · 지원금 환급 +{flow.LastPaymentRefund:N0}" : string.Empty;
-                hud.ShowMessage($"라운드 {round} 통과! 납부 {flow.LastPaidDue:N0}{refund} · 남은 돈 {flow.Wallet.Balance:N0}");
                 drinkView.Show(flow);
             }
             else if (flow.Phase == GamePhase.DrinkSelection)
@@ -431,7 +491,6 @@ namespace ProjectCR
             }
             else if (flow.Phase == GamePhase.Betting)
             {
-                hud.ShowMessage($"납부 완료! 라운드 {flow.Round.Round} 시작 · 이월 {flow.Wallet.Balance:N0}");
                 MoveCameraToBetting();
             }
             else if (flow.Phase == GamePhase.RoundPayment)
@@ -466,16 +525,13 @@ namespace ProjectCR
             if (drink.IsProbability)
             {
                 int stacks = flow.Probabilities.StacksOf(drink.Target);
-                string target = DrinkOffer.TargetLabel(drink.Target);
                 double chance = flow.BuildSpinConfig().ProbabilityOf(drink.Target);
                 Debug.Log($"[RouletteGame] 확률 음료 {drink.DisplayName}: {drink.Target} {stacks}잔(+{drink.Boost}/잔) → 등장 {chance:P2}");
-                hud.ShowMessage($"{drink.DisplayName} · {target} {stacks}잔째 · 등장 확률 {NumberText.Percent(chance)} · 라운드 {flow.Round.Round} 시작");
             }
             else
             {
                 DrinkGroup group = drink.Group;
                 Debug.Log($"[RouletteGame] 음료 {drink.DisplayName}({group}) {flow.Drinks.StacksOf(group)}잔 → ×{flow.Drinks.MultiplierOf(group)}");
-                hud.ShowMessage($"{drink.DisplayName} {flow.Drinks.StacksOf(group)}잔째 · {group.ToKorean()} ×{NumberText.Multiplier(flow.Drinks.MultiplierOf(group))} · 라운드 {flow.Round.Round} 시작");
             }
             RefreshViews();
 

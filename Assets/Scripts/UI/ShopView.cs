@@ -144,18 +144,13 @@ namespace ProjectCR
             var cards = new VisualElement();
             cards.AddToClassList("shop-cards");
 
-            // 강화 탭은 집중 → 교차 → 납부 지원 순서로 놓는다(진열 순서와 같다).
-            ShopCategory[] categories = showUpgrades
-                ? new[] { ShopCategory.Focus, ShopCategory.Cross, ShopCategory.PaymentSupport }
-                : new[] { ShopCategory.Consumable };
-            foreach (ShopCategory category in categories)
+            // 강화 탭 = 소모품이 아닌 진열(분류를 섞어 뽑은 순서 그대로), 소모품 탭 = 소모품.
+            for (int i = 0; i < offers.Count; i++)
             {
-                for (int i = 0; i < offers.Count; i++)
+                bool consumable = offers[i].Item.Category == ShopCategory.Consumable;
+                if (consumable != showUpgrades)
                 {
-                    if (offers[i].Item.Category == category)
-                    {
-                        cards.Add(BuildCard(flow, i, offers[i], moneyIcon));
-                    }
+                    cards.Add(BuildCard(flow, i, offers[i], moneyIcon));
                 }
             }
 

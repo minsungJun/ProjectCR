@@ -75,16 +75,12 @@ namespace ProjectCR
             offers.Clear();
             DisplayRound = round;
 
+            // 강화 탭: 집중·교차·납부 지원을 한 묶음으로 섞어서 뽑는다(상품마다 같은 확률, 이미 산 것은 빠짐).
             var used = new HashSet<ShopItemDefinition>();
-            AddFrom(catalog.ItemsOf(ShopCategory.Focus), catalog.FocusSlots, used);
-            AddFrom(catalog.ItemsOf(ShopCategory.Cross), catalog.CrossSlots, used);
-
-            List<ShopItemDefinition> support = catalog.ItemsOf(ShopCategory.PaymentSupport);
-            bool supportShown = support.Count > 0 && rng.NextDouble() < catalog.PaymentSupportChance;
-            if (supportShown)
-            {
-                AddFrom(support, 1, used);
-            }
+            List<ShopItemDefinition> upgrades = catalog.ItemsOf(ShopCategory.Focus);
+            upgrades.AddRange(catalog.ItemsOf(ShopCategory.Cross));
+            upgrades.AddRange(catalog.ItemsOf(ShopCategory.PaymentSupport));
+            AddFrom(upgrades, catalog.UpgradeSlots, used);
 
             List<ShopItemDefinition> consumables = catalog.ItemsOf(ShopCategory.Consumable);
             if (catalog.ShowAllConsumables)
@@ -104,7 +100,7 @@ namespace ProjectCR
                     AddFrom(key, 1, used);
                 }
 
-                AddFrom(consumables, catalog.ConsumableSlots + (supportShown ? 0 : 1), used);
+                AddFrom(consumables, catalog.ConsumableSlots, used);
             }
 
             return offers;

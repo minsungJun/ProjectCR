@@ -91,21 +91,66 @@ namespace ProjectCR
             return !target.IsNone;
         }
 
+        /// <summary>숫자 칸(0~36)의 판 위 사각형(칸 단위). x는 열 방향, y는 위 줄에서 아래 줄 방향. 판정(<see cref="TryGetTarget"/>)과 같은 경계.</summary>
+        public Rect CellOf(int number)
+        {
+            if (number == 0)
+            {
+                return new Rect(zeroLeft, 0f, -zeroLeft, 3f);
+            }
+
+            int column = (number - 1) / 3;
+            int row = 3 * column + 3 - number;
+            return new Rect(column, row, 1f, 1f);
+        }
+
+        /// <summary>바깥 베팅 영역의 판 위 사각형(칸 단위). 바깥 베팅이 아니면 false. 판정과 같은 경계.</summary>
+        public bool TryGetOutsideArea(BetTarget target, out Rect area)
+        {
+            area = default;
+            switch (target.Kind)
+            {
+                case BetKind.Column3:
+                case BetKind.Column2:
+                case BetKind.Column1:
+                    int row = target.Kind == BetKind.Column3 ? 0 : target.Kind == BetKind.Column2 ? 1 : 2;
+                    area = new Rect(12f, row, columnRight - 12f, 1f);
+                    return true;
+
+                case BetKind.Dozen1:
+                case BetKind.Dozen2:
+                case BetKind.Dozen3:
+                    area = new Rect(4f * (target.Kind - BetKind.Dozen1), 3f, 4f, dozenBottom - 3f);
+                    return true;
+            }
+
+            for (int i = 0; i < EvenMoneyRow.Length; i++)
+            {
+                if (EvenMoneyRow[i] == target.Kind)
+                {
+                    area = new Rect(2f * i, dozenBottom, 2f, outsideBottom - dozenBottom);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>베팅 대상의 판 위 대표 위치(칩을 놓는 자리). 숫자·바깥은 칸 가운데, 안쪽은 경계·모서리 점.</summary>
         public Vector2 UnitsOf(BetTarget target)
         {
+            if (target.Kind == BetKind.Straight)
+            {
+                return CellOf(target.Number).center;
+            }
+
+            if (TryGetOutsideArea(target, out Rect area))
+            {
+                return area.center;
+            }
+
             switch (target.Kind)
             {
-                case BetKind.Straight:
-                    if (target.Number == 0)
-                    {
-                        return new Vector2(zeroLeft * 0.5f, 1.5f);
-                    }
-
-                    int column = (target.Number - 1) / 3;
-                    int row = 3 * column + 3 - target.Number;
-                    return new Vector2(column + 0.5f, row + 0.5f);
-
                 case BetKind.Split:
                 case BetKind.Street:
                 case BetKind.Corner:
@@ -115,29 +160,6 @@ namespace ProjectCR
                         if (spot.Target == target)
                         {
                             return new Vector2(spot.X, spot.Y);
-                        }
-                    }
-
-                    break;
-
-                case BetKind.Column3:
-                    return new Vector2((12f + columnRight) * 0.5f, 0.5f);
-                case BetKind.Column2:
-                    return new Vector2((12f + columnRight) * 0.5f, 1.5f);
-                case BetKind.Column1:
-                    return new Vector2((12f + columnRight) * 0.5f, 2.5f);
-
-                case BetKind.Dozen1:
-                case BetKind.Dozen2:
-                case BetKind.Dozen3:
-                    return new Vector2(4f * (target.Kind - BetKind.Dozen1) + 2f, (3f + dozenBottom) * 0.5f);
-
-                default:
-                    for (int i = 0; i < EvenMoneyRow.Length; i++)
-                    {
-                        if (EvenMoneyRow[i] == target.Kind)
-                        {
-                            return new Vector2(2f * i + 1f, (dozenBottom + outsideBottom) * 0.5f);
                         }
                     }
 

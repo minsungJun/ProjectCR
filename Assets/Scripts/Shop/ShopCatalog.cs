@@ -7,7 +7,8 @@ namespace ProjectCR
     /// 판매 가능한 상품 목록과 진열 규칙(정적 데이터).
     /// 라운드마다 진열을 한 번 만든다. 상점 창은 [소모품] / [강화] 두 탭이다.
     /// - 소모품 탭: 소모품 전부(showAllConsumables, 기본). 끄면 예전처럼 고정 1칸 + 무작위 칸.
-    /// - 강화 탭: 분류를 먼저 정하고 그 안에서 뽑아서(30종인 교차 강화가 덮지 않게) 집중 2, 교차 2, 납부 지원(확률).
+    /// - 강화 탭: 지속 효과 상품(집중·교차·납부 지원)을 분류 구분 없이 모두 섞어 upgradeSlots(4)개를 뽑는다(2026-10-09 사용자 요청).
+    ///   상품마다 같은 확률이라 종류가 많은 교차 강화(30종)가 자주 나온다.
     /// </summary>
     [CreateAssetMenu(fileName = "ShopCatalog", menuName = "ProjectCR/Shop Catalog")]
     public class ShopCatalog : ScriptableObject
@@ -18,11 +19,9 @@ namespace ProjectCR
         [SerializeField] private Sprite moneyIcon;
 
         [Header("진열")]
+        [Tooltip("강화 탭 칸 수. 집중·교차·납부 지원을 모두 섞어서 이만큼 뽑는다(이미 산 지속 효과는 빠진다).")]
         [Min(0)]
-        [SerializeField] private int focusSlots = 2;
-
-        [Min(0)]
-        [SerializeField] private int crossSlots = 2;
+        [SerializeField] private int upgradeSlots = 4;
 
         [Tooltip("소모품 탭에 소모품을 전부 진열한다. 끄면 아래 두 설정(고정 칸, 무작위 칸)을 쓴다.")]
         [SerializeField] private bool showAllConsumables = true;
@@ -37,18 +36,12 @@ namespace ProjectCR
         [Tooltip("1라운드 시작(첫 회전 전)에도 상점을 연다. 끄면 라운드를 하나 통과한 뒤부터 열린다.")]
         [SerializeField] private bool openOnFirstRound;
 
-        [Tooltip("납부 지원금이 진열될 확률.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float paymentSupportChance = 0.5f;
-
         public IReadOnlyList<ShopItemDefinition> Items => items;
         public Sprite MoneyIcon => moneyIcon;
         public bool ShowAllConsumables => showAllConsumables;
-        public int FocusSlots => focusSlots;
-        public int CrossSlots => crossSlots;
+        public int UpgradeSlots => upgradeSlots;
         public bool KeyConsumableSlot => keyConsumableSlot;
         public int ConsumableSlots => consumableSlots;
-        public float PaymentSupportChance => paymentSupportChance;
         public bool OpenOnFirstRound => openOnFirstRound;
 
         public List<ShopItemDefinition> ItemsOf(ShopCategory category)
@@ -66,13 +59,13 @@ namespace ProjectCR
         }
 
         /// <summary>코드로 만든다(테스트, 기본 에셋 생성).</summary>
-        public static ShopCatalog Create(IEnumerable<ShopItemDefinition> items, float paymentSupportChance = 0.5f, bool openOnFirstRound = false)
+        public static ShopCatalog Create(IEnumerable<ShopItemDefinition> items, bool openOnFirstRound = false, int upgradeSlots = 4)
         {
             var catalog = CreateInstance<ShopCatalog>();
             catalog.name = "ShopCatalog";
             catalog.items = new List<ShopItemDefinition>(items).ToArray();
-            catalog.paymentSupportChance = paymentSupportChance;
             catalog.openOnFirstRound = openOnFirstRound;
+            catalog.upgradeSlots = upgradeSlots;
             return catalog;
         }
     }

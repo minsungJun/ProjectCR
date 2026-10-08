@@ -36,6 +36,8 @@ namespace ProjectCR.Editor
         private const string GridName = "CRT_Bet_Grid_Merged_Zero";
         private const string DisplayScreenName = "CRT_Display_Black_Screen";
         private const string HoverMaterialPath = "Assets/Materials/Table_Hover.mat";
+        private const string HighlightMaterialPath = "Assets/Materials/Table_BetHighlight.mat";
+        private const string HighlightObjectName = "BetHighlight";
 
         // 잔액 표시 장치를 태블릿으로 바꾼다(2026-10-09). 태블릿은 새 모델에서 뽑아 낸 독립 프리팹이고,
         // 놓는 자리는 그 모델에서 잰 태블릿 아랫면 가운데(모델 로컬 좌표).
@@ -433,6 +435,7 @@ namespace ProjectCR.Editor
             hover.transform.SetParent(board, false);
             hover.transform.localScale = new Vector3(0.022f, 0.0006f, 0.022f);
             hover.GetComponent<Renderer>().sharedMaterial = HoverMaterial();
+            BetHighlightView highlight = BuildHighlight(board, tableBoard);
 
             // 태블릿 프리팹이 있으면 옛 잔액 표시 장치를 끄고 태블릿을 쓴다(보유 금액 + 이번 판 베팅 + 버튼).
             TabletPanel tablet = AssetDatabase.LoadAssetAtPath<GameObject>(TabletPrefabPath) != null ? BuildTablet(model) : null;
@@ -459,6 +462,7 @@ namespace ProjectCR.Editor
 
             so.FindProperty("chipHeight").floatValue = WorldBounds(templates[0].transform).size.y;
             Set(so, "hoverMarker", hover.transform);
+            Set(so, "highlight", highlight);
             Set(so, "balanceText", balanceText);
             Set(so, "dueText", tablet != null ? tablet.DueValue : null);
             Set(so, "tablet", tablet);
@@ -504,6 +508,68 @@ namespace ProjectCR.Editor
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        /// <summary>
+        /// 이미 만든 RouletteRoot_CRR 프리팹에 판 위 호버 강조(BetHighlight)를 붙인다. 다시 돌려도 하나만 생긴다.
+        /// 프리팹을 다시 빌드하지 않아 다른 씬 오버라이드는 그대로 남는다.
+        /// </summary>
+        [MenuItem("Tools/ProjectCR/Model (CRR)/Add Bet Highlight")]
+        public static void AddBetHighlight()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(RoulettePrefabPath);
+            try
+            {
+                TableChipView view = root.GetComponentInChildren<TableChipView>(true)
+                    ?? throw new InvalidOperationException("RouletteRoot_CRR에 TableChipView가 없다.");
+                TableBetBoard tableBoard = view.Board
+                    ?? throw new InvalidOperationException("TableChipView에 TableBetBoard가 없다.");
+
+                var so = new SerializedObject(view);
+                Set(so, "highlight", BuildHighlight(tableBoard.transform, tableBoard));
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, RoulettePrefabPath);
+                Debug.Log("[RouletteModelSetup] 판 위 호버 강조 추가");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>판 아래 BetHighlight 오브젝트(메시 + 전용 머티리얼 + BetHighlightView). 이미 있으면 지우고 다시 만든다.</summary>
+        private static BetHighlightView BuildHighlight(Transform board, TableBetBoard tableBoard)
+        {
+            Transform old = board.Find(HighlightObjectName);
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            var go = new GameObject(HighlightObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(BetHighlightView));
+            go.transform.SetParent(board, false);
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = HighlightMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            var view = go.GetComponent<BetHighlightView>();
+            view.Configure(tableBoard);
+            return view;
+        }
+
+        /// <summary>강조 전용 머티리얼: 정점 색을 쓰는 반투명·양면·깊이 쓰기 없음(Sprites/Default). 다른 머티리얼은 건드리지 않는다.</summary>
+        private static Material HighlightMaterial()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(HighlightMaterialPath);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Sprites/Default"));
+                AssetDatabase.CreateAsset(material, HighlightMaterialPath);
+            }
+
+            return material;
         }
 
         /// <summary>

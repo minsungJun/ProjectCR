@@ -20,52 +20,126 @@
     font-size: 20px;
 }
 
-/* ---------- 상태 바 ---------- */
+/* ---------- 옵션 (오른쪽 위) ---------- */
 
-.topbar {
-    flex-direction: row;
-    align-items: center;
-    height: 56px;
-    padding-left: 24px;
-    padding-right: 16px;
+.options {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    align-items: flex-end;
+}
+
+.options-button {
+    min-width: 88px;
+}
+
+.options-menu {
+    margin-top: 4px;
+    padding: 6px;
     background-color: var(--ink);
-    border-bottom-width: 1px;
-    border-bottom-color: var(--line);
+    border-width: 1px;
+    border-color: var(--line);
+    border-radius: 8px;
+    display: none;
 }
 
-.stat {
-    margin-right: 32px;
-    font-size: 22px;
-    -unity-font-style: bold;
+.options-menu--open {
+    display: flex;
 }
 
-.stat--money {
-    color: var(--gold);
+.options-item {
+    min-width: 140px;
 }
 
 .spacer {
     flex-grow: 1;
 }
 
-.seed {
-    margin-right: 16px;
-    font-size: 14px;
-    color: var(--muted);
-}
+/* ---------- 결과 (왼쪽 위) ---------- */
 
-/* ---------- 결과 (상태 바 아래 왼쪽) ---------- */
-
-.result-panel {
+.result-area {
     position: absolute;
     left: 24px;
-    top: 68px;
+    top: 16px;
     max-width: 1100px;
+    align-items: flex-start;
+}
+
+.result-panel {
     padding: 10px 16px;
+    flex-direction: row;
+    align-items: center;
     background-color: var(--ink);
     border-radius: 8px;
 }
 
+/* 결과 숫자: 칸 색(빨강·검정·초록, 해골은 보라) 배경의 작은 패. 회전 결과일 때만 보인다. */
+.result-balls {
+    flex-direction: row;
+    flex-shrink: 0;
+    margin-right: 6px;
+    display: none;
+}
+
+.result-ball {
+    min-width: 40px;
+    height: 40px;
+    margin-right: 6px;
+    padding: 0 6px 0 6px;
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(250, 246, 236);
+    border-width: 2px;
+    border-color: rgba(240, 220, 170, 0.75);
+    border-radius: 6px;
+}
+
+/* 이전에 나온 숫자(최근 것이 왼쪽). 결과 패보다 작게. */
+.result-history {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 6px;
+    padding: 6px 12px;
+    background-color: var(--ink);
+    border-radius: 8px;
+    display: none;
+}
+
+.result-history__label {
+    margin-right: 8px;
+    font-size: 15px;
+    color: var(--muted);
+}
+
+.result-ball--small {
+    min-width: 28px;
+    height: 28px;
+    margin-right: 4px;
+    padding: 0 4px 0 4px;
+    font-size: 15px;
+    border-width: 1px;
+    border-radius: 5px;
+}
+
+.result-ball--red {
+    background-color: rgb(176, 34, 40);
+}
+
+.result-ball--black {
+    background-color: rgb(22, 22, 26);
+}
+
+.result-ball--green {
+    background-color: rgb(20, 110, 62);
+}
+
+.result-ball--skull {
+    background-color: rgb(115, 81, 152);
+}
+
 .result {
+    flex-shrink: 1;
     font-size: 24px;
     -unity-font-style: bold;
     white-space: normal;
@@ -75,107 +149,22 @@
     color: rgb(255, 120, 110);
 }
 
-.history {
-    margin-top: 4px;
-    font-size: 15px;
+.result--gain {
+    color: rgb(240, 192, 80);
+}
+
+.result-separator {
+    margin-left: 4px;
+    font-size: 24px;
     color: var(--muted);
+    -unity-text-align: middle-left;
 }
 
-/* ---------- 베팅 요약·회전 (화면 아래 띠) ---------- */
-
-.control-panel {
-    position: absolute;
-    left: 24px;
-    right: 24px;
-    bottom: 16px;
-    flex-direction: row;
-    align-items: center;
-    padding: 10px 16px;
-    background-color: var(--ink);
-    border-radius: 10px;
-    border-width: 1px;
-    border-color: var(--line);
-}
-
-.info {
-    flex-grow: 1;
-    flex-shrink: 1;
-    margin-right: 16px;
-}
-
-.row {
-    flex-direction: row;
-    align-items: center;
-    min-height: 26px;
-}
-
-.field-label {
-    width: 52px;
-    color: var(--muted);
-}
-
-.field-value {
-    margin-right: 16px;
-    font-size: 18px;
+.result-prefix {
+    margin-right: 10px;
+    font-size: 24px;
     -unity-font-style: bold;
-}
-
-.chip-value {
-    min-width: 80px;
-    margin-right: 16px;
-    font-size: 22px;
-    -unity-font-style: bold;
-    color: var(--gold);
-}
-
-.hover-target {
-    flex-grow: 1;
-    font-size: 15px;
-    color: var(--muted);
-}
-
-.skull-notice {
-    font-size: 15px;
-    color: rgb(232, 224, 200);
-}
-
-.bet-list {
-    flex-grow: 1;
-    flex-shrink: 1;
-    font-size: 15px;
-    color: var(--muted);
-    overflow: hidden;
-}
-
-.preview {
-    margin-right: 16px;
-    font-size: 15px;
-    color: var(--gold);
-}
-
-.error {
-    font-size: 15px;
-    color: rgb(255, 120, 110);
-}
-
-.button-row {
-    flex-direction: row;
-    align-items: center;
-    width: 760px;
-}
-
-/* 상점 버튼: 호두나무 바탕에 황동 테두리. */
-.btn--shop {
-    background-color: rgb(58, 36, 22);
-    border-width: 2px;
-    border-color: rgb(198, 154, 78);
-    color: rgb(241, 232, 210);
-    font-size: 20px;
-    -unity-font-style: bold;
-}
-
-.btn--shop:hover {
-    background-color: rgb(78, 50, 30);
+    -unity-text-align: middle-left;
 }
 
 /* ---------- 버튼 ---------- */
@@ -197,12 +186,6 @@
     height: 36px;
     padding-left: 12px;
     padding-right: 12px;
-    font-size: 16px;
-}
-
-.btn--wide {
-    width: 150px;
-    height: 64px;
     font-size: 16px;
 }
 
@@ -867,4 +850,64 @@
     background-color: rgb(200, 156, 72);
     border-width: 0;
     border-radius: 5px;
+}
+
+/* ---------- 판 위 호버 안내 ----------
+   커서 위쪽에 뜨는 작은 툴팁. 짙은 녹색 + 황동 테두리 + 아이보리 글자, 강화된 최종 배율만 금색으로 강조.
+   위치는 RouletteHud.MoveBetTooltip이 매 프레임 left/top으로 잡는다(화면 가장자리에서 안으로 밀고, 위가 모자라면 커서 아래로). */
+
+.bet-tooltip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 8px 14px 9px 14px;
+    background-color: rgba(12, 44, 30, 0.94);
+    border-width: 2px;
+    border-color: rgb(200, 156, 72);
+    border-radius: 7px;
+    display: none;
+}
+
+.bet-tooltip__head {
+    flex-direction: row;
+    align-items: center;
+}
+
+.bet-tooltip__kind {
+    font-size: 19px;
+    -unity-font-style: bold;
+    color: rgb(244, 236, 216);
+}
+
+.bet-tooltip__base {
+    margin-left: 8px;
+    font-size: 16px;
+    color: rgb(170, 186, 168);
+}
+
+.bet-tooltip__final {
+    margin-left: 6px;
+    font-size: 21px;
+    -unity-font-style: bold;
+    color: rgb(244, 236, 216);
+}
+
+.bet-tooltip__final--boosted {
+    color: rgb(240, 192, 80);
+}
+
+.bet-tooltip__targets {
+    margin-top: 2px;
+    font-size: 17px;
+    color: rgb(236, 228, 206);
+}
+
+.bet-tooltip__stake {
+    margin-top: 3px;
+    font-size: 15px;
+    color: rgb(200, 210, 186);
+}
+
+.bet-tooltip__stake--short {
+    color: rgb(150, 150, 136);
 }

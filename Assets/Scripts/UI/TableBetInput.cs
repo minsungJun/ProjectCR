@@ -33,6 +33,12 @@ namespace ProjectCR
         private BetTarget hover = BetTarget.None;
         private TabletButton hoveredButton;
 
+        /// <summary>지금 마우스가 가리키는 베팅 대상(클릭하면 이 대상에 놓인다). 판 밖·HUD 위·트레이·태블릿이면 None.</summary>
+        public BetTarget CurrentHover => hover;
+
+        /// <summary>마지막으로 읽은 마우스 화면 좌표(Input System, 왼쪽 아래 원점).</summary>
+        public Vector2 PointerScreen { get; private set; }
+
         private void Update()
         {
             Mouse mouse = Mouse.current;
@@ -43,6 +49,7 @@ namespace ProjectCR
             }
 
             Vector2 screen = mouse.position.ReadValue();
+            PointerScreen = screen;
             if (hud != null && hud.IsPointerOverUi(screen))
             {
                 SetHover(BetTarget.None);

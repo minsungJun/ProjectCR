@@ -30,7 +30,7 @@ namespace ProjectCR.Tests
 
         /// <summary>지정한 상품만 있는 목록(진열에 반드시 나온다).</summary>
         private ShopCatalog Only(params string[] ids) =>
-            ShopCatalog.Create(all.Where(i => ids.Contains(i.Id)), paymentSupportChance: 1f, openOnFirstRound: true);
+            ShopCatalog.Create(all.Where(i => ids.Contains(i.Id)), openOnFirstRound: true);
 
         private GameFlowController Flow(ShopCatalog catalog, int seed = 3) => new GameFlowController(definition, balance, seed, null, catalog);
 
@@ -169,17 +169,41 @@ namespace ProjectCR.Tests
             twin.EnterShop();
             CollectionAssert.AreEqual(first.Select(i => i.Id), twin.Shop.Offers.Select(o => o.Item.Id));
 
-            // 강화 탭: 집중 2, 교차 2, 납부 지원(확률 0~1). 소모품 탭: 소모품 4종 전부(목록 순서).
-            int support = first.Count(i => i.Category == ShopCategory.PaymentSupport);
-            Assert.LessOrEqual(support, 1);
-            Assert.AreEqual(8 + support, first.Count);
-            Assert.AreEqual(2, first.Count(i => i.Category == ShopCategory.Focus));
-            Assert.AreEqual(2, first.Count(i => i.Category == ShopCategory.Cross));
+            // 강화 탭: 지속 효과 4개(분류 섞어서). 소모품 탭: 소모품 4종 전부(목록 순서).
+            Assert.AreEqual(8, first.Count);
+            Assert.AreEqual(4, first.Count(i => i.IsPermanent));
             CollectionAssert.AreEqual(
                 all.Where(i => i.Category == ShopCategory.Consumable).Select(i => i.Id),
                 first.Where(i => i.Category == ShopCategory.Consumable).Select(i => i.Id),
                 "소모품은 전부, 목록 순서대로.");
             Assert.AreEqual(first.Count, first.Distinct().Count());
+        }
+
+        [Test]
+        public void UpgradeDisplay_MixesAllCategories_UniformlyPerItem()
+        {
+            // 집중 6 · 교차 30 · 납부 지원 1 = 37종에서 4개. 상품마다 4/37 확률이라 분류별 기대 진열 수는 0.65 · 3.24 · 0.11.
+            var counts = new Dictionary<ShopCategory, int>();
+            var itemSeen = new HashSet<string>();
+            const int runs = 3000;
+            for (int seed = 1; seed <= runs; seed++)
+            {
+                GameFlowController flow = Flow(assets.Shop(), seed);
+                flow.EnterShop();
+                var upgrades = flow.Shop.Offers.Where(o => o.Item.IsPermanent).Select(o => o.Item).ToList();
+                Assert.AreEqual(4, upgrades.Count);
+                Assert.AreEqual(4, upgrades.Distinct().Count());
+                foreach (ShopItemDefinition item in upgrades)
+                {
+                    counts[item.Category] = (counts.TryGetValue(item.Category, out int c) ? c : 0) + 1;
+                    itemSeen.Add(item.Id);
+                }
+            }
+
+            Assert.AreEqual(37, itemSeen.Count, "모든 강화 상품이 나올 수 있다");
+            Assert.AreEqual(runs * 4 * 6 / 37d, counts[ShopCategory.Focus], runs * 4 * 6 / 37d * 0.12, "집중");
+            Assert.AreEqual(runs * 4 * 30 / 37d, counts[ShopCategory.Cross], runs * 4 * 30 / 37d * 0.05, "교차");
+            Assert.AreEqual(runs * 4 * 1 / 37d, counts[ShopCategory.PaymentSupport], runs * 4 * 1 / 37d * 0.3, "납부 지원");
         }
 
         [Test]
@@ -410,7 +434,7 @@ namespace ProjectCR.Tests
         [Test]
         public void FullCatalog_SkipsBoughtPermanents_ButNotConsumables()
         {
-            var flow = Flow(assets.Shop(supportChance: 1f), seed: 8);
+            var flow = Flow(assets.Shop(), seed: 8);
             flow.Wallet.Add(100_000);
             flow.EnterShop();
             var bought = new List<ShopItemDefinition>();

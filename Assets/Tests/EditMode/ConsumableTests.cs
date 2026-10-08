@@ -29,7 +29,7 @@ namespace ProjectCR.Tests
         /// <summary>그 상품만 있는 상점에서 n개 사서 보관한 상태(상점 안).</summary>
         private GameFlowController Bought(string id, int count, int seed = 5)
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == id), paymentSupportChance: 1f, openOnFirstRound: true);
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == id), openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, seed, null, only);
             flow.Wallet.Add(10_000);
             Assert.IsTrue(flow.EnterShop());
@@ -220,7 +220,7 @@ namespace ProjectCR.Tests
         [Test]
         public void PaymentSupport_NoRefund_WhenPaymentFails_OrWithoutIt()
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "payment_support"), paymentSupportChance: 1f, openOnFirstRound: true);
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "payment_support"), openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, 5, null, only);
             flow.EnterShop();
             flow.Shop.Buy(0, BetTarget.None);
