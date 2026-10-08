@@ -3,26 +3,33 @@ using System.Collections.Generic;
 
 namespace ProjectCR
 {
-    public readonly struct BallPayout
+    /// <summary>베팅 하나의 정산. 공 여러 개 중 몇 개가 이 베팅에 들어갔는지(Hits)와 지급액.</summary>
+    public readonly struct BetPayout
     {
-        public BallPayout(BallResult ball, bool isWin, long amount)
+        public BetPayout(ConfirmedBet bet, int hits, long amount)
         {
-            Ball = ball;
-            IsWin = isWin;
+            Bet = bet;
+            Hits = hits;
             Amount = amount;
         }
 
-        public BallResult Ball { get; }
-        public bool IsWin { get; }
+        public ConfirmedBet Bet { get; }
+
+        /// <summary>이 베팅에 들어간 공 수. 해골 회전이면 0.</summary>
+        public int Hits { get; }
 
         /// <summary>원금 포함 지급액. 낙첨이면 0.</summary>
         public long Amount { get; }
+
+        public bool IsWin => Amount > 0;
     }
 
     /// <summary>회전 하나의 전체 결과. 해골 낙첨은 일반 낙첨과 이유가 달라서 따로 둔다.</summary>
     public enum SpinOutcome
     {
+        /// <summary>지급액이 하나라도 있다. 여러 베팅이면 손익은 마이너스일 수도 있다(<see cref="SettlementResult.Net"/>).</summary>
         Win,
+
         Lose,
 
         /// <summary>공 하나라도 해골에 걸려 이 회전의 모든 베팅이 낙첨. 게임 진행은 일반 회전과 같다.</summary>
@@ -31,36 +38,55 @@ namespace ProjectCR
 
     public sealed class SettlementResult
     {
-        public SettlementResult(ConfirmedBet bet, SpinResult spin, IReadOnlyList<BallPayout> balls, long totalPayout, SpinOutcome outcome)
+        public SettlementResult(IReadOnlyList<BetPayout> bets, SpinResult spin, long totalStake, long totalPayout, SpinOutcome outcome)
         {
-            Bet = bet;
+            Bets = bets;
             Spin = spin;
-            Balls = balls;
+            TotalStake = totalStake;
             TotalPayout = totalPayout;
             Outcome = outcome;
         }
 
-        public ConfirmedBet Bet { get; }
+        /// <summary>놓은 순서대로의 베팅별 정산.</summary>
+        public IReadOnlyList<BetPayout> Bets { get; }
+
         public SpinResult Spin { get; }
-        public IReadOnlyList<BallPayout> Balls { get; }
         public SpinOutcome Outcome { get; }
 
         public bool IsSkullBust => Outcome == SpinOutcome.SkullBust;
 
-        /// <summary>공별 지급액의 합(원금 포함).</summary>
+        /// <summary>이번 회전에 건 금액 합계(회전 시작 때 이미 차감됨).</summary>
+        public long TotalStake { get; }
+
+        /// <summary>베팅별 지급액의 합(원금 포함).</summary>
         public long TotalPayout { get; }
 
-        /// <summary>이번 회전의 손익. 베팅은 이미 차감되었으므로 지급액 − 베팅액.</summary>
-        public long Net => TotalPayout - Bet.Stake;
+        /// <summary>이번 회전의 손익 = 지급액 − 건 금액.</summary>
+        public long Net => TotalPayout - TotalStake;
 
+        /// <summary>(베팅, 공) 적중 수의 합. 베팅 하나면 맞힌 공 수와 같다.</summary>
         public int WinCount
         {
             get
             {
                 int count = 0;
-                foreach (BallPayout ball in Balls)
+                foreach (BetPayout bet in Bets)
                 {
-                    if (ball.IsWin)
+                    count += bet.Hits;
+                }
+
+                return count;
+            }
+        }
+
+        public int WinningBetCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (BetPayout bet in Bets)
+                {
+                    if (bet.IsWin)
                     {
                         count++;
                     }
@@ -79,35 +105,61 @@ namespace ProjectCR
     /// 1. <b>해골 판정이 맨 먼저다.</b> 공 하나라도 해골이면 모든 베팅 낙첨, 지급 0. 베팅금은 돌려주지 않는다.
     ///    지급 배율·당첨 보너스·낙첨 환급은 이 뒤 단계라 해골 회전에는 적용되지 않는다.
     ///    "해골에도 환급" 같은 효과는 나중에 SkullBust 전용 단계로 따로 붙인다.
-    /// 2. 해골이 없으면 공별로 판정해 합산한다.
+    /// 2. 해골이 없으면 베팅마다, 공마다 판정해 지급액을 모두 더한다.
     /// </summary>
     public static class PayoutCalculator
     {
-        /// <param name="payoutMultiplier">이 베팅 종류의 원금 포함 배수. 보통 <see cref="SpinConfig.PayoutFor"/>.</param>
+        public static SettlementResult Calculate(IReadOnlyList<ConfirmedBet> bets, SpinResult spin, SpinConfig config, long maxMoney)
+        {
+            return Calculate(bets, spin, config.PayoutFor, maxMoney);
+        }
+
+        /// <summary>베팅 하나짜리. payoutMultiplier는 이 베팅 종류의 원금 포함 배수.</summary>
         public static SettlementResult Calculate(ConfirmedBet bet, SpinResult spin, int payoutMultiplier, long maxMoney)
         {
-            var balls = new List<BallPayout>(spin.Balls.Count);
+            return Calculate(new[] { bet }, spin, _ => payoutMultiplier, maxMoney);
+        }
+
+        public static SettlementResult Calculate(IReadOnlyList<ConfirmedBet> bets, SpinResult spin, Func<BetTarget, int> payoutFor, long maxMoney)
+        {
+            var results = new List<BetPayout>(bets.Count);
+            long totalStake = 0;
+            foreach (ConfirmedBet bet in bets)
+            {
+                totalStake += bet.Stake;
+            }
 
             if (spin.HasSkull)
             {
-                foreach (BallResult ball in spin.Balls)
+                foreach (ConfirmedBet bet in bets)
                 {
-                    balls.Add(new BallPayout(ball, false, 0));
+                    results.Add(new BetPayout(bet, 0, 0));
                 }
 
-                return new SettlementResult(bet, spin, balls, 0, SpinOutcome.SkullBust);
+                return new SettlementResult(results, spin, totalStake, 0, SpinOutcome.SkullBust);
             }
 
             long total = 0;
-            foreach (BallResult ball in spin.Balls)
+            foreach (ConfirmedBet bet in bets)
             {
-                bool isWin = Covers(bet, ball);
-                long amount = isWin ? ScaledPayout(bet.Stake, payoutMultiplier, maxMoney) : 0;
-                balls.Add(new BallPayout(ball, isWin, amount));
+                int hits = 0;
+                long amount = 0;
+                long perHit = ScaledPayout(bet.Stake, payoutFor(bet.Target), maxMoney);
+
+                foreach (BallResult ball in spin.Balls)
+                {
+                    if (Covers(bet, ball))
+                    {
+                        hits++;
+                        amount = SaturatingAdd(amount, perHit, maxMoney);
+                    }
+                }
+
+                results.Add(new BetPayout(bet, hits, amount));
                 total = SaturatingAdd(total, amount, maxMoney);
             }
 
-            return new SettlementResult(bet, spin, balls, total, total > 0 ? SpinOutcome.Win : SpinOutcome.Lose);
+            return new SettlementResult(results, spin, totalStake, total, total > 0 ? SpinOutcome.Win : SpinOutcome.Lose);
         }
 
         /// <summary>베팅이 이 공의 칸을 포함하는가. 해골 칸은 어떤 베팅에도 포함되지 않는다(<see cref="BetTarget.Covers"/>).</summary>

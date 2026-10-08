@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace ProjectCR.Tests
@@ -58,7 +59,7 @@ namespace ProjectCR.Tests
             Assert.AreEqual(0, PayoutCalculator.Calculate(bet, SpinResult.FromNumbers(definition, 3, 4), 36, Max).TotalPayout);
 
             SettlementResult both = PayoutCalculator.Calculate(bet, SpinResult.FromNumbers(definition, 17, 17), 36, Max);
-            Assert.AreEqual(2, both.Balls.Count);
+            Assert.AreEqual(2, both.Spin.Balls.Count);
             Assert.AreEqual(2, both.WinCount);
         }
 
@@ -99,22 +100,19 @@ namespace ProjectCR.Tests
             var wallet = new Wallet(100, Max);
             var bet = new BetManager(definition, 5);
 
-            bet.SetStake(10);
-            Assert.AreEqual(BetError.NoTargetSelected, bet.TryConfirm(wallet, out _));
+            Assert.AreEqual(BetError.NoBetsPlaced, bet.TryConfirm(wallet, out _));
 
-            Assert.AreEqual(BetError.InvalidNumber, bet.SelectNumber(37));
-            Assert.AreEqual(BetError.InvalidNumber, bet.SelectNumber(-3));
+            Assert.AreEqual(BetError.InvalidNumber, bet.PlaceBet(BetTarget.Straight(37), 10, wallet));
+            Assert.AreEqual(BetError.InvalidNumber, bet.PlaceBet(BetTarget.Straight(-3), 10, wallet));
+            Assert.AreEqual(BetError.NonPositive, bet.PlaceBet(BetTarget.Straight(7), 0, wallet));
+            Assert.AreEqual(BetError.NonPositive, bet.PlaceBet(BetTarget.Straight(7), -50, wallet));
+            Assert.AreEqual(BetError.BelowMinimum, bet.PlaceBet(BetTarget.Straight(7), 4, wallet));
+            Assert.AreEqual(BetError.InsufficientFunds, bet.PlaceBet(BetTarget.Straight(7), 101, wallet));
 
-            bet.SelectNumber(7);
-            bet.SetStake(0);
-            Assert.AreEqual(BetError.NonPositive, bet.TryConfirm(wallet, out _));
-            bet.SetStake(-50);
-            Assert.AreEqual(BetError.NonPositive, bet.TryConfirm(wallet, out _));
-            bet.SetStake(4);
-            Assert.AreEqual(BetError.BelowMinimum, bet.TryConfirm(wallet, out _));
-            bet.SetStake(101);
-            Assert.AreEqual(BetError.InsufficientFunds, bet.TryConfirm(wallet, out _));
+            bet.SetChipValue(4);
+            Assert.AreEqual(BetError.BelowMinimum, bet.PlaceChip(BetTarget.Straight(7), wallet));
 
+            Assert.IsFalse(bet.HasBets);
             Assert.AreEqual(100, wallet.Balance);
             Assert.IsFalse(bet.IsLocked);
         }
@@ -124,23 +122,30 @@ namespace ProjectCR.Tests
         {
             var wallet = new Wallet(100, Max);
             var bet = new BetManager(definition, 1);
-            bet.SelectNumber(7);
-            bet.SetStake(100);
+            bet.SetChipValue(80);
+            Assert.AreEqual(BetError.None, bet.PlaceBet(BetTarget.Straight(7), 60, wallet));
+            Assert.AreEqual(BetError.None, bet.PlaceBet(BetTarget.Outside(BetKind.Red), 40, wallet));
+            Assert.AreEqual(BetError.InsufficientFunds, bet.PlaceBet(BetTarget.Straight(8), 1, wallet), "합계가 보유 금액을 넘으면 놓을 수 없다.");
 
-            Assert.AreEqual(BetError.None, bet.TryConfirm(wallet, out ConfirmedBet confirmed));
-            Assert.AreEqual(7, confirmed.Target.Number);
-            Assert.AreEqual(100, confirmed.Stake);
-            Assert.AreEqual(0, wallet.Balance);
+            Assert.AreEqual(BetError.None, bet.TryConfirm(wallet, out IReadOnlyList<ConfirmedBet> confirmed));
+            Assert.AreEqual(2, confirmed.Count);
+            Assert.AreEqual(7, confirmed[0].Target.Number);
+            Assert.AreEqual(60, confirmed[0].Stake);
+            Assert.AreEqual(BetKind.Red, confirmed[1].Target.Kind);
+            Assert.AreEqual(0, wallet.Balance, "합계 100을 한 번에 뺀다.");
 
             Assert.AreEqual(BetError.NotInBettingPhase, bet.TryConfirm(wallet, out _));
-            Assert.AreEqual(BetError.NotInBettingPhase, bet.SelectNumber(8));
-            Assert.AreEqual(BetError.NotInBettingPhase, bet.SetStake(1));
+            Assert.AreEqual(BetError.NotInBettingPhase, bet.PlaceChip(BetTarget.Straight(8), wallet));
+            Assert.AreEqual(BetError.NotInBettingPhase, bet.ClearBets());
+            Assert.AreEqual(BetError.NotInBettingPhase, bet.UndoLastChip());
+            Assert.AreEqual(BetError.NotInBettingPhase, bet.RemoveBet(BetTarget.Straight(7)));
+            Assert.AreEqual(BetError.NotInBettingPhase, bet.SetChipValue(1));
             Assert.AreEqual(0, wallet.Balance);
 
             bet.Unlock(40);
             Assert.IsFalse(bet.IsLocked);
-            Assert.AreEqual(40, bet.Stake, "잔액보다 큰 금액은 잔액으로 줄인다.");
-            Assert.AreEqual(7, bet.SelectedNumber, "번호는 다음 베팅에도 남는다.");
+            Assert.AreEqual(2, bet.Count, "베팅은 다음 회전에도 판에 남는다.");
+            Assert.AreEqual(40, bet.ChipValue, "잔액보다 큰 칩 금액은 잔액으로 줄인다.");
         }
     }
 }

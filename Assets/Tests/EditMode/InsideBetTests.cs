@@ -135,12 +135,12 @@ namespace ProjectCR.Tests
         [Test]
         public void NonAdjacentCombinations_AreRejected()
         {
-            Assert.AreEqual(BetError.InvalidTarget, flow.SelectTarget(BetTarget.Inside(BetKind.Split, 1, 5)));
-            Assert.AreEqual(BetError.InvalidTarget, flow.SelectTarget(BetTarget.Inside(BetKind.Split, 3, 4)), "3(위 줄)과 4(아래 줄)는 붙어 있지 않다.");
-            Assert.AreEqual(BetError.InvalidTarget, flow.SelectTarget(BetTarget.Inside(BetKind.Street, 2, 3, 4)));
-            Assert.AreEqual(BetError.InvalidTarget, flow.SelectTarget(BetTarget.Inside(BetKind.Corner, 1, 2, 3, 4)));
-            Assert.AreEqual(BetError.InvalidTarget, flow.SelectTarget(BetTarget.Inside(BetKind.Split, 7, Skull)));
-            Assert.IsTrue(flow.Bet.Selection.IsNone);
+            Assert.AreEqual(BetError.InvalidTarget, flow.PlaceChip(BetTarget.Inside(BetKind.Split, 1, 5)));
+            Assert.AreEqual(BetError.InvalidTarget, flow.PlaceChip(BetTarget.Inside(BetKind.Split, 3, 4)), "3(위 줄)과 4(아래 줄)는 붙어 있지 않다.");
+            Assert.AreEqual(BetError.InvalidTarget, flow.PlaceChip(BetTarget.Inside(BetKind.Street, 2, 3, 4)));
+            Assert.AreEqual(BetError.InvalidTarget, flow.PlaceChip(BetTarget.Inside(BetKind.Corner, 1, 2, 3, 4)));
+            Assert.AreEqual(BetError.InvalidTarget, flow.PlaceChip(BetTarget.Inside(BetKind.Split, 7, Skull)));
+            Assert.IsFalse(flow.Bet.HasBets);
         }
 
         [Test]
@@ -213,17 +213,16 @@ namespace ProjectCR.Tests
         {
             BetTarget split = BetTarget.Inside(BetKind.Split, 26, 29);
             flow.ForcedNumbers = new[] { 29 };
-            Assert.AreEqual(BetError.None, flow.SelectTarget(split));
-            flow.SetStake(5);
+            Assert.AreEqual(BetError.None, flow.PlaceBet(split, 5));
 
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin spin));
             Assert.AreEqual(95, flow.Wallet.Balance);
-            Assert.AreEqual(BetError.NotInBettingPhase, flow.SelectTarget(BetTarget.Inside(BetKind.Split, 1, 2)));
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.PlaceChip(BetTarget.Inside(BetKind.Split, 1, 2)));
 
             Assert.IsTrue(flow.CompleteSpin(spin.Id, out SettlementResult settlement));
             Assert.AreEqual(90, settlement.TotalPayout);
             Assert.AreEqual(185, flow.Wallet.Balance);
-            Assert.AreEqual(split, flow.Bet.Selection);
+            Assert.AreEqual(5, flow.Bet.StakeOn(split));
         }
 
         [Test]

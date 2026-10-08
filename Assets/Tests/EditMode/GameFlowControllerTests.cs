@@ -23,8 +23,8 @@ namespace ProjectCR.Tests
         private ActiveSpin Spin(int number, long stake, int forced)
         {
             flow.ForcedNumbers = new[] { forced };
-            Assert.AreEqual(BetError.None, flow.SelectNumber(number));
-            Assert.AreEqual(BetError.None, flow.SetStake(stake));
+            Assert.AreEqual(BetError.None, flow.ClearBets());
+            Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Straight(number), stake));
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin spin));
             return spin;
         }
@@ -57,10 +57,15 @@ namespace ProjectCR.Tests
         {
             Spin(7, 10, forced: 8);
 
-            Assert.AreEqual(BetError.NotInBettingPhase, flow.SelectNumber(9));
-            Assert.AreEqual(BetError.NotInBettingPhase, flow.SetStake(50));
-            Assert.AreEqual(7, flow.CurrentSpin.Bet.Target.Number);
-            Assert.AreEqual(10, flow.CurrentSpin.Bet.Stake);
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.PlaceChip(BetTarget.Straight(9)));
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.PlaceBet(BetTarget.Outside(BetKind.Red), 5));
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.RemoveBet(BetTarget.Straight(7)));
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.UndoLastChip());
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.ClearBets());
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.SetChipValue(50));
+            Assert.AreEqual(1, flow.CurrentSpin.Bets.Count);
+            Assert.AreEqual(7, flow.CurrentSpin.Bets[0].Target.Number);
+            Assert.AreEqual(10, flow.CurrentSpin.Bets[0].Stake);
         }
 
         [Test]
@@ -89,10 +94,9 @@ namespace ProjectCR.Tests
         [Test]
         public void InvalidBet_DoesNotStartSpin()
         {
-            flow.SelectNumber(7);
-            flow.SetStake(500);
+            Assert.AreEqual(BetError.InsufficientFunds, flow.PlaceBet(BetTarget.Straight(7), 500));
 
-            Assert.AreEqual(BetError.InsufficientFunds, flow.TryBeginSpin(out _));
+            Assert.AreEqual(BetError.NoBetsPlaced, flow.TryBeginSpin(out _));
             Assert.AreEqual(GamePhase.Betting, flow.Phase);
             Assert.AreEqual(100, flow.Wallet.Balance);
             Assert.AreEqual(5, flow.Round.SpinsRemaining);
@@ -116,10 +120,10 @@ namespace ProjectCR.Tests
 
             for (int i = 0; i < 4; i++)
             {
-                flow.SelectNumber(1);
-                flow.SetStake(1);
-                other.SelectNumber(1);
-                other.SetStake(1);
+                flow.ClearBets();
+                flow.PlaceBet(BetTarget.Straight(1), 1);
+                other.ClearBets();
+                other.PlaceBet(BetTarget.Straight(1), 1);
                 flow.TryBeginSpin(out ActiveSpin a);
                 other.TryBeginSpin(out ActiveSpin b);
                 Assert.AreEqual(a.Result.Balls[0].Number, b.Result.Balls[0].Number);
@@ -134,8 +138,7 @@ namespace ProjectCR.Tests
             flow.ExtraBallCount = 1;
             flow.StraightPayoutOverride = 72;
             flow.ForcedNumbers = new[] { 7, 7 };
-            flow.SelectNumber(7);
-            flow.SetStake(10);
+            flow.PlaceBet(BetTarget.Straight(7), 10);
 
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin spin));
             Assert.AreEqual(2, spin.Result.Balls.Count);
@@ -213,12 +216,18 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void StakeShrinksToBalanceAfterLoss()
+        public void BetsStayAfterSpin_ButCannotExceedBalance()
         {
             SpinAndSettle(7, 60, forced: 8);
 
             Assert.AreEqual(40, flow.Wallet.Balance);
-            Assert.AreEqual(40, flow.Bet.Stake);
+            Assert.AreEqual(60, flow.Bet.TotalStake, "베팅은 판에 남는다.");
+            Assert.AreEqual(BetError.InsufficientFunds, flow.ValidateBet());
+            Assert.AreEqual(BetError.InsufficientFunds, flow.TryBeginSpin(out _));
+            Assert.AreEqual(40, flow.Wallet.Balance);
+
+            flow.ClearBets();
+            Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Straight(7), 40));
             Assert.AreEqual(BetError.None, flow.ValidateBet());
         }
     }

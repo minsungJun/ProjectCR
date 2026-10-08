@@ -169,8 +169,7 @@ namespace ProjectCR.Tests
         public void Flow_OutsideBet_UsesItsOwnMultiplier()
         {
             flow.ForcedNumbers = new[] { 25 };
-            Assert.AreEqual(BetError.None, flow.SelectTarget(BetTarget.Outside(BetKind.Dozen3)));
-            flow.SetStake(20);
+            Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Outside(BetKind.Dozen3), 20));
 
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin spin));
             Assert.AreEqual(80, flow.Wallet.Balance);
@@ -178,7 +177,7 @@ namespace ProjectCR.Tests
 
             Assert.AreEqual(60, settlement.TotalPayout);
             Assert.AreEqual(140, flow.Wallet.Balance);
-            Assert.AreEqual(BetTarget.Outside(BetKind.Dozen3), flow.Bet.Selection, "다음 베팅에도 선택이 남는다.");
+            Assert.AreEqual(20, flow.Bet.StakeOn(BetTarget.Outside(BetKind.Dozen3)), "다음 회전에도 베팅이 남는다.");
         }
 
         [Test]
@@ -196,33 +195,31 @@ namespace ProjectCR.Tests
         [Test]
         public void Flow_SelectionLockedDuringSpin()
         {
-            flow.SelectTarget(BetTarget.Outside(BetKind.Even));
-            flow.SetStake(10);
+            flow.PlaceBet(BetTarget.Outside(BetKind.Even), 10);
             flow.TryBeginSpin(out _);
 
-            Assert.AreEqual(BetError.NotInBettingPhase, flow.SelectTarget(BetTarget.Outside(BetKind.Odd)));
-            Assert.AreEqual(BetError.NotInBettingPhase, flow.SelectNumber(7));
-            Assert.AreEqual(BetTarget.Outside(BetKind.Even), flow.CurrentSpin.Bet.Target);
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.PlaceChip(BetTarget.Outside(BetKind.Odd)));
+            Assert.AreEqual(BetError.NotInBettingPhase, flow.PlaceChip(BetTarget.Straight(7)));
+            Assert.AreEqual(BetTarget.Outside(BetKind.Even), flow.CurrentSpin.Bets[0].Target);
         }
 
         [Test]
-        public void SwitchingBetweenNumberAndOutside_ReplacesSelection()
+        public void NumberAndOutsideBets_CanBeCombined()
         {
-            flow.SelectNumber(7);
-            Assert.AreEqual(7, flow.Bet.SelectedNumber);
+            flow.PlaceBet(BetTarget.Straight(7), 5);
+            flow.PlaceBet(BetTarget.Outside(BetKind.High), 10);
 
-            flow.SelectTarget(BetTarget.Outside(BetKind.High));
-            Assert.AreEqual(BetManager.NoSelection, flow.Bet.SelectedNumber);
-            Assert.AreEqual(BetKind.High, flow.Bet.Selection.Kind);
+            Assert.AreEqual(2, flow.Bet.Count);
+            Assert.AreEqual(15, flow.Bet.TotalStake);
         }
 
         [Test]
         public void InvalidTargets_AreRejected()
         {
-            Assert.AreEqual(BetError.InvalidNumber, flow.SelectTarget(BetTarget.Straight(37)));
-            Assert.AreEqual(BetError.SkullNotBettable, flow.SelectTarget(BetTarget.Straight(Skull)));
-            Assert.AreEqual(BetError.NoTargetSelected, flow.SelectTarget(BetTarget.None));
-            Assert.IsTrue(flow.Bet.Selection.IsNone);
+            Assert.AreEqual(BetError.InvalidNumber, flow.PlaceChip(BetTarget.Straight(37)));
+            Assert.AreEqual(BetError.SkullNotBettable, flow.PlaceChip(BetTarget.Straight(Skull)));
+            Assert.AreEqual(BetError.NoBetsPlaced, flow.PlaceChip(BetTarget.None));
+            Assert.IsFalse(flow.Bet.HasBets);
         }
     }
 }

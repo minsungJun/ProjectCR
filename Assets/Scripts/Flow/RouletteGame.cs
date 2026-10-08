@@ -64,10 +64,13 @@ namespace ProjectCR
         {
             hud.Initialize(definition);
             hud.TargetClicked += OnTargetClicked;
-            hud.StakeAdjusted += OnStakeAdjusted;
-            hud.StakeHalved += OnStakeHalved;
-            hud.StakeDoubled += OnStakeDoubled;
-            hud.StakeMaxed += OnStakeMaxed;
+            hud.TargetRemoveRequested += OnTargetRemoveRequested;
+            hud.UndoClicked += OnUndoClicked;
+            hud.ClearClicked += OnClearClicked;
+            hud.ChipAdjusted += OnChipAdjusted;
+            hud.ChipHalved += OnChipHalved;
+            hud.ChipDoubled += OnChipDoubled;
+            hud.ChipMaxed += OnChipMaxed;
             hud.SpinClicked += OnSpinClicked;
             hud.PayClicked += OnPayClicked;
             hud.RestartClicked += StartNewRun;
@@ -94,12 +97,12 @@ namespace ProjectCR
 
             flow = new GameFlowController(definition, balance, randomSeed);
             ApplyDebugOptions();
-            flow.SetStake(Math.Min(balance.MinBet * 10, flow.Wallet.Balance));
+            flow.SetChipValue(Math.Max(balance.MinBet, Math.Min(balance.MinBet * 10, flow.Wallet.Balance)));
 
             Debug.Log($"[RouletteGame] 새 게임. 시드 {flow.Seed}");
 
             hud.ClearHistory();
-            hud.ShowMessage("번호를 고르고 회전을 누르세요.");
+            hud.ShowMessage("칩 금액을 정하고 번호판에 칩을 놓은 뒤 회전을 누르세요.");
             hud.Refresh(flow);
         }
 
@@ -117,9 +120,16 @@ namespace ProjectCR
             presenter.SpeedMultiplier = presentationSpeed;
         }
 
-        private void OnTargetClicked(BetTarget target)
+        private void OnTargetClicked(BetTarget target) => ApplyBetAction(flow.PlaceChip(target));
+
+        private void OnTargetRemoveRequested(BetTarget target) => ApplyBetAction(flow.RemoveBet(target));
+
+        private void OnUndoClicked() => ApplyBetAction(flow.UndoLastChip());
+
+        private void OnClearClicked() => ApplyBetAction(flow.ClearBets());
+
+        private void ApplyBetAction(BetError error)
         {
-            BetError error = flow.SelectTarget(target);
             hud.Refresh(flow);
             if (error != BetError.None)
             {
@@ -127,18 +137,19 @@ namespace ProjectCR
             }
         }
 
-        private void OnStakeAdjusted(long delta) => SetStakeClamped(flow.Bet.Stake + delta);
+        private void OnChipAdjusted(long delta) => SetChipClamped(flow.Bet.ChipValue + delta);
 
-        private void OnStakeHalved() => SetStakeClamped(flow.Bet.Stake / 2);
+        private void OnChipHalved() => SetChipClamped(flow.Bet.ChipValue / 2);
 
-        private void OnStakeDoubled() => SetStakeClamped(flow.Bet.Stake * 2);
+        private void OnChipDoubled() => SetChipClamped(flow.Bet.ChipValue * 2);
 
-        private void OnStakeMaxed() => SetStakeClamped(flow.Wallet.Balance);
+        /// <summary>남은 돈(보유 − 이미 놓은 칩) 전부를 칩 하나로.</summary>
+        private void OnChipMaxed() => SetChipClamped(flow.Wallet.Balance - flow.Bet.TotalStake);
 
-        private void SetStakeClamped(long stake)
+        private void SetChipClamped(long value)
         {
             long max = Math.Max(balance.MinBet, flow.Wallet.Balance);
-            flow.SetStake(Math.Max(balance.MinBet, Math.Min(stake, max)));
+            flow.SetChipValue(Math.Max(balance.MinBet, Math.Min(value, max)));
             hud.Refresh(flow);
         }
 
@@ -158,7 +169,7 @@ namespace ProjectCR
                 return;
             }
 
-            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {spin.Bet.Target.ToKorean(definition)}에 {spin.Bet.Stake:N0} → 결과 {Describe(spin.Result)}");
+            Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {Describe(spin.Bets)} → 결과 {Describe(spin.Result)}");
 
             hud.ShowSpinning();
             hud.Refresh(flow);
@@ -187,6 +198,17 @@ namespace ProjectCR
             }
 
             return string.Join(", ", numbers);
+        }
+
+        private string Describe(IReadOnlyList<ConfirmedBet> bets)
+        {
+            var parts = new List<string>(bets.Count);
+            foreach (ConfirmedBet bet in bets)
+            {
+                parts.Add($"{bet.Target.ToKorean(definition)} {bet.Stake:N0}");
+            }
+
+            return string.Join(", ", parts);
         }
 
         private static string Describe(PocketDefinition pocket)

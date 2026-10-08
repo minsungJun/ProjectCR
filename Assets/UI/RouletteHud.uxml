@@ -12,26 +12,32 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="bet-panel">
-            <ui:Label class="panel-title" text="베팅 선택 (회전당 하나) · 칸 사이 점 = 안쪽 베팅" />
+            <ui:Label class="panel-title" text="칩 놓기: 왼쪽 클릭 · 빼기: 오른쪽 클릭 · 칸 사이 점 = 안쪽 베팅" />
             <ui:VisualElement name="number-grid" class="number-grid" />
             <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
 
             <ui:VisualElement class="row">
-                <ui:Label class="field-label" text="베팅 대상" />
-                <ui:Label name="selected" class="field-value" text="—" />
-            </ui:VisualElement>
-            <ui:VisualElement class="row">
-                <ui:Label class="field-label" text="베팅 금액" />
-                <ui:Label name="stake" class="field-value" text="0" />
+                <ui:Label class="field-label" text="칩 금액" />
+                <ui:Label name="chip-value" class="field-value" text="0" />
             </ui:VisualElement>
             <ui:VisualElement class="stake-buttons">
-                <ui:Button name="stake-minus10" class="btn btn--stake" text="-10" />
-                <ui:Button name="stake-minus1" class="btn btn--stake" text="-1" />
-                <ui:Button name="stake-plus1" class="btn btn--stake" text="+1" />
-                <ui:Button name="stake-plus10" class="btn btn--stake" text="+10" />
-                <ui:Button name="stake-half" class="btn btn--stake" text="½" />
-                <ui:Button name="stake-double" class="btn btn--stake" text="×2" />
-                <ui:Button name="stake-max" class="btn btn--stake" text="최대" />
+                <ui:Button name="chip-minus10" class="btn btn--stake" text="-10" />
+                <ui:Button name="chip-minus1" class="btn btn--stake" text="-1" />
+                <ui:Button name="chip-plus1" class="btn btn--stake" text="+1" />
+                <ui:Button name="chip-plus10" class="btn btn--stake" text="+10" />
+                <ui:Button name="chip-half" class="btn btn--stake" text="½" />
+                <ui:Button name="chip-double" class="btn btn--stake" text="×2" />
+                <ui:Button name="chip-max" class="btn btn--stake" text="최대" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="row">
+                <ui:Label class="field-label" text="베팅" />
+                <ui:Label name="bet-summary" class="field-value field-value--small" text="없음" />
+            </ui:VisualElement>
+            <ui:Label name="bet-list" class="bet-list" />
+            <ui:VisualElement class="stake-buttons">
+                <ui:Button name="bet-undo" class="btn btn--wide" text="마지막 칩 취소" />
+                <ui:Button name="bet-clear" class="btn btn--wide" text="전체 취소" />
             </ui:VisualElement>
 
             <ui:Label name="payout-preview" class="preview" />

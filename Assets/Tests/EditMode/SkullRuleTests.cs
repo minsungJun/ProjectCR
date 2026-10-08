@@ -31,8 +31,8 @@ namespace ProjectCR.Tests
         private ActiveSpin Begin(int number, long stake, params int[] forced)
         {
             flow.ForcedNumbers = forced;
-            Assert.AreEqual(BetError.None, flow.SelectNumber(number));
-            Assert.AreEqual(BetError.None, flow.SetStake(stake));
+            Assert.AreEqual(BetError.None, flow.ClearBets());
+            Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Straight(number), stake));
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin spin));
             return spin;
         }
@@ -91,8 +91,8 @@ namespace ProjectCR.Tests
             Assert.IsFalse(definition.ContainsNumber(Skull));
             Assert.AreEqual(-1, definition.IndexOfNumber(Skull));
 
-            Assert.AreEqual(BetError.SkullNotBettable, flow.SelectNumber(Skull));
-            Assert.AreEqual(BetManager.NoSelection, flow.Bet.SelectedNumber);
+            Assert.AreEqual(BetError.SkullNotBettable, flow.PlaceChip(BetTarget.Straight(Skull)));
+            Assert.IsFalse(flow.Bet.HasBets);
         }
 
         [Test]
@@ -157,7 +157,7 @@ namespace ProjectCR.Tests
             Assert.AreEqual(SpinOutcome.SkullBust, s.Outcome);
             Assert.AreEqual(0, s.TotalPayout);
             Assert.AreEqual(0, s.WinCount, "맞힌 공도 당첨으로 치지 않는다.");
-            Assert.IsTrue(s.Balls.All(b => b.Amount == 0));
+            Assert.IsTrue(s.Bets.All(b => b.Amount == 0));
         }
 
         [Test]
@@ -205,7 +205,7 @@ namespace ProjectCR.Tests
 
             SettlementResult s = SpinAndSettle(7, 10, 7, Skull);
 
-            Assert.AreEqual(2, s.Balls.Count);
+            Assert.AreEqual(2, s.Spin.Balls.Count);
             Assert.AreEqual(0, s.TotalPayout);
             Assert.AreEqual(90, flow.Wallet.Balance);
             Assert.AreEqual(4, flow.Round.SpinsRemaining);

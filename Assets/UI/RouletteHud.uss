@@ -154,6 +154,49 @@
     border-color: rgba(255, 255, 255, 0.6);
 }
 
+/* 칩이 놓인 자리. */
+.cell--bet {
+    border-color: var(--gold);
+}
+
+.hotspot.cell--bet > .hotspot__dot {
+    background-color: var(--gold);
+}
+
+/* 칩 금액 배지. 번호 칸·바깥 칸은 칸 안 오른쪽 위, 클릭 점은 가운데. */
+.chip-badge {
+    position: absolute;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    margin: 0;
+    border-width: 1px;
+    border-radius: 10px;
+    border-color: rgb(255, 255, 255);
+    background-color: rgb(230, 182, 60);
+    color: rgb(20, 18, 12);
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+/* 칸 안쪽 오른쪽 위. 칸 밖으로 나가면 다음 칸에 가려진다(뒤 형제가 위에 그려짐). */
+.chip-badge--cell {
+    right: 0;
+    top: 0;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    border-radius: 8px;
+    font-size: 10px;
+}
+
+.chip-badge--spot {
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+}
+
 .cell--covered {
     border-color: rgba(255, 209, 64, 0.8);
 }
@@ -234,6 +277,18 @@
     -unity-font-style: bold;
 }
 
+.field-value--small {
+    font-size: 19px;
+}
+
+.bet-list {
+    min-height: 22px;
+    margin-bottom: 4px;
+    font-size: 16px;
+    color: var(--muted);
+    white-space: normal;
+}
+
 .stake-buttons {
     flex-direction: row;
     flex-wrap: wrap;
@@ -280,6 +335,12 @@
     width: 76px;
     height: 40px;
     font-size: 18px;
+}
+
+.btn--wide {
+    width: 180px;
+    height: 38px;
+    font-size: 17px;
 }
 
 .btn--primary {

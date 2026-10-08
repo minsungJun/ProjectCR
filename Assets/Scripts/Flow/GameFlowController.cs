@@ -20,16 +20,19 @@ namespace ProjectCR
     /// <summary>진행 중인 회전 하나. 연출이 끝나면 Id로 정산을 요청한다.</summary>
     public sealed class ActiveSpin
     {
-        public ActiveSpin(int id, ConfirmedBet bet, SpinConfig config, SpinResult result)
+        public ActiveSpin(int id, IReadOnlyList<ConfirmedBet> bets, SpinConfig config, SpinResult result)
         {
             Id = id;
-            Bet = bet;
+            Bets = bets;
             Config = config;
             Result = result;
         }
 
         public int Id { get; }
-        public ConfirmedBet Bet { get; }
+
+        /// <summary>이 회전에 확정된 베팅 전체. 합계는 시작 때 한 번 차감됐다.</summary>
+        public IReadOnlyList<ConfirmedBet> Bets { get; }
+
         public SpinConfig Config { get; }
         public SpinResult Result { get; }
     }
@@ -43,7 +46,7 @@ namespace ProjectCR
     /// 정산은 진행 중인 회전의 Id와 맞을 때 한 번만 실행된다.
     ///
     /// 한 회전의 순서(아이템이 끼어들 자리):
-    /// 베팅 검증 → 확정·차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
+    /// 베팅 검증 → 확정·합계 1회 차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
     /// → 모든 공의 연출 완료 → <see cref="CompleteSpin"/>(전체 결과 평가 → 정산 → 기록) → 다음 진행
     /// → 라운드 종료 시 <see cref="SubmitPayment"/>.
     ///
@@ -86,7 +89,7 @@ namespace ProjectCR
         /// <summary>정산까지 끝난 회전 수(게임 전체).</summary>
         public int SpinsPlayed { get; private set; }
 
-        /// <summary>지급 0으로 끝난 회전이 연속 몇 번인가. 해골 낙첨도 센다. 당첨하면 0.</summary>
+        /// <summary>지급 0으로 끝난 회전이 연속 몇 번인가. 해골 낙첨도 센다. 지급이 하나라도 있으면 0.</summary>
         public int ConsecutiveLosses { get; private set; }
         public PaymentOutcome? LastPayment { get; private set; }
 
@@ -103,22 +106,21 @@ namespace ProjectCR
         /// <summary>0보다 크면 숫자 하나 베팅의 지급 배수를 이 값으로 바꾼다.</summary>
         public int StraightPayoutOverride { get; set; }
 
-        // ---------- 베팅 ----------
+        // ---------- 베팅 (Betting 상태에서만) ----------
 
-        public BetError SelectNumber(int number)
-        {
-            return Phase == GamePhase.Betting ? Bet.SelectNumber(number) : BetError.NotInBettingPhase;
-        }
+        /// <summary>대상에 칩 금액만큼 건다. 같은 대상이면 쌓인다.</summary>
+        public BetError PlaceChip(BetTarget target) => WhenBetting(() => Bet.PlaceChip(target, Wallet));
 
-        public BetError SelectTarget(BetTarget target)
-        {
-            return Phase == GamePhase.Betting ? Bet.SelectTarget(target) : BetError.NotInBettingPhase;
-        }
+        /// <summary>대상에 amount를 건다. 같은 대상이면 쌓인다.</summary>
+        public BetError PlaceBet(BetTarget target, long amount) => WhenBetting(() => Bet.PlaceBet(target, amount, Wallet));
 
-        public BetError SetStake(long stake)
-        {
-            return Phase == GamePhase.Betting ? Bet.SetStake(stake) : BetError.NotInBettingPhase;
-        }
+        public BetError RemoveBet(BetTarget target) => WhenBetting(() => Bet.RemoveBet(target));
+
+        public BetError UndoLastChip() => WhenBetting(Bet.UndoLastChip);
+
+        public BetError ClearBets() => WhenBetting(Bet.ClearBets);
+
+        public BetError SetChipValue(long value) => WhenBetting(() => Bet.SetChipValue(value));
 
         public BetError ValidateBet()
         {
@@ -140,7 +142,7 @@ namespace ProjectCR
                 return BetError.NotInBettingPhase;
             }
 
-            BetError error = Bet.TryConfirm(Wallet, out ConfirmedBet bet);
+            BetError error = Bet.TryConfirm(Wallet, out IReadOnlyList<ConfirmedBet> bets);
             if (error != BetError.None)
             {
                 return error;
@@ -152,7 +154,7 @@ namespace ProjectCR
             SpinResult result = SpinResolver.Resolve(config, rng);
             result = ApplyResultOverrides(result);
 
-            spin = new ActiveSpin(++lastSpinId, bet, config, result);
+            spin = new ActiveSpin(++lastSpinId, bets, config, result);
             CurrentSpin = spin;
             Phase = GamePhase.Spinning;
             return BetError.None;
@@ -172,7 +174,7 @@ namespace ProjectCR
 
             // 전체 결과 평가 → 정산. 해골이면 지급 0이고 이미 뺀 베팅금은 돌려주지 않는다.
             ActiveSpin spin = CurrentSpin;
-            settlement = PayoutCalculator.Calculate(spin.Bet, spin.Result, spin.Config.PayoutFor(spin.Bet.Target), Wallet.MaxMoney);
+            settlement = PayoutCalculator.Calculate(spin.Bets, spin.Result, spin.Config, Wallet.MaxMoney);
             Wallet.Add(settlement.TotalPayout);
 
             LastSettlement = settlement;
@@ -247,6 +249,11 @@ namespace ProjectCR
 
             Round.ForfeitRemainingSpins();
             return GamePhase.RoundPayment;
+        }
+
+        private BetError WhenBetting(Func<BetError> action)
+        {
+            return Phase == GamePhase.Betting ? action() : BetError.NotInBettingPhase;
         }
 
         private static int NewSeed()
