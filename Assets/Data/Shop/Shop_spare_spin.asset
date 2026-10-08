@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shop_spare_spin
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: spare_spin
-  displayName: "\uC5EC\uBD84\uC758 \uD68C\uC804\uAD8C"
+  displayName: "\uD68C\uC804\uAD8C"
   description: 
   icon: {fileID: 0}
   tint: {r: 0.78, g: 0.6, b: 0.3, a: 1}

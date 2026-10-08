@@ -113,6 +113,7 @@ namespace ProjectCR
                 tableInput.TargetClicked += OnTargetClicked;
                 tableInput.TargetRemoveRequested += OnTargetRemoveRequested;
                 tableInput.ChipSelected += OnChipSelected;
+                tableInput.TabletPressed += OnTabletPressed;
                 tableInput.HoverChanged += OnHoverChanged;
             }
 
@@ -208,6 +209,23 @@ namespace ProjectCR
             }
 
             ApplyBetAction(flow.RemoveBet(target));
+        }
+
+        /// <summary>테이블 태블릿 버튼: 회전 · 서비스(상점) · 전체 회수(전체 취소). HUD 버튼과 같은 경로라 규칙도 같다.</summary>
+        private void OnTabletPressed(TabletAction action)
+        {
+            switch (action)
+            {
+                case TabletAction.Spin:
+                    OnSpinClicked();
+                    break;
+                case TabletAction.Service:
+                    OnShopClicked();
+                    break;
+                default:
+                    OnClearClicked();
+                    break;
+            }
         }
 
         // ---------- 상점 ----------

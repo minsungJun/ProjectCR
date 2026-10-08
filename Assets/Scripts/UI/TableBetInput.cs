@@ -6,7 +6,7 @@ namespace ProjectCR
 {
     /// <summary>
     /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기, 오른쪽 클릭 = 그 자리 베팅 빼기,
-    /// 트레이 칩 클릭 = 칩 금액 고르기. 마우스가 HUD 위에 있으면 무시한다.
+    /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수. 마우스가 HUD 위에 있으면 무시한다.
     /// 입력을 이벤트로 넘기기만 하고, 베팅 가능 여부는 GameFlowController가 판단한다.
     /// </summary>
     public class TableBetInput : MonoBehaviour
@@ -24,10 +24,14 @@ namespace ProjectCR
         public event Action<BetTarget> TargetRemoveRequested;
         public event Action<long> ChipSelected;
 
+        /// <summary>태블릿 버튼을 눌렀다. 누를 수 없는 상태(어둡게 그려진 버튼)면 보내지 않는다.</summary>
+        public event Action<TabletAction> TabletPressed;
+
         /// <summary>마우스가 가리키는 베팅 대상이 바뀔 때. 아무 데도 아니면 BetTarget.None.</summary>
         public event Action<BetTarget> HoverChanged;
 
         private BetTarget hover = BetTarget.None;
+        private TabletButton hoveredButton;
 
         private void Update()
         {
@@ -42,13 +46,30 @@ namespace ProjectCR
             if (hud != null && hud.IsPointerOverUi(screen))
             {
                 SetHover(BetTarget.None);
+                SetButtonHover(null);
                 return;
             }
 
             Ray ray = camera.ScreenPointToRay(screen);
+            bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, trayRayDistance);
+
+            // 태블릿 버튼(콜라이더).
+            if (hitSomething && hit.collider.TryGetComponent(out TabletButton button))
+            {
+                SetHover(BetTarget.None);
+                SetButtonHover(button);
+                if (mouse.leftButton.wasPressedThisFrame && button.Interactable)
+                {
+                    TabletPressed?.Invoke(button.Action);
+                }
+
+                return;
+            }
+
+            SetButtonHover(null);
 
             // 트레이 칩(콜라이더)이 먼저. 판은 콜라이더 없이 평면 계산으로 고른다.
-            if (Physics.Raycast(ray, out RaycastHit hit, trayRayDistance) && hit.collider.TryGetComponent(out ChipTraySlot slot))
+            if (hitSomething && hit.collider.TryGetComponent(out ChipTraySlot slot))
             {
                 SetHover(BetTarget.None);
                 if (mouse.leftButton.wasPressedThisFrame)
@@ -78,6 +99,25 @@ namespace ProjectCR
             else if (mouse.rightButton.wasPressedThisFrame)
             {
                 TargetRemoveRequested?.Invoke(target);
+            }
+        }
+
+        private void SetButtonHover(TabletButton button)
+        {
+            if (hoveredButton == button)
+            {
+                return;
+            }
+
+            if (hoveredButton != null)
+            {
+                hoveredButton.SetHovered(false);
+            }
+
+            hoveredButton = button;
+            if (button != null)
+            {
+                button.SetHovered(true);
             }
         }
 

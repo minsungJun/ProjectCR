@@ -38,7 +38,7 @@
             <ui:VisualElement class="button-row">
                 <ui:Button name="bet-undo" class="btn btn--wide" text="마지막 칩 취소" />
                 <ui:Button name="bet-clear" class="btn btn--wide" text="전체 취소" />
-                <ui:Button name="shop" class="btn btn--wide btn--shop" text="상점" />
+                <ui:Button name="shop" class="btn btn--wide btn--shop" text="서비스" />
                 <ui:Button name="spin" class="btn btn--primary" text="회전" />
             </ui:VisualElement>
         </ui:VisualElement>
@@ -54,21 +54,28 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- 상점. 상품 카드·보유 아이템은 ShopView가 그린다. -->
+        <!-- 서비스(상점). [소모품] / [강화] 탭, 상품 카드는 ShopView가 그린다. 코인 아이콘은 ShopCatalog.moneyIcon. -->
         <ui:VisualElement name="shop-panel" class="modal shop-modal blocks-input">
             <ui:VisualElement class="shop-box">
                 <ui:VisualElement class="shop-header">
-                    <ui:Label class="shop-title" text="상점" />
-                    <ui:Label name="shop-money" class="shop-money" />
+                    <ui:Label class="shop-title" text="서비스" />
                     <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                    <ui:Button name="shop-close" class="btn shop-close" text="✕" />
+                    <ui:VisualElement class="shop-wallet" picking-mode="Ignore">
+                        <ui:VisualElement name="shop-coin" class="shop-coin shop-coin--large" picking-mode="Ignore" />
+                        <ui:Label class="shop-wallet__label" text="보유" />
+                        <ui:Label name="shop-money" class="shop-money" text="0" />
+                    </ui:VisualElement>
+                    <ui:Button name="shop-close" class="shop-close" text="✕" />
                 </ui:VisualElement>
+                <ui:Label name="shop-funds" class="shop-funds" />
                 <ui:VisualElement class="shop-tabs">
-                    <ui:Button name="shop-tab-goods" class="shop-tab" text="상품" />
-                    <ui:Button name="shop-tab-items" class="shop-tab" text="보유 아이템" />
-                    <ui:Label name="shop-notice" class="shop-notice" />
+                    <ui:Button name="shop-tab-consumable" class="shop-tab" text="소모품" />
+                    <ui:Button name="shop-tab-upgrade" class="shop-tab" text="강화" />
                 </ui:VisualElement>
-                <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical" />
+                <ui:VisualElement class="shop-felt">
+                    <ui:Label name="shop-notice" class="shop-notice" />
+                    <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 

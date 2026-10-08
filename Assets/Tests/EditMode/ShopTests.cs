@@ -169,11 +169,28 @@ namespace ProjectCR.Tests
             twin.EnterShop();
             CollectionAssert.AreEqual(first.Select(i => i.Id), twin.Shop.Offers.Select(o => o.Item.Id));
 
-            Assert.AreEqual(7, first.Count);
+            // 강화 탭: 집중 2, 교차 2, 납부 지원(확률 0~1). 소모품 탭: 소모품 4종 전부(목록 순서).
+            int support = first.Count(i => i.Category == ShopCategory.PaymentSupport);
+            Assert.LessOrEqual(support, 1);
+            Assert.AreEqual(8 + support, first.Count);
             Assert.AreEqual(2, first.Count(i => i.Category == ShopCategory.Focus));
             Assert.AreEqual(2, first.Count(i => i.Category == ShopCategory.Cross));
-            Assert.IsTrue(first.Any(i => i.Effect == ShopEffect.ExtraBall || i.Effect == ShopEffect.SkullShield), "고정 소모품 칸.");
+            CollectionAssert.AreEqual(
+                all.Where(i => i.Category == ShopCategory.Consumable).Select(i => i.Id),
+                first.Where(i => i.Category == ShopCategory.Consumable).Select(i => i.Id),
+                "소모품은 전부, 목록 순서대로.");
             Assert.AreEqual(first.Count, first.Distinct().Count());
+        }
+
+        [Test]
+        public void CardText_DefaultsMatchShopCards()
+        {
+            ShopItemDefinition Item(string id) => all.Single(i => i.Id == id);
+            Assert.AreEqual("이번 라운드\n공 1개 추가", Item("extra_ball").CardText);
+            Assert.AreEqual("해골이 나오면\n해당 공 재회전", Item("skull_shield").CardText);
+            Assert.AreEqual("남은 회전\n+1회", Item("spare_spin").CardText);
+            Assert.AreEqual("일반 낙첨 시\n베팅금 50% 환급", Item("insurance").CardText);
+            Assert.AreEqual("회전권", Item("spare_spin").DisplayName);
         }
 
         [Test]

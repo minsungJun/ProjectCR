@@ -7,8 +7,11 @@ using UnityEngine.UIElements;
 namespace ProjectCR
 {
     /// <summary>
-    /// 상점 창(HUD와 같은 UIDocument의 shop-panel). 상품 탭과 보유 아이템 탭을 그리고, 버튼 입력을 이벤트로 넘긴다.
-    /// 구매 검증과 돈 처리는 GameFlowController(ShopController)가 한다. 소모품은 자동 사용이라 보유 아이템 탭은 상태만 보여 준다.
+    /// 서비스(상점) 창. HUD와 같은 UIDocument의 shop-panel을 쓴다.
+    /// - 탭은 [소모품] / [강화] 두 개다. 소모품 탭에는 소모품만, 강화 탭에는 지속 효과(집중·교차·납부 지원)만 나온다.
+    /// - 카드 모양: 큰 아이콘, 이름, 금색 짧은 선, 두 줄 설명, 구분선, 코인 + 가격, 전체 폭 [구매] 버튼.
+    /// - 아이콘: 상품 아이콘은 ShopItemDefinition.icon, 돈 아이콘은 ShopCatalog.moneyIcon에 넣는다. 비어 있으면 색 원으로 대신 그린다.
+    /// 구매 검증과 돈 처리는 GameFlowController(ShopController)가 하고, 여기서는 그리기와 입력 전달만 한다.
     /// 창 전체에 blocks-input이 붙어 열려 있는 동안 3D 테이블 입력이 막힌다.
     /// 숫자 집중 대상은 판에서 고른다: 창을 잠시 접고(<see cref="SetPicking"/>) RouletteGame이 판 클릭을 대상으로 넘겨준다.
     /// </summary>
@@ -25,12 +28,14 @@ namespace ProjectCR
         private readonly Dictionary<int, BetTarget> chosenTargets = new Dictionary<int, BetTarget>();
 
         private VisualElement panel;
+        private VisualElement coin;
         private Label money;
+        private Label funds;
         private Label notice;
         private ScrollView scroll;
-        private Button goodsTab;
-        private Button itemsTab;
-        private bool showItems;
+        private Button consumableTab;
+        private Button upgradeTab;
+        private bool showUpgrades;
         private int targetsRound;
         private GameFlowController lastFlow;
 
@@ -40,15 +45,17 @@ namespace ProjectCR
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
             panel = root.Q("shop-panel");
+            coin = root.Q("shop-coin");
             money = root.Q<Label>("shop-money");
+            funds = root.Q<Label>("shop-funds");
             notice = root.Q<Label>("shop-notice");
             scroll = root.Q<ScrollView>("shop-scroll");
-            goodsTab = root.Q<Button>("shop-tab-goods");
-            itemsTab = root.Q<Button>("shop-tab-items");
+            consumableTab = root.Q<Button>("shop-tab-consumable");
+            upgradeTab = root.Q<Button>("shop-tab-upgrade");
 
             root.Q<Button>("shop-close").clicked += () => Closed?.Invoke();
-            goodsTab.clicked += () => SwitchTab(false);
-            itemsTab.clicked += () => SwitchTab(true);
+            consumableTab.clicked += () => SwitchTab(false);
+            upgradeTab.clicked += () => SwitchTab(true);
             Hide();
         }
 
@@ -83,10 +90,13 @@ namespace ProjectCR
 
         public void ShowNotice(string text)
         {
-            if (notice != null)
+            if (notice == null)
             {
-                notice.text = text ?? string.Empty;
+                return;
             }
+
+            notice.text = text ?? string.Empty;
+            notice.style.display = string.IsNullOrEmpty(notice.text) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         public void Refresh(GameFlowController flow)
@@ -103,27 +113,22 @@ namespace ProjectCR
                 targetsRound = flow.Round.Round;
             }
 
-            money.text = $"보유 {flow.Wallet.Balance:N0} · 구매 가능 {flow.Shop.AvailableFunds:N0}" +
-                         (flow.Bet.HasBets ? $" (놓은 칩 {flow.Bet.TotalStake:N0} 제외)" : string.Empty) +
-                         $" · 납부금 {flow.Round.CurrentDue:N0} · 라운드 {flow.Round.Round}";
+            Sprite moneyIcon = flow.Shop.State.Catalog != null ? flow.Shop.State.Catalog.MoneyIcon : null;
+            ApplyCoin(coin, moneyIcon);
+            money.text = $"{flow.Wallet.Balance:N0}";
+            funds.text = (flow.Bet.HasBets ? $"판의 칩 {flow.Bet.TotalStake:N0} 제외 · 구매 가능 {flow.Shop.AvailableFunds:N0} · " : string.Empty) +
+                         $"라운드 {flow.Round.Round} · 납부금 {flow.Round.CurrentDue:N0}";
 
-            goodsTab.EnableInClassList(ActiveTabClass, !showItems);
-            itemsTab.EnableInClassList(ActiveTabClass, showItems);
+            consumableTab.EnableInClassList(ActiveTabClass, !showUpgrades);
+            upgradeTab.EnableInClassList(ActiveTabClass, showUpgrades);
 
             scroll.Clear();
-            if (showItems)
-            {
-                BuildItems(flow);
-            }
-            else
-            {
-                BuildGoods(flow);
-            }
+            BuildTab(flow, moneyIcon);
         }
 
-        private void SwitchTab(bool items)
+        private void SwitchTab(bool upgrades)
         {
-            showItems = items;
+            showUpgrades = upgrades;
             ShowNotice(string.Empty);
             if (lastFlow != null)
             {
@@ -131,107 +136,123 @@ namespace ProjectCR
             }
         }
 
-        // ---------- 상품 탭 ----------
+        // ---------- 탭 내용 ----------
 
-        private void BuildGoods(GameFlowController flow)
+        private void BuildTab(GameFlowController flow, Sprite moneyIcon)
         {
             IReadOnlyList<ShopOffer> offers = flow.Shop.Offers;
+            var cards = new VisualElement();
+            cards.AddToClassList("shop-cards");
 
-            // 분류 묶음(제목 + 카드)을 옆으로 이어 놓고, 넓이가 모자라면 아래로 줄바꿈한다.
-            var groups = new VisualElement();
-            groups.AddToClassList("shop-groups");
-            scroll.Add(groups);
-
-            foreach (ShopCategory category in new[] { ShopCategory.Focus, ShopCategory.Cross, ShopCategory.PaymentSupport, ShopCategory.Consumable })
+            // 강화 탭은 집중 → 교차 → 납부 지원 순서로 놓는다(진열 순서와 같다).
+            ShopCategory[] categories = showUpgrades
+                ? new[] { ShopCategory.Focus, ShopCategory.Cross, ShopCategory.PaymentSupport }
+                : new[] { ShopCategory.Consumable };
+            foreach (ShopCategory category in categories)
             {
-                VisualElement row = null;
                 for (int i = 0; i < offers.Count; i++)
                 {
-                    if (offers[i].Item.Category != category)
+                    if (offers[i].Item.Category == category)
                     {
-                        continue;
+                        cards.Add(BuildCard(flow, i, offers[i], moneyIcon));
                     }
-
-                    if (row == null)
-                    {
-                        var group = new VisualElement();
-                        group.AddToClassList("shop-group");
-                        group.Add(MakeLabel(CategoryName(category), "shop-section"));
-                        row = new VisualElement();
-                        row.AddToClassList("shop-row");
-                        group.Add(row);
-                        groups.Add(group);
-                    }
-
-                    row.Add(BuildCard(flow, i, offers[i]));
                 }
             }
 
-            if (offers.Count == 0)
+            if (cards.childCount == 0)
             {
-                scroll.Add(MakeLabel("진열된 상품이 없습니다.", "shop-summary"));
+                scroll.Add(MakeLabel(showUpgrades ? "이번 라운드에 진열된 강화가 없습니다." : "진열된 소모품이 없습니다.", "shop-empty"));
+            }
+            else
+            {
+                scroll.Add(cards);
+            }
+
+            if (showUpgrades)
+            {
+                scroll.Add(MakeLabel("보유 강화", "shop-section"));
+                scroll.Add(MakeLabel(UpgradeSummary(flow), "shop-summary"));
             }
         }
 
-        private VisualElement BuildCard(GameFlowController flow, int slot, ShopOffer offer)
+        private VisualElement BuildCard(GameFlowController flow, int slot, ShopOffer offer, Sprite moneyIcon)
         {
             ShopItemDefinition item = offer.Item;
-            var card = new VisualElement();
-            card.AddToClassList("shop-card");
-            if (item.Category == ShopCategory.Cross)
-            {
-                card.AddToClassList("shop-card--cross");
-            }
-            else if (item.Category == ShopCategory.Consumable || item.Category == ShopCategory.PaymentSupport)
-            {
-                card.AddToClassList("shop-card--consumable");
-            }
-
-            var top = new VisualElement();
-            top.AddToClassList("shop-card__top");
-            top.Add(BuildIcon(item));
-            var titles = new VisualElement { style = { flexShrink = 1 } };
-            titles.Add(MakeLabel(item.DisplayName, "shop-name"));
-            titles.Add(MakeLabel(CategoryName(item.Category), "shop-badge"));
-            top.Add(titles);
-            card.Add(top);
-
-            card.Add(MakeLabel(item.Description, "shop-desc"));
-            card.Add(MakeLabel(item.Duration, "shop-duration"));
-            card.Add(MakeLabel(OwnedText(flow, item) + $" · 재고 {offer.Stock}", "shop-owned"));
-
             chosenTargets.TryGetValue(slot, out BetTarget target);
-            if (item.NeedsTarget)
-            {
-                card.Add(BuildTargetPicker(flow, slot, item, target));
-            }
-
             ShopError check = flow.Shop.Check(slot, target);
             long price = flow.Shop.PriceOf(offer);
+            bool done = item.IsPermanent && offer.BoughtThisRound > 0;
 
-            var buyRow = new VisualElement();
-            buyRow.AddToClassList("shop-buy-row");
-            buyRow.Add(MakeLabel($"{price:N0}", "shop-price"));
-            var buy = new Button(() => BuyRequested?.Invoke(slot, target)) { text = "구매" };
-            buy.AddToClassList("btn");
+            var card = new VisualElement();
+            card.AddToClassList("shop-card");
+            card.EnableInClassList("shop-card--done", done || check == ShopError.SoldOut || check == ShopError.LimitReached);
+
+            // 구분선 위: 아이콘, 이름, 짧은 선, 설명, 상태, (집중이면) 대상 고르기.
+            var body = new VisualElement();
+            body.AddToClassList("shop-card__body");
+            body.Add(BuildIcon(item));
+            body.Add(MakeLabel(item.DisplayName, "shop-name"));
+            body.Add(MakeElement("shop-dash"));
+            body.Add(MakeLabel(item.CardText, "shop-desc"));
+            body.Add(MakeLabel(StateText(flow, offer), "shop-state"));
+            if (item.NeedsTarget)
+            {
+                body.Add(BuildTargetPicker(flow, slot, item, target));
+            }
+
+            card.Add(body);
+
+            // 구분선 아래: 코인 + 가격, 구매 버튼. 구분선이 margin-top: auto라 한 줄의 카드끼리 아래쪽이 맞는다.
+            card.Add(MakeElement("shop-sep"));
+            var priceRow = new VisualElement();
+            priceRow.AddToClassList("shop-price-row");
+            var priceCoin = MakeElement("shop-coin");
+            ApplyCoin(priceCoin, moneyIcon);
+            priceRow.Add(priceCoin);
+            priceRow.Add(MakeLabel($"{price:N0}", "shop-price"));
+            card.Add(priceRow);
+
+            var buy = new Button(() => BuyRequested?.Invoke(slot, target))
+            {
+                text = done ? "구매 완료" : ButtonText(check),
+            };
             buy.AddToClassList("shop-buy");
             buy.SetEnabled(check == ShopError.None);
-            buyRow.Add(buy);
-            card.Add(buyRow);
+            card.Add(buy);
 
-            string reason = item.IsPermanent && offer.BoughtThisRound > 0 ? "구매 완료 · 이후 상점에 나오지 않습니다"
-                : check != ShopError.None ? check.ToKorean()
-                : flow.Wallet.Balance - price < flow.Round.CurrentDue ? "구매 후 납부금이 부족해집니다"
-                : string.Empty;
-            if (reason.Length > 0)
+            if (check == ShopError.None && flow.Wallet.Balance - price < flow.Round.CurrentDue)
             {
-                card.Add(MakeLabel(reason, "shop-reason"));
+                card.Add(MakeLabel("사면 이번 납부금이 부족해집니다", "shop-reason"));
             }
 
             return card;
         }
 
-        /// <summary>집중 강화 대상 고르기. 숫자는 판에서 고른다. 고른 대상의 가중치 증가와 실제 등장 확률(전 → 후)을 보여 준다.</summary>
+        /// <summary>구매 버튼 글자. 살 수 없으면 이유를 짧게 쓴다.</summary>
+        private static string ButtonText(ShopError check)
+        {
+            switch (check)
+            {
+                case ShopError.None:
+                    return "구매";
+                case ShopError.SoldOut:
+                    return "품절";
+                case ShopError.LimitReached:
+                    return "구매 완료";
+                case ShopError.NeedTarget:
+                    return "대상을 고르세요";
+                case ShopError.InvalidTarget:
+                    return "고를 수 없는 대상";
+                case ShopError.InsufficientFunds:
+                    return "잔액 부족";
+                case ShopError.MaxBalls:
+                    return "공 최대";
+                default:
+                    return "구매 불가";
+            }
+        }
+
+        /// <summary>집중 강화 대상 고르기. 숫자는 판에서 고른다. 고른 대상의 등장 확률(전 → 후)을 보여 준다.</summary>
         private VisualElement BuildTargetPicker(GameFlowController flow, int slot, ShopItemDefinition item, BetTarget chosen)
         {
             var box = new VisualElement();
@@ -240,8 +261,12 @@ namespace ProjectCR
 
             if (item.Group == DrinkGroup.Number)
             {
-                var pick = new Button(() => PickTargetRequested?.Invoke(slot)) { text = "판에서 고르기" };
+                var pick = new Button(() => PickTargetRequested?.Invoke(slot))
+                {
+                    text = chosen.IsNone ? "판에서 고르기" : $"{DrinkOffer.TargetLabel(chosen)} · 다시 고르기",
+                };
                 pick.AddToClassList("shop-target");
+                pick.EnableInClassList("shop-target--selected", !chosen.IsNone);
                 chips.Add(pick);
             }
             else
@@ -264,10 +289,8 @@ namespace ProjectCR
             }
 
             box.Add(chips);
-
             if (chosen.IsNone)
             {
-                box.Add(MakeLabel("대상을 고르면 구매할 수 있습니다", "shop-duration"));
                 return box;
             }
 
@@ -278,9 +301,7 @@ namespace ProjectCR
             double after = PocketWeightCalculator.ProbabilityOf(flow.Definition,
                 PocketWeightCalculator.Probabilities(flow.Definition, weights, config.SkullChance), chosen);
 
-            box.Add(MakeLabel(
-                $"대상 {DrinkOffer.TargetLabel(chosen)} · 가중치 +{Percent(item.Value)} · 등장 확률 {NumberText.Percent(config.ProbabilityOf(chosen))} → {NumberText.Percent(after)}",
-                "shop-owned"));
+            box.Add(MakeLabel($"등장 확률 {NumberText.Percent(config.ProbabilityOf(chosen))} → {NumberText.Percent(after)}", "shop-state"));
             return box;
         }
 
@@ -303,54 +324,26 @@ namespace ProjectCR
             }
         }
 
-        private static string OwnedText(GameFlowController flow, ShopItemDefinition item)
+        /// <summary>카드 아래 작은 상태 줄(보유 수, 지금 효과, 남은 재고).</summary>
+        private static string StateText(GameFlowController flow, ShopOffer offer)
         {
+            ShopItemDefinition item = offer.Item;
+            string stock = item.IsPermanent ? string.Empty : $" · 재고 {offer.Stock}";
             switch (item.Effect)
             {
                 case ShopEffect.Focus:
                     return $"보유 {flow.Upgrades.StacksOf(item.Group)}개 · {item.Group.ToKorean()} 지급 +{Percent(flow.Upgrades.PayoutIncrease(item.Group))}";
                 case ShopEffect.Cross:
-                    int count = flow.Cross.CountOf(item.TriggerGroup, item.Group);
-                    return $"보유 {count}개 · 발동 시 +{Percent(flow.Cross.IncreaseOf(item.TriggerGroup, item.Group))}";
+                    return $"보유 {flow.Cross.CountOf(item.TriggerGroup, item.Group)}개 · 발동 시 +{Percent(flow.Cross.IncreaseOf(item.TriggerGroup, item.Group))}";
                 case ShopEffect.PaymentSupport:
-                    long now = (long)Math.Floor(flow.Round.CurrentDue * (flow.Upgrades.PaymentRefund + item.Value));
-                    return $"보유 {flow.Upgrades.PaymentRefundStacks}개 · 지금 환급 {Percent(flow.Upgrades.PaymentRefund)} · 사면 이번 납부 때 +{now:N0}";
+                    return $"보유 {flow.Upgrades.PaymentRefundStacks}개 · 지금 환급 {Percent(flow.Upgrades.PaymentRefund)}";
                 case ShopEffect.ExtraBall:
-                    return $"이번 라운드 공 {flow.BuildSpinConfig().BallCount}개 (최대 {flow.GameBalance.MaxBallCount})";
+                    return $"공 {flow.BuildSpinConfig().BallCount}개 (최대 {flow.GameBalance.MaxBallCount}){stock}";
                 case ShopEffect.SpareSpin:
-                    return $"남은 회전 {flow.Round.SpinsRemaining}";
+                    return $"남은 회전 {flow.Round.SpinsRemaining}{stock}";
                 default:
-                    return $"보유 {flow.Inventory.CountOf(item.Effect)}개";
+                    return $"보유 {flow.Inventory.CountOf(item.Effect)}개{stock}";
             }
-        }
-
-        // ---------- 보유 아이템 탭 ----------
-
-        private void BuildItems(GameFlowController flow)
-        {
-            InventoryState inv = flow.Inventory;
-            SpinConfig config = flow.BuildSpinConfig();
-
-            scroll.Add(MakeLabel("소모품 (자동 사용)", "shop-section"));
-            scroll.Add(ItemRow("추가 공", $"이번 라운드 공 {config.BallCount}개 (최대 {flow.GameBalance.MaxBallCount}) · 사는 즉시 적용, 라운드가 끝나면 원래대로"));
-            scroll.Add(ItemRow($"해골 방패 ×{inv.Shields}", "해골이 나오면 1개씩 자동으로 써서 그 공을 다시 굴립니다"));
-            scroll.Add(ItemRow("여분의 회전권", $"남은 회전 {flow.Round.SpinsRemaining} · 사는 즉시 +1"));
-            scroll.Add(ItemRow($"보험 증서 ×{inv.Insurances}",
-                $"다음 회전부터 회전마다 1장씩 자동 적용 · 일반 낙첨이면 베팅금 {Percent(inv.InsuranceRatio)} 환급"));
-
-            scroll.Add(MakeLabel("강화", "shop-section"));
-            scroll.Add(MakeLabel(UpgradeSummary(flow), "shop-summary"));
-        }
-
-        private static VisualElement ItemRow(string name, string state)
-        {
-            var row = new VisualElement();
-            row.AddToClassList("shop-item-row");
-            var title = MakeLabel(name, "shop-name");
-            title.style.width = 190;
-            row.Add(title);
-            row.Add(MakeLabel(state, "shop-desc"));
-            return row;
         }
 
         private static string UpgradeSummary(GameFlowController flow)
@@ -402,9 +395,21 @@ namespace ProjectCR
 
         // ---------- 공통 ----------
 
+        /// <summary>코인 자리에 돈 아이콘을 넣는다. 없으면 USS의 금색 원 그대로 둔다.</summary>
+        private static void ApplyCoin(VisualElement element, Sprite sprite)
+        {
+            if (element == null)
+            {
+                return;
+            }
+
+            element.EnableInClassList("shop-coin--sprite", sprite != null);
+            element.style.backgroundImage = sprite != null ? new StyleBackground(sprite) : new StyleBackground(StyleKeyword.Null);
+        }
+
         private static VisualElement BuildIcon(ShopItemDefinition item)
         {
-            var icon = new VisualElement();
+            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
             icon.AddToClassList("shop-icon");
             if (item.Icon != null)
             {
@@ -412,6 +417,7 @@ namespace ProjectCR
                 return icon;
             }
 
+            icon.AddToClassList("shop-icon--placeholder");
             icon.style.backgroundColor = item.Tint;
             icon.Add(MakeLabel(IconText(item), "shop-icon__label"));
             return icon;
@@ -438,22 +444,14 @@ namespace ProjectCR
             }
         }
 
-        private static string CategoryName(ShopCategory category)
-        {
-            switch (category)
-            {
-                case ShopCategory.Focus:
-                    return "집중 강화";
-                case ShopCategory.Cross:
-                    return "교차 강화";
-                case ShopCategory.PaymentSupport:
-                    return "납부 지원";
-                default:
-                    return "소모품";
-            }
-        }
-
         private static string Percent(decimal value) => (value * 100m).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+        private static VisualElement MakeElement(string className)
+        {
+            var element = new VisualElement { pickingMode = PickingMode.Ignore };
+            element.AddToClassList(className);
+            return element;
+        }
 
         private static Label MakeLabel(string text, params string[] classes)
         {

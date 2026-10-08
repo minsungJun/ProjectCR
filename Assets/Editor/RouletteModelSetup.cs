@@ -37,6 +37,13 @@ namespace ProjectCR.Editor
         private const string DisplayScreenName = "CRT_Display_Black_Screen";
         private const string HoverMaterialPath = "Assets/Materials/Table_Hover.mat";
 
+        // 잔액 표시 장치를 태블릿으로 바꾼다(2026-10-09). 태블릿은 새 모델에서 뽑아 낸 독립 프리팹이고,
+        // 놓는 자리는 그 모델에서 잰 태블릿 아랫면 가운데(모델 로컬 좌표).
+        private const string TabletPrefabPath = "Assets/Prefabs/CRT_Tablet.prefab";
+        private const string BalanceDisplayRootName = "CRT_Balance_Display_ROOT";
+        private const string TabletObjectName = "CRT_Tablet";
+        private static readonly Vector3 TabletPositionInModel = new Vector3(-0.6600f, 0.8010f, 0.4053f);
+
         // 해골 칸 색(사용자 지정 #735198). 회전판 칸과 바깥 번호 띠 칸.
         private const string SkullPocketMaterialPath = "Assets/Materials/CRR_Skull_Pocket.mat";
         private static readonly Color SkullPocketColor = new Color32(0x73, 0x51, 0x98, 0xFF);
@@ -427,7 +434,9 @@ namespace ProjectCR.Editor
             hover.transform.localScale = new Vector3(0.022f, 0.0006f, 0.022f);
             hover.GetComponent<Renderer>().sharedMaterial = HoverMaterial();
 
-            TextMesh balanceText = BuildBalanceText(model, board);
+            // 태블릿 프리팹이 있으면 옛 잔액 표시 장치를 끄고 태블릿을 쓴다(보유 금액 + 이번 판 베팅 + 버튼).
+            TabletPanel tablet = AssetDatabase.LoadAssetAtPath<GameObject>(TabletPrefabPath) != null ? BuildTablet(model) : null;
+            TextMesh balanceText = tablet != null ? tablet.BalanceValue : BuildBalanceText(model, board);
 
             var view = boardObject.AddComponent<TableChipView>();
             var so = new SerializedObject(view);
@@ -451,7 +460,78 @@ namespace ProjectCR.Editor
             so.FindProperty("chipHeight").floatValue = WorldBounds(templates[0].transform).size.y;
             Set(so, "hoverMarker", hover.transform);
             Set(so, "balanceText", balanceText);
+            Set(so, "dueText", tablet != null ? tablet.DueValue : null);
+            Set(so, "tablet", tablet);
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// 이미 만든 RouletteRoot_CRR 프리팹의 잔액 표시 장치(CRT_Balance_Display_ROOT)를 태블릿으로 바꾼다.
+        /// 프리팹을 다시 빌드하지 않아 다른 씬 오버라이드는 그대로 남는다. 다시 돌려도 태블릿은 하나만 생긴다.
+        /// </summary>
+        [MenuItem("Tools/ProjectCR/Model (CRR)/Use Tablet Display")]
+        public static void UseTabletDisplay()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(RoulettePrefabPath);
+            try
+            {
+                TableChipView view = root.GetComponentInChildren<TableChipView>(true)
+                    ?? throw new InvalidOperationException("RouletteRoot_CRR에 TableChipView가 없다.");
+                Transform model = view.transform.parent;
+
+                Transform old = model.Find(TabletObjectName);
+                if (old != null)
+                {
+                    Object.DestroyImmediate(old.gameObject);
+                }
+
+                var so = new SerializedObject(view);
+                if (so.FindProperty("balanceText").objectReferenceValue is TextMesh oldText && oldText.name == "BalanceText")
+                {
+                    Object.DestroyImmediate(oldText.gameObject);
+                }
+
+                TabletPanel tablet = BuildTablet(model);
+                Set(so, "balanceText", tablet.BalanceValue);
+                Set(so, "dueText", tablet.DueValue);
+                Set(so, "tablet", tablet);
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, RoulettePrefabPath);
+                Debug.Log("[RouletteModelSetup] 잔액 표시 장치를 태블릿으로 교체");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// 옛 잔액 표시 장치를 끄고 태블릿을 모델 아래에 놓는다. 숫자 글자와 버튼은 태블릿 프리팹(TabletPanel)에 들어 있다
+        /// (Tools/ProjectCR/Tablet/Convert Labels And Buttons로 만든다).
+        /// </summary>
+        private static TabletPanel BuildTablet(Transform model)
+        {
+            Transform display = FindDeep(model, BalanceDisplayRootName);
+            if (display != null)
+            {
+                display.gameObject.SetActive(false);
+            }
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(TabletPrefabPath)
+                ?? throw new InvalidOperationException($"{TabletPrefabPath}가 없다.");
+            if (prefab.GetComponent<TabletPanel>() == null)
+            {
+                TabletSetup.ConvertTablet();
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(TabletPrefabPath);
+            }
+
+            var tablet = (GameObject)PrefabUtility.InstantiatePrefab(prefab, model.gameObject.scene);
+            tablet.name = TabletObjectName;
+            tablet.transform.SetParent(model, false);
+            tablet.transform.localPosition = TabletPositionInModel;
+            tablet.transform.localRotation = Quaternion.identity;
+            return tablet.GetComponent<TabletPanel>();
         }
 
         /// <summary>잔액 표시 화면 위에 눕힌 글자. 화면 면의 방향(정점 법선 평균)에 맞추고, 글자 위쪽은 플레이어 반대편(-Z).</summary>

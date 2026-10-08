@@ -43,6 +43,9 @@ namespace ProjectCR
 
         public bool OpenOnFirstRound => catalog != null && catalog.OpenOnFirstRound;
 
+        /// <summary>정적 상품 목록(아이콘 등 표시용).</summary>
+        public ShopCatalog Catalog => catalog;
+
         /// <summary>진열을 만든 라운드. 0이면 아직 없음.</summary>
         public int DisplayRound { get; private set; }
 
@@ -76,23 +79,32 @@ namespace ProjectCR
             AddFrom(catalog.ItemsOf(ShopCategory.Focus), catalog.FocusSlots, used);
             AddFrom(catalog.ItemsOf(ShopCategory.Cross), catalog.CrossSlots, used);
 
-            List<ShopItemDefinition> consumables = catalog.ItemsOf(ShopCategory.Consumable);
-            if (catalog.KeyConsumableSlot)
-            {
-                var key = consumables.FindAll(i => i.Effect == ShopEffect.ExtraBall || i.Effect == ShopEffect.SkullShield);
-                AddFrom(key, 1, used);
-            }
-
-            AddFrom(consumables, catalog.ConsumableSlots, used);
-
             List<ShopItemDefinition> support = catalog.ItemsOf(ShopCategory.PaymentSupport);
-            if (support.Count > 0 && rng.NextDouble() < catalog.PaymentSupportChance)
+            bool supportShown = support.Count > 0 && rng.NextDouble() < catalog.PaymentSupportChance;
+            if (supportShown)
             {
                 AddFrom(support, 1, used);
             }
+
+            List<ShopItemDefinition> consumables = catalog.ItemsOf(ShopCategory.Consumable);
+            if (catalog.ShowAllConsumables)
+            {
+                // 소모품 탭: 전부, 목록 순서대로.
+                foreach (ShopItemDefinition item in consumables)
+                {
+                    used.Add(item);
+                    offers.Add(new ShopOffer(item));
+                }
+            }
             else
             {
-                AddFrom(consumables, 1, used);
+                if (catalog.KeyConsumableSlot)
+                {
+                    var key = consumables.FindAll(i => i.Effect == ShopEffect.ExtraBall || i.Effect == ShopEffect.SkullShield);
+                    AddFrom(key, 1, used);
+                }
+
+                AddFrom(consumables, catalog.ConsumableSlots + (supportShown ? 0 : 1), used);
             }
 
             return offers;

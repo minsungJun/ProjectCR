@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace ProjectCR
 {
@@ -43,6 +44,13 @@ namespace ProjectCR
 
         [Tooltip("잔액 표시 화면의 글자. 보유 금액에서 판에 놓은 칩 합계를 뺀 값(이번 회전에 쓸 수 있는 돈)을 보여 준다.")]
         [SerializeField] private TextMesh balanceText;
+
+        [Tooltip("목표 금액 글자(태블릿). 이번 라운드 납부금. 비우면 표시하지 않는다.")]
+        [FormerlySerializedAs("betText")]
+        [SerializeField] private TextMesh dueText;
+
+        [Tooltip("테이블 태블릿. 버튼을 누를 수 있는지 상태에 맞춘다.")]
+        [SerializeField] private TabletPanel tablet;
 
         [Header("칩 더미 금액")]
         [Tooltip("칩 더미 위에 띄우는 합계 글자의 크기(TextMesh characterSize, 글꼴 크기 64 기준).")]
@@ -96,6 +104,16 @@ namespace ProjectCR
                 // 회전이 시작되면(잠김) 합계가 이미 빠졌으므로 또 빼지 않는다.
                 long pending = flow.Bet.IsLocked ? 0 : flow.Bet.TotalStake;
                 balanceText.text = Math.Max(0, flow.Wallet.Balance - pending).ToString("N0");
+            }
+
+            if (dueText != null)
+            {
+                dueText.text = flow.Round.CurrentDue.ToString("N0");
+            }
+
+            if (tablet != null)
+            {
+                tablet.Refresh(flow);
             }
         }
 

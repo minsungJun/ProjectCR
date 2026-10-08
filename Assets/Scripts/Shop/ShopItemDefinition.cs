@@ -54,10 +54,15 @@ namespace ProjectCR
         [SerializeField] private string id = "item";
         [SerializeField] private string displayName = "상품";
 
-        [Tooltip("카드 효과 설명. 비우면 효과에서 만든다.")]
+        [Tooltip("자세한 효과 설명. 비우면 효과에서 만든다.")]
         [TextArea(2, 4)]
         [SerializeField] private string description;
 
+        [Tooltip("상점 카드에 쓰는 짧은 설명(두 줄 정도). 비우면 효과에서 만든다.")]
+        [TextArea(2, 3)]
+        [SerializeField] private string cardText;
+
+        [Tooltip("상점 카드 아이콘. 비우면 강조색 원으로 대신 그린다.")]
         [SerializeField] private Sprite icon;
         [SerializeField] private Color tint = new Color(0.78f, 0.6f, 0.3f);
 
@@ -116,6 +121,9 @@ namespace ProjectCR
 
         public string Description => string.IsNullOrWhiteSpace(description) ? DefaultDescription() : description;
 
+        /// <summary>상점 카드의 짧은 설명(두 줄).</summary>
+        public string CardText => string.IsNullOrWhiteSpace(cardText) ? DefaultCardText() : cardText;
+
         /// <summary>적용 기간 문구.</summary>
         public string Duration
         {
@@ -158,6 +166,28 @@ namespace ProjectCR
 
             decimal rounded = Math.Ceiling(Math.Min(raw, cap) / PriceUnit) * PriceUnit;
             return Math.Max(Math.Max(1, minPrice), (long)rounded);
+        }
+
+        private string DefaultCardText()
+        {
+            string percent = (Value * 100m).ToString("0.#") + "%";
+            switch (effect)
+            {
+                case ShopEffect.Focus:
+                    return $"고른 대상 확률 +{percent}\n{group.ToKorean()} 지급액 +{percent}";
+                case ShopEffect.Cross:
+                    return $"{GroupCode(triggerGroup)} 당첨 시\n다음 회전 {GroupCode(group)} +{percent}";
+                case ShopEffect.PaymentSupport:
+                    return $"납부할 때마다\n납부금 {percent} 환급";
+                case ShopEffect.ExtraBall:
+                    return "이번 라운드\n공 1개 추가";
+                case ShopEffect.SkullShield:
+                    return "해골이 나오면\n해당 공 재회전";
+                case ShopEffect.SpareSpin:
+                    return "남은 회전\n+1회";
+                default:
+                    return $"일반 낙첨 시\n베팅금 {percent} 환급";
+            }
         }
 
         private string DefaultDescription()
@@ -257,7 +287,7 @@ namespace ProjectCR
             items.Add(Create("payment_support", "납부 지원금", ShopCategory.PaymentSupport, ShopEffect.PaymentSupport, 0.25f, 0.15f, 1.5f, 1, 1));
             items.Add(Create("extra_ball", "추가 공", ShopCategory.Consumable, ShopEffect.ExtraBall, 1f, 0.35f, 1f, 2, 2));
             items.Add(Create("skull_shield", "해골 방패", ShopCategory.Consumable, ShopEffect.SkullShield, 1f, 0.25f, 1f, 2, 2));
-            items.Add(Create("spare_spin", "여분의 회전권", ShopCategory.Consumable, ShopEffect.SpareSpin, 1f, 0.3f, 1f, 1, 1));
+            items.Add(Create("spare_spin", "회전권", ShopCategory.Consumable, ShopEffect.SpareSpin, 1f, 0.3f, 1f, 1, 1));
             items.Add(Create("insurance", "보험 증서", ShopCategory.Consumable, ShopEffect.Insurance, 0.5f, 0.1f, 1f, 2, 2));
             return items;
         }

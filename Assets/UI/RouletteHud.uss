@@ -492,20 +492,21 @@
     background-color: rgb(226, 182, 100);
 }
 
-/* ---------- 상점 ----------
-   음료 창과 같은 호두나무 판 + 황동 테두리 + 펠트 카드. 카드는 줄바꿈되고 목록은 세로 스크롤. */
+/* ---------- 서비스(상점) ----------
+   목업: 나무 틀 + 황동 테두리 안에 짙은 초록 펠트, 카드 한 줄에 4장(금색 얇은 테두리),
+   전체 폭 탭 두 개(활성 탭은 금색 채움 + 밑줄), 오른쪽 위 코인 + 보유 금액, 빨간 닫기 버튼. */
 
 .shop-modal {
     background-color: rgba(4, 3, 2, 0.74);
 }
 
 .shop-box {
-    width: 92%;
-    max-width: 1500px;
-    height: 88%;
-    padding: 18px 24px 18px 24px;
-    background-color: rgb(58, 36, 22);
-    border-width: 3px;
+    width: 1480px;
+    max-width: 94%;
+    height: 90%;
+    padding: 16px 22px 22px 22px;
+    background-color: rgb(52, 32, 19);
+    border-width: 4px;
     border-color: rgb(198, 154, 78);
     border-radius: 14px;
 }
@@ -514,63 +515,134 @@
     flex-direction: row;
     align-items: center;
     flex-shrink: 0;
+    padding-left: 6px;
 }
 
 .shop-title {
-    font-size: 34px;
+    font-size: 40px;
     -unity-font-style: bold;
-    color: rgb(241, 232, 210);
-    margin-right: 24px;
+    color: rgb(244, 234, 210);
+}
+
+.shop-wallet {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 18px;
+}
+
+.shop-wallet__label {
+    margin-left: 10px;
+    font-size: 24px;
+    color: rgb(226, 218, 196);
 }
 
 .shop-money {
-    font-size: 19px;
-    color: rgb(214, 182, 120);
-    white-space: normal;
-    flex-shrink: 1;
+    margin-left: 8px;
+    font-size: 32px;
+    -unity-font-style: bold;
+    color: rgb(240, 192, 80);
+}
+
+/* 코인 아이콘 자리. 스프라이트가 없으면 금색 원으로 그린다(ShopView가 배경 이미지를 넣으면 색·테두리를 끈다). */
+.shop-coin {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    border-width: 2px;
+    border-color: rgb(150, 104, 30);
+    background-color: rgb(240, 192, 80);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.shop-coin--large {
+    width: 38px;
+    height: 38px;
+    border-radius: 19px;
+    border-width: 3px;
+}
+
+.shop-coin--sprite {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
 }
 
 .shop-close {
-    width: 52px;
-    height: 52px;
-    font-size: 24px;
+    width: 56px;
+    height: 56px;
+    margin: 0;
+    padding: 0;
+    font-size: 30px;
+    -unity-font-style: bold;
     flex-shrink: 0;
-    background-color: rgb(78, 50, 30);
-    border-color: rgb(198, 154, 78);
+    color: rgb(255, 240, 230);
+    background-color: rgb(178, 44, 38);
+    border-width: 2px;
+    border-color: rgb(110, 22, 18);
+    border-radius: 6px;
+}
+
+.shop-close:hover {
+    background-color: rgb(212, 60, 50);
+}
+
+.shop-funds {
+    align-self: flex-end;
+    margin-right: 80px;
+    font-size: 16px;
+    color: rgb(200, 186, 150);
 }
 
 .shop-tabs {
     flex-direction: row;
-    align-items: center;
-    margin-top: 10px;
-    margin-bottom: 8px;
     flex-shrink: 0;
+    margin-top: 8px;
+    margin-bottom: 12px;
 }
 
 .shop-tab {
-    height: 40px;
-    padding-left: 18px;
-    padding-right: 18px;
-    margin-right: 6px;
-    font-size: 18px;
-    color: rgb(226, 218, 196);
-    background-color: rgb(46, 30, 18);
-    border-width: 1px;
-    border-color: rgb(120, 92, 48);
-    border-radius: 8px;
+    flex-grow: 1;
+    flex-basis: 0;
+    height: 56px;
+    margin: 0 4px 0 4px;
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: rgb(226, 206, 160);
+    background-color: rgb(40, 26, 15);
+    border-width: 2px;
+    border-color: rgb(150, 116, 58);
+    border-radius: 6px;
+}
+
+.shop-tab:hover {
+    background-color: rgb(62, 40, 24);
 }
 
 .shop-tab--active {
-    background-color: rgb(198, 154, 78);
-    color: rgb(36, 22, 10);
-    -unity-font-style: bold;
+    color: rgb(40, 24, 8);
+    background-color: rgb(232, 184, 74);
+    border-color: rgb(255, 222, 150);
+    border-bottom-width: 5px;
+    border-bottom-color: rgb(255, 214, 110);
+}
+
+.shop-tab--active:hover {
+    background-color: rgb(244, 198, 92);
+}
+
+.shop-felt {
+    flex-grow: 1;
+    padding: 18px 14px 10px 14px;
+    background-color: rgb(16, 56, 38);
+    border-width: 3px;
+    border-color: rgb(120, 86, 40);
+    border-radius: 8px;
 }
 
 .shop-notice {
-    margin-left: 12px;
-    font-size: 16px;
+    margin: 0 8px 10px 8px;
+    font-size: 18px;
     color: rgb(255, 214, 120);
-    flex-shrink: 1;
     white-space: normal;
 }
 
@@ -578,200 +650,221 @@
     flex-grow: 1;
 }
 
-.shop-groups {
+.shop-cards {
     flex-direction: row;
     flex-wrap: wrap;
 }
 
-.shop-group {
-    margin-right: 12px;
-}
-
-.shop-section {
-    margin-top: 8px;
-    margin-bottom: 4px;
-    font-size: 20px;
-    -unity-font-style: bold;
-    color: rgb(214, 182, 120);
-}
-
-.shop-row {
-    flex-direction: row;
-    flex-wrap: wrap;
-}
-
+/* 한 줄 4장: 폭 23% + 좌우 여백 1%씩. */
 .shop-card {
-    width: 330px;
-    min-height: 250px;
-    margin: 6px;
-    padding: 12px;
-    background-color: rgb(29, 74, 53);
-    border-width: 2px;
-    border-color: rgb(120, 92, 48);
-    border-radius: 10px;
-}
-
-.shop-card--cross {
-    background-color: rgb(32, 58, 70);
-}
-
-.shop-card--consumable {
-    background-color: rgb(62, 50, 34);
-}
-
-.shop-card__top {
-    flex-direction: row;
+    width: 23%;
+    margin: 0 1% 18px 1%;
+    padding: 18px 16px 16px 16px;
     align-items: center;
+    background-color: rgb(14, 44, 30);
+    border-width: 2px;
+    border-color: rgb(200, 156, 72);
+    border-radius: 8px;
+}
+
+.shop-card--done {
+    opacity: 0.6;
 }
 
 .shop-icon {
-    width: 44px;
-    height: 44px;
-    margin-right: 10px;
-    border-radius: 22px;
-    border-width: 2px;
-    border-color: rgba(255, 245, 220, 0.6);
+    width: 132px;
+    height: 132px;
+    margin-bottom: 10px;
     align-items: center;
     justify-content: center;
     -unity-background-scale-mode: scale-to-fit;
 }
 
+.shop-icon--placeholder {
+    width: 112px;
+    height: 112px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    border-radius: 56px;
+    border-width: 3px;
+    border-color: rgba(255, 236, 190, 0.7);
+}
+
 .shop-icon__label {
-    font-size: 13px;
+    font-size: 34px;
     -unity-font-style: bold;
-    color: rgb(250, 240, 214);
+    color: rgb(252, 244, 222);
 }
 
 .shop-name {
-    font-size: 20px;
+    font-size: 26px;
     -unity-font-style: bold;
-    color: rgb(241, 232, 210);
+    color: rgb(246, 238, 218);
+    -unity-text-align: middle-center;
     white-space: normal;
 }
 
-.shop-badge {
-    margin-top: 2px;
-    padding: 1px 8px 1px 8px;
-    font-size: 13px;
-    color: rgb(36, 22, 10);
-    background-color: rgb(198, 154, 78);
-    border-radius: 8px;
-    align-self: flex-start;
+.shop-dash {
+    width: 34px;
+    height: 3px;
+    margin: 10px 0 10px 0;
+    background-color: rgb(232, 184, 74);
 }
 
 .shop-desc {
-    margin-top: 8px;
-    font-size: 15px;
-    color: rgb(226, 218, 196);
+    min-height: 52px;
+    font-size: 18px;
+    color: rgb(222, 222, 206);
+    -unity-text-align: middle-center;
     white-space: normal;
 }
 
-.shop-duration {
-    margin-top: 4px;
-    font-size: 13px;
-    color: rgb(190, 200, 184);
-    white-space: normal;
-}
-
-.shop-owned {
-    margin-top: 4px;
+.shop-state {
+    margin-top: 6px;
     font-size: 14px;
-    color: rgb(255, 214, 120);
+    color: rgb(170, 190, 168);
+    -unity-text-align: middle-center;
     white-space: normal;
 }
 
 .shop-targets {
     flex-direction: row;
     flex-wrap: wrap;
-    margin-top: 6px;
+    justify-content: center;
+    margin-top: 8px;
 }
 
 .shop-target {
-    height: 30px;
-    padding-left: 10px;
-    padding-right: 10px;
+    height: 32px;
+    padding-left: 12px;
+    padding-right: 12px;
     margin: 2px;
-    font-size: 14px;
+    font-size: 15px;
     color: rgb(226, 218, 196);
-    background-color: rgb(20, 46, 34);
+    background-color: rgb(10, 34, 23);
     border-width: 1px;
-    border-color: rgb(120, 92, 48);
+    border-color: rgb(150, 116, 58);
     border-radius: 6px;
 }
 
+.shop-target:hover {
+    background-color: rgb(24, 60, 42);
+}
+
 .shop-target--selected {
-    background-color: rgb(198, 154, 78);
-    color: rgb(36, 22, 10);
+    background-color: rgb(232, 184, 74);
+    color: rgb(40, 24, 8);
     -unity-font-style: bold;
 }
 
-.shop-buy-row {
+.shop-sep {
+    align-self: stretch;
+    height: 1px;
+    margin-top: auto;
+    margin-bottom: 12px;
+    background-color: rgba(200, 156, 72, 0.45);
+}
+
+/* 구분선 위쪽 내용과 구분선 사이 최소 간격(구분선의 margin-top: auto가 카드 높이 차를 흡수한다). */
+.shop-card__body {
+    align-self: stretch;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.shop-price-row {
     flex-direction: row;
     align-items: center;
-    margin-top: auto;
-    padding-top: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
 }
 
 .shop-price {
-    flex-grow: 1;
-    font-size: 20px;
+    margin-left: 8px;
+    font-size: 26px;
     -unity-font-style: bold;
-    color: rgb(255, 214, 120);
+    color: rgb(240, 192, 80);
 }
 
 .shop-buy {
-    width: 110px;
-    height: 40px;
-    font-size: 17px;
+    align-self: stretch;
+    height: 50px;
+    margin: 0;
+    font-size: 22px;
     -unity-font-style: bold;
-    color: rgb(36, 22, 10);
-    background-color: rgb(198, 154, 78);
+    color: rgb(40, 24, 8);
+    background-color: rgb(232, 184, 74);
+    border-width: 2px;
     border-color: rgb(255, 222, 150);
+    border-radius: 6px;
 }
 
 .shop-buy:hover {
-    background-color: rgb(226, 182, 100);
+    background-color: rgb(248, 204, 100);
+}
+
+.shop-buy:disabled {
+    color: rgb(200, 186, 150);
+    background-color: rgb(60, 52, 36);
+    border-color: rgb(110, 92, 56);
+    opacity: 1;
 }
 
 .shop-reason {
-    margin-top: 4px;
-    font-size: 13px;
-    color: rgb(255, 150, 130);
+    margin-top: 6px;
+    font-size: 14px;
+    color: rgb(255, 160, 130);
+    -unity-text-align: middle-center;
     white-space: normal;
 }
 
-.shop-item-row {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    margin: 4px 6px 4px 6px;
-    padding: 10px 12px 10px 12px;
-    background-color: rgb(46, 30, 18);
-    border-radius: 8px;
-}
-
-.shop-item-row .shop-desc {
-    flex-grow: 1;
-    flex-shrink: 1;
-    margin-top: 0px;
-    margin-left: 12px;
-    width: 300px;
-}
-
-.shop-item-button {
-    height: 38px;
-    padding-left: 14px;
-    padding-right: 14px;
-    margin-left: 6px;
-    font-size: 15px;
-    color: rgb(36, 22, 10);
-    background-color: rgb(198, 154, 78);
-    border-color: rgb(255, 222, 150);
+.shop-section {
+    margin: 6px 1% 6px 1%;
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(232, 184, 74);
 }
 
 .shop-summary {
-    margin: 4px 8px 4px 8px;
-    font-size: 15px;
-    color: rgb(226, 218, 196);
+    margin: 0 1% 8px 1%;
+    font-size: 16px;
+    color: rgb(222, 222, 206);
     white-space: normal;
+}
+
+.shop-empty {
+    margin: 30px 1% 30px 1%;
+    font-size: 20px;
+    color: rgb(200, 210, 190);
+    -unity-text-align: middle-center;
+}
+
+/* 카드가 넘칠 때의 세로 스크롤바: 기본 흰 막대 대신 펠트 위의 얇은 금색 막대. */
+.shop-scroll .unity-scroller--vertical {
+    width: 10px;
+    margin-left: 6px;
+}
+
+.shop-scroll .unity-scroller__low-button,
+.shop-scroll .unity-scroller__high-button {
+    display: none;
+}
+
+.shop-scroll .unity-scroller--vertical > .unity-scroller__slider {
+    margin: 0;
+}
+
+.shop-scroll .unity-scroller .unity-base-slider__tracker {
+    background-color: rgba(0, 0, 0, 0.25);
+    border-width: 0;
+    border-radius: 5px;
+}
+
+.shop-scroll .unity-scroller .unity-base-slider__dragger {
+    left: 0;
+    right: 0;
+    width: 10px;
+    background-color: rgb(200, 156, 72);
+    border-width: 0;
+    border-radius: 5px;
 }
