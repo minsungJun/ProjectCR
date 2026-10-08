@@ -1,0 +1,261 @@
+/* 룰렛 HUD. 기준 해상도 1920x1080 (PanelSettings: Scale With Screen Size).
+   오른쪽에 베팅 패널, 위에 상태 바, 왼쪽 아래에 결과. 가운데는 3D 휠이 보이도록 비워 둔다. */
+
+:root {
+    --ink: rgba(12, 14, 20, 0.88);
+    --line: rgba(255, 255, 255, 0.12);
+    --text: rgb(236, 232, 222);
+    --muted: rgb(160, 156, 148);
+    --gold: rgb(255, 209, 64);
+    --red: rgb(178, 36, 44);
+    --black: rgb(28, 28, 32);
+    --green: rgb(28, 120, 60);
+}
+
+.root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    color: var(--text);
+    font-size: 20px;
+}
+
+/* ---------- 상태 바 ---------- */
+
+.topbar {
+    flex-direction: row;
+    align-items: center;
+    height: 56px;
+    padding-left: 24px;
+    padding-right: 16px;
+    background-color: var(--ink);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--line);
+}
+
+.stat {
+    margin-right: 32px;
+    font-size: 22px;
+    -unity-font-style: bold;
+}
+
+.stat--money {
+    color: var(--gold);
+}
+
+.spacer {
+    flex-grow: 1;
+}
+
+.seed {
+    margin-right: 16px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* ---------- 베팅 패널 ---------- */
+
+.bet-panel {
+    position: absolute;
+    right: 24px;
+    top: 80px;
+    width: 600px;
+    padding: 16px;
+    background-color: var(--ink);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: var(--line);
+}
+
+.panel-title {
+    margin-bottom: 8px;
+    font-size: 18px;
+    color: var(--muted);
+}
+
+.number-grid {
+    flex-direction: row;
+    margin-bottom: 12px;
+}
+
+.grid-columns {
+    flex-direction: row;
+}
+
+.grid-column {
+    flex-direction: column;
+}
+
+.cell {
+    width: 40px;
+    height: 44px;
+    margin: 1px;
+    padding: 0;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: 4px;
+    color: rgb(255, 255, 255);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.cell--zero {
+    height: 136px;
+}
+
+.cell--red {
+    background-color: var(--red);
+}
+
+.cell--black {
+    background-color: var(--black);
+}
+
+.cell--green {
+    background-color: var(--green);
+}
+
+.cell:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.cell--selected {
+    border-color: var(--gold);
+    border-width: 3px;
+}
+
+.row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.field-label {
+    width: 120px;
+    color: var(--muted);
+}
+
+.field-value {
+    font-size: 24px;
+    -unity-font-style: bold;
+}
+
+.stake-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.preview {
+    margin-bottom: 4px;
+    font-size: 17px;
+    color: var(--gold);
+    white-space: normal;
+}
+
+.error {
+    min-height: 24px;
+    font-size: 17px;
+    color: rgb(255, 120, 110);
+    white-space: normal;
+}
+
+/* ---------- 버튼 ---------- */
+
+.btn {
+    margin: 2px;
+    border-width: 1px;
+    border-color: var(--line);
+    border-radius: 6px;
+    background-color: rgb(46, 50, 62);
+    color: var(--text);
+}
+
+.btn:hover {
+    background-color: rgb(64, 70, 86);
+}
+
+.btn--small {
+    height: 36px;
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 16px;
+}
+
+.btn--stake {
+    width: 76px;
+    height: 40px;
+    font-size: 18px;
+}
+
+.btn--primary {
+    height: 64px;
+    margin-top: 8px;
+    background-color: rgb(196, 150, 40);
+    color: rgb(20, 18, 12);
+    font-size: 26px;
+    -unity-font-style: bold;
+}
+
+.btn--primary:hover {
+    background-color: rgb(230, 182, 60);
+}
+
+.btn:disabled {
+    opacity: 0.4;
+}
+
+/* ---------- 결과 ---------- */
+
+.result-panel {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    width: 1180px;
+    padding: 16px 20px;
+    background-color: var(--ink);
+    border-radius: 10px;
+}
+
+.result {
+    font-size: 30px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.history {
+    margin-top: 6px;
+    font-size: 17px;
+    color: var(--muted);
+}
+
+/* ---------- 납부 / 게임 오버 ---------- */
+
+.modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none;
+}
+
+.modal__box {
+    width: 640px;
+    padding: 32px;
+    background-color: rgb(27, 30, 38);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: var(--gold);
+}
+
+.modal__text {
+    margin-bottom: 16px;
+    font-size: 24px;
+    white-space: normal;
+}
