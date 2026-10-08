@@ -26,6 +26,12 @@ namespace ProjectCR.Tests
         private RouletteDefinition definition;
         private GameBalance balance;
         private DrinkCatalog catalog;
+        private ShopCatalog shopCatalog;
+
+        // 상점 전략 통계(마지막 변형 기준).
+        private int shopVisits;
+        private int supportBought;
+        private long shopSpent;
 
         /// <summary>회전마다 무엇에 얼마를 걸지. 보상 때 어느 묶음을 원하는지.</summary>
         private sealed class Strategy
@@ -42,6 +48,7 @@ namespace ProjectCR.Tests
             definition = assets.Definition();
             balance = assets.Balance();
             catalog = assets.Drinks(withProbability: true);
+            shopCatalog = assets.Shop();
         }
 
         [TearDown]
@@ -74,13 +81,15 @@ namespace ProjectCR.Tests
 
             foreach (Strategy strategy in strategies)
             {
-                foreach (bool drinks in new[] { false, true })
+                foreach ((bool drinks, bool shop) in new[] { (false, false), (true, false), (true, true) })
                 {
                     int[] passed = new int[MaxRounds + 1];
                     long reachedSum = 0;
+                    shopVisits = supportBought = 0;
+                    shopSpent = 0;
                     for (int run = 1; run <= Runs; run++)
                     {
-                        int reached = PlayRun(strategy, run, drinks ? catalog : null);
+                        int reached = PlayRun(strategy, run, drinks ? catalog : null, shop ? shopCatalog : null);
                         reachedSum += reached;
                         for (int r = 1; r < reached && r <= MaxRounds; r++)
                         {
@@ -88,33 +97,46 @@ namespace ProjectCR.Tests
                         }
                     }
 
-                    report.Append($"{strategy.Name}{(drinks ? "+음료" : "")}".PadRight(12));
+                    report.Append($"{strategy.Name}{(drinks ? "+음료" : "")}{(shop ? "+상점" : "")}".PadRight(12));
                     for (int r = 1; r <= MaxRounds; r++)
                     {
                         report.Append($"{100.0 * passed[r] / Runs,5:F1}%");
                     }
 
-                    report.AppendLine($"   {(double)reachedSum / Runs:F2}");
+                    report.Append($"   {(double)reachedSum / Runs:F2}");
+                    if (shop && shopVisits > 0)
+                    {
+                        report.Append($"   지원금 구매 {100.0 * supportBought / shopVisits:F0}% · 방문당 지출 {(double)shopSpent / shopVisits:F0}");
+                    }
+
+                    report.AppendLine();
                 }
             }
 
             report.AppendLine();
             report.Append(SafeBetReturnTable());
+            report.AppendLine();
+            report.Append(FocusReturnTable());
 
             UnityEngine.Debug.Log(report.ToString());
             Assert.Pass(report.ToString());
         }
 
         /// <summary>게임 하나를 끝까지(또는 MaxRounds 통과까지) 돌리고, 도달한 라운드(못 낸 라운드)를 돌려준다.</summary>
-        private int PlayRun(Strategy strategy, int seed, DrinkCatalog drinks)
+        private int PlayRun(Strategy strategy, int seed, DrinkCatalog drinks, ShopCatalog shop = null)
         {
-            var flow = new GameFlowController(definition, balance, seed, drinks);
+            var flow = new GameFlowController(definition, balance, seed, drinks, shop);
             DrinkGroup wanted = DrinkGroups.Of(strategy.Target.Kind);
+            int shoppedRound = 0;
 
             while (flow.Round.Round <= MaxRounds)
             {
                 switch (flow.Phase)
                 {
+                    case GamePhase.Betting when shop != null && shoppedRound != flow.Round.Round:
+                        shoppedRound = flow.Round.Round;
+                        VisitShop(flow, strategy.Target);
+                        break;
                     case GamePhase.Betting:
                         long stake = Math.Min(flow.Wallet.Balance, Math.Max(balance.MinBet, strategy.Stake(flow)));
                         flow.PlaceBet(strategy.Target, stake);
@@ -148,6 +170,66 @@ namespace ProjectCR.Tests
             }
 
             return MaxRounds + 1;
+        }
+
+        /// <summary>
+        /// 라운드 첫 베팅 때 상점: 납부 지원금(지속 환급)과 자기 베팅 대상의 집중 강화를
+        /// 보유의 25% 이하 가격이면 산다. 소모품·교차 강화는 사지 않는다(단순 전략).
+        /// </summary>
+        private void VisitShop(GameFlowController flow, BetTarget target)
+        {
+            if (!flow.EnterShop())
+            {
+                return;
+            }
+
+            shopVisits++;
+            long before = flow.Wallet.Balance;
+            for (int i = 0; i < flow.Shop.Offers.Count; i++)
+            {
+                ShopItemDefinition item = flow.Shop.Offers[i].Item;
+                if (item.Effect == ShopEffect.PaymentSupport && flow.Shop.PriceOf(flow.Shop.Offers[i]) <= flow.Wallet.Balance / 4
+                    && flow.Shop.Buy(i, BetTarget.None) == ShopError.None)
+                {
+                    supportBought++;
+                }
+                else if (item.Effect == ShopEffect.Focus && item.Group == DrinkGroups.Of(target.Kind)
+                         && flow.Shop.PriceOf(flow.Shop.Offers[i]) <= flow.Wallet.Balance / 4)
+                {
+                    flow.Shop.Buy(i, target);
+                }
+            }
+
+            shopSpent += Math.Max(0, before - flow.Wallet.Balance);
+            flow.CloseShop();
+        }
+
+        /// <summary>빨강 기대 환수율: 상점 집중 강화(색상, 빨강 대상) s개 × 음료 조합.</summary>
+        private string FocusReturnTable()
+        {
+            var text = new StringBuilder();
+            text.AppendLine("[빨강 기대 환수율 + 상점 집중] 행 = 색상 집중 개수(+10%씩), 열 = 음료 없음 / 지급 1잔 / 지급 1잔 + 빨강 확률 3잔");
+            for (int s = 0; s <= 5; s += s < 1 ? 1 : 2)
+            {
+                text.Append($"s={s}".PadRight(6));
+                foreach ((int m, int k) in new[] { (0, 0), (1, 0), (1, 3) })
+                {
+                    var flow = new GameFlowController(definition, balance, 1, catalog);
+                    flow.Drinks.SetStacks(DrinkGroup.Color, m);
+                    flow.Probabilities.SetStacks(Red, 0.37m, k);
+                    for (int i = 0; i < s; i++)
+                    {
+                        flow.Upgrades.AddFocus(DrinkGroup.Color, Red, 0.1m);
+                    }
+
+                    SpinConfig config = flow.BuildSpinConfig();
+                    text.Append($"{config.ProbabilityOf(Red) * (double)config.MultiplierFor(Red) * 100,9:F1}%");
+                }
+
+                text.AppendLine();
+            }
+
+            return text.ToString();
         }
 
         /// <summary>

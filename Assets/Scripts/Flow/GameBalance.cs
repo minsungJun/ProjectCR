@@ -47,6 +47,10 @@ namespace ProjectCR
         [Tooltip("회전마다 굴리는 공 수. 아이템이 늘리는 값의 기준.")]
         [SerializeField] private int ballCount = 1;
 
+        [Tooltip("추가 공 아이템을 써도 넘지 못하는 회전당 공 수.")]
+        [Min(1)]
+        [SerializeField] private int maxBallCount = 3;
+
         [Header("해골")]
         [Tooltip("해골에 걸리면 베팅금을 뺀 뒤 남은 보유 금액에 곱해 남기는 비율. 0.5면 절반(소수점 반올림). 회전당 한 번.")]
         [Range(0f, 1f)]
@@ -94,6 +98,7 @@ namespace ProjectCR
             }
         }
         public int BallCount => ballCount;
+        public int MaxBallCount => Math.Max(ballCount, maxBallCount);
         public int SpinsPerRound => spinsPerRound;
         public float SkullBalanceKeep => skullBalanceKeep;
 

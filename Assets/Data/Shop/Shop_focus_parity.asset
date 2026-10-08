@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fb8a5ad573e7c24784405fb261d3671, type: 3}
+  m_Name: Shop_focus_parity
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
+  id: focus_parity
+  displayName: "\uD640\uC9DD \uC9D1\uC911"
+  description: 
+  icon: {fileID: 0}
+  tint: {r: 0.08627451, g: 0.65882355, b: 0.29411766, a: 1}
+  category: 0
+  effect: 0
+  group: 2
+  triggerGroup: 0
+  value: 0.1
+  priceRatio: 0.3
+  priceGrowth: 1.5
+  minPrice: 5
+  stockPerRound: 1
+  buyLimitPerRound: 1

@@ -74,6 +74,18 @@ namespace ProjectCR
             return PaymentOutcome.Paid;
         }
 
+        /// <summary>여분의 회전권: 이번 라운드 남은 회전 +1. 납부했으면(라운드 종료 확정) false.</summary>
+        public bool AddSpin()
+        {
+            if (IsPaid)
+            {
+                return false;
+            }
+
+            SpinsRemaining++;
+            return true;
+        }
+
         /// <summary>납부한 뒤 다음 라운드로 넘어가 회전 수를 다시 채운다. 납부 전이면 아무것도 하지 않고 false.</summary>
         public bool AdvanceRound()
         {

@@ -17,19 +17,34 @@ namespace ProjectCR
         /// <summary>납부에 성공했고 음료를 고르는 중. 베팅·회전·재납부를 막는다. 고르면 다음 라운드.</summary>
         DrinkSelection,
 
+        /// <summary>상점 이용 중(베팅 중에만 들어온다). 베팅·회전을 막고, 닫으면 놓아 둔 베팅 그대로 Betting으로 돌아간다.</summary>
+        Shopping,
+
         GameOver,
     }
 
     /// <summary>진행 중인 회전 하나. 연출이 끝나면 Id로 정산을 요청한다.</summary>
     public sealed class ActiveSpin
     {
-        public ActiveSpin(int id, IReadOnlyList<ConfirmedBet> bets, SpinConfig config, SpinResult result)
+        public ActiveSpin(int id, IReadOnlyList<ConfirmedBet> bets, SpinConfig config, SpinResult result,
+            bool insured = false, decimal insuranceRatio = 0m, int shieldsUsed = 0)
         {
             Id = id;
             Bets = bets;
             Config = config;
             Result = result;
+            Insured = insured;
+            InsuranceRatio = insuranceRatio;
+            ShieldsUsed = shieldsUsed;
         }
+
+        /// <summary>이 회전에 보험이 걸렸다(시작 때 확정).</summary>
+        public bool Insured { get; }
+
+        public decimal InsuranceRatio { get; }
+
+        /// <summary>시작 때 해골을 막느라 쓴 방패 수(결과는 이미 다시 뽑힌 뒤다).</summary>
+        public int ShieldsUsed { get; }
 
         public int Id { get; }
 
@@ -66,10 +81,14 @@ namespace ProjectCR
         // 보상 추첨 난수를 결과 추첨 난수와 떼어 놓는 값. 같은 시드면 보상도 같다.
         private const int RewardSeedSalt = 0x5EED5EED;
 
+        // 상점 진열 난수용. 결과·보상 난수와 떨어뜨린다.
+        private const int ShopSeedSalt = 0x5A0B5A0B;
+
         private readonly Random rng;
         private int lastSpinId;
 
-        public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed, DrinkCatalog drinkCatalog = null)
+        public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed, DrinkCatalog drinkCatalog = null,
+            ShopCatalog shopCatalog = null)
         {
             Definition = definition;
             GameBalance = gameBalance;
@@ -82,6 +101,11 @@ namespace ProjectCR
             Drinks = new DrinkRunState(drinkCatalog);
             Probabilities = new ProbabilityDrinkRunState();
             Rewards = new DrinkRewardController(drinkCatalog, Seed ^ RewardSeedSalt);
+            Inventory = new InventoryState();
+            Upgrades = new BettingUpgradeState();
+            Cross = new CrossBetEffectState();
+            Shop = new ShopController(this, shopCatalog, Seed ^ ShopSeedSalt);
+            Items = new ItemEffectController(this);
             Phase = GamePhase.Betting;
         }
 
@@ -104,6 +128,21 @@ namespace ProjectCR
         /// <summary>라운드 통과 보상(음료 후보).</summary>
         public DrinkRewardController Rewards { get; }
 
+        /// <summary>상점(진열·재고·구매).</summary>
+        public ShopController Shop { get; }
+
+        /// <summary>소모품 사용.</summary>
+        public ItemEffectController Items { get; }
+
+        /// <summary>소모품 보유·장착·이번 라운드 효과.</summary>
+        public InventoryState Inventory { get; }
+
+        /// <summary>상점 집중 강화(음료와 따로 저장).</summary>
+        public BettingUpgradeState Upgrades { get; }
+
+        /// <summary>상점 교차 강화(보유 + 다음 회전 강화).</summary>
+        public CrossBetEffectState Cross { get; }
+
         public GamePhase Phase { get; private set; }
 
         public ActiveSpin CurrentSpin { get; private set; }
@@ -118,6 +157,9 @@ namespace ProjectCR
 
         /// <summary>마지막으로 낸 납부금. 보상 화면 머리글용.</summary>
         public long LastPaidDue { get; private set; }
+
+        /// <summary>마지막 납부 때 납부 지원금으로 돌려받은 돈. 없으면 0.</summary>
+        public long LastPaymentRefund { get; private set; }
 
         /// <summary>마지막으로 마신 음료. 없으면 null.</summary>
         public DrinkOffer LastDrink { get; private set; }
@@ -179,11 +221,19 @@ namespace ProjectCR
 
             Round.TryConsumeSpin();
 
+            // 이 회전 설정을 확정한다(공 수, 지급 배율, 가중치, 다음 회전 교차 강화). 이후 상점·아이템은 이 회전에 영향이 없다.
             SpinConfig config = BuildSpinConfig();
+            Cross.TakePendingForSpin();
+            bool insured = Inventory.TakeInsuranceForSpin();
+
             SpinResult result = SpinResolver.Resolve(config, rng);
             result = ApplyResultOverrides(result);
 
-            spin = new ActiveSpin(++lastSpinId, bets, config, result);
+            // 해골 방패: 장착한 방패로 해골 공만 같은 설정으로 다시 뽑는다.
+            result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.ShieldsEquipped, out int shieldsUsed);
+            Inventory.ConsumeEquippedShields(shieldsUsed);
+
+            spin = new ActiveSpin(++lastSpinId, bets, config, result, insured, Inventory.InsuranceRatio, shieldsUsed);
             CurrentSpin = spin;
             Phase = GamePhase.Spinning;
             return BetError.None;
@@ -213,6 +263,18 @@ namespace ProjectCR
                 Wallet.TrySpend(penalty);
                 settlement.ApplySkullPenalty(penalty);
             }
+
+            settlement.ApplyShieldsUsed(spin.ShieldsUsed);
+
+            // 보험: 해골이 아닌 일반 낙첨(지급 0)이면 베팅금 일부 환급. 해골 낙첨·당첨에는 없다.
+            if (spin.Insured && settlement.Outcome == SpinOutcome.Lose)
+            {
+                long refund = (long)Math.Floor(settlement.TotalStake * spin.InsuranceRatio);
+                settlement.ApplyInsuranceRefund(Wallet.Add(refund));
+            }
+
+            // 교차 강화: 발동 묶음 베팅이 당첨됐으면 다음 회전 강화(해골 낙첨이면 없음).
+            settlement.ApplyCrossTriggers(Cross.OnSettled(settlement));
 
             LastSettlement = settlement;
             SpinsPlayed++;
@@ -251,6 +313,9 @@ namespace ProjectCR
             }
 
             LastPaidDue = due;
+
+            // 납부 지원금(지속 효과): 방금 낸 납부금의 일부를 돌려받는다. 납부 판정은 이미 끝났으니 부족분을 메우지는 못한다.
+            LastPaymentRefund = Wallet.Add((long)Math.Floor(due * Upgrades.PaymentRefund));
             if (Rewards.HasCatalog && Rewards.CreateOffer().Count > 0)
             {
                 Phase = GamePhase.DrinkSelection;
@@ -295,6 +360,48 @@ namespace ProjectCR
             return drink;
         }
 
+        // ---------- 상점 ----------
+
+        /// <summary>
+        /// 상점에 들어간다. 베팅 중(Betting)에만 된다. 놓아 둔 베팅은 그대로 두고, 회전·라운드는 진행되지 않는다.
+        /// 이번 라운드 진열이 없으면 만든다(다시 들어와도 같은 진열·재고).
+        /// </summary>
+        public bool EnterShop()
+        {
+            if (Phase != GamePhase.Betting || !Shop.HasCatalog)
+            {
+                return false;
+            }
+
+            Shop.State.EnsureDisplay(Round.Round);
+            Phase = GamePhase.Shopping;
+            return true;
+        }
+
+        /// <summary>
+        /// 상점을 닫는다. 베팅 상태로 돌아가되, 상점에서 돈을 다 써서 최소 베팅도 못 하고 놓은 칩도 없으면
+        /// 기존 규칙대로 남은 회전을 버리고 납부 판정(RoundPayment)으로 간다.
+        /// </summary>
+        public bool CloseShop()
+        {
+            if (Phase != GamePhase.Shopping)
+            {
+                return false;
+            }
+
+            if (Bet.HasBets || CanAffordMinimumBet)
+            {
+                Phase = GamePhase.Betting;
+            }
+            else
+            {
+                Round.ForfeitRemainingSpins();
+                Phase = GamePhase.RoundPayment;
+            }
+
+            return true;
+        }
+
         // ---------- 아이템이 끼어들 자리 ----------
 
         /// <summary>
@@ -305,6 +412,10 @@ namespace ProjectCR
         {
             SpinConfig config = SpinConfig.Create(Definition, GameBalance);
             config.BallCount += ExtraBallCount;
+
+            // 추가 공 아이템(이번 라운드). 최대 공 수를 넘지 않는다(디버그로 더한 공은 그대로 둔다).
+            int withItems = config.BallCount + Inventory.RoundExtraBalls;
+            config.BallCount = Math.Min(withItems, Math.Max(config.BallCount, GameBalance.MaxBallCount));
             if (StraightPayoutOverride > 0)
             {
                 config.StraightPayout = StraightPayoutOverride;
@@ -317,11 +428,20 @@ namespace ProjectCR
                 config.SetGroupBoost(group, Drinks.MultiplierOf(group));
             }
 
-            // 확률 음료: 일반 칸 가중치만 바꾼다. 해골 확률(SkullChance)은 그대로 1/38.
-            // 베팅과 상관없이 지금 효과를 그대로 쓴다(건 칸을 따로 유리하게 하지 않는다).
-            if (Probabilities.Effects.Count > 0)
+            // 상점 강화: (1 + 집중 증가 + 다음 회전 교차 증가). 음료 배율 뒤에 곱한다(SpinConfig.MultiplierFor).
+            for (int i = 0; i < DrinkGroups.Count; i++)
             {
-                config.SetWeights(PocketWeightCalculator.Compute(Definition, Probabilities.Effects));
+                var group = (DrinkGroup)i;
+                config.SetGroupBonus(group, Upgrades.PayoutIncrease(group) + Cross.Pending(group));
+            }
+
+            // 확률(음료 + 상점 집중): 같은 칸이면 증가량을 더한다. 일반 칸 가중치만 바꾸고 해골(SkullChance)은 그대로 1/38.
+            // 베팅과 상관없이 지금 효과를 그대로 쓴다(건 칸을 따로 유리하게 하지 않는다).
+            if (Probabilities.Effects.Count > 0 || Upgrades.Probabilities.Effects.Count > 0)
+            {
+                var effects = new List<ProbabilityEffect>(Probabilities.Effects);
+                effects.AddRange(Upgrades.Probabilities.Effects);
+                config.SetWeights(PocketWeightCalculator.Compute(Definition, effects));
             }
 
             return config;
@@ -355,6 +475,8 @@ namespace ProjectCR
         /// </summary>
         private void StartNextRound()
         {
+            // 추가 공 효과 끝, 쓰지 않은 납부 지원금 만료. 다음 회전 교차 강화는 남긴다(다음 라운드 첫 회전).
+            Inventory.OnRoundEnded();
             Round.AdvanceRound();
             Bet.Unlock(Wallet.Balance);
             Bet.ClearBets();

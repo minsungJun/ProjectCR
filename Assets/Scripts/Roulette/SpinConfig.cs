@@ -14,6 +14,7 @@ namespace ProjectCR
         private int ballCount;
         private readonly int[] payouts = new int[Enum.GetValues(typeof(PayoutClass)).Length];
         private readonly decimal[] groupBoosts = new decimal[DrinkGroups.Count];
+        private readonly decimal[] groupBonus = new decimal[DrinkGroups.Count];
 
         private SpinConfig(RouletteDefinition definition, int ballCount, double[] weights, double skullChance)
         {
@@ -96,13 +97,24 @@ namespace ProjectCR
 
         public void SetGroupBoost(DrinkGroup group, decimal multiplier) => groupBoosts[(int)group] = Math.Max(0m, multiplier);
 
+        /// <summary>상점 강화 증가량(집중 + 이번 회전 교차)의 합. 0.1 = +10%. 지급에 (1 + 증가량)으로 곱한다.</summary>
+        public decimal GroupBonus(DrinkGroup group) => groupBonus[(int)group];
+
+        public void SetGroupBonus(DrinkGroup group, decimal increase) => groupBonus[(int)group] = Math.Max(0m, increase);
+
         /// <summary>
-        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 묶음 배율. UI 미리보기와 정산이 같이 쓴다.
-        /// 기본 배수와 잔 수에서 매번 새로 계산하므로 이전 결과에 겹쳐 곱하지 않는다.
+        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 음료 묶음 배율 × (1 + 상점 집중 + 이번 회전 교차).
+        /// UI 미리보기와 정산이 같이 쓴다. 기본 배수와 잔 수·증가량에서 매번 새로 계산하므로 이전 결과에 겹쳐 곱하지 않는다.
         /// </summary>
         public decimal MultiplierFor(BetTarget target)
         {
-            return target.IsNone ? 0m : PayoutFor(target) * GroupBoost(DrinkGroups.Of(target.Kind));
+            if (target.IsNone)
+            {
+                return 0m;
+            }
+
+            DrinkGroup group = DrinkGroups.Of(target.Kind);
+            return PayoutFor(target) * GroupBoost(group) * (1m + GroupBonus(group));
         }
 
         public static SpinConfig Create(RouletteDefinition definition, GameBalance balance)

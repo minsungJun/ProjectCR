@@ -23,6 +23,7 @@ MonoBehaviour:
   dozenColumnTotalPayout: 3
   evenMoneyTotalPayout: 2
   ballCount: 1
+  maxBallCount: 3
   skullBalanceKeep: 0.5
   spinsPerRound: 5
   firstRoundDue: 120

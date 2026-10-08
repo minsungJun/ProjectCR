@@ -44,6 +44,18 @@ namespace ProjectCR.Tests
             return Track(DrinkCatalog.Create(drinks, offerCount, chances));
         }
 
+        /// <summary>기본 상점 41종 목록. supportChance로 납부 지원금 진열 확률을 정한다.</summary>
+        public ShopCatalog Shop(float supportChance = 0.5f)
+        {
+            var items = ShopItemDefinition.CreateDefaults();
+            foreach (ShopItemDefinition item in items)
+            {
+                Track(item);
+            }
+
+            return Track(ShopCatalog.Create(items, supportChance));
+        }
+
         public void DestroyAll()
         {
             foreach (Object asset in created)

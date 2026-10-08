@@ -20,12 +20,18 @@ namespace ProjectCR
         [Tooltip("라운드 통과 보상 음료 목록. 비우면 납부 후 바로 다음 라운드.")]
         [SerializeField] private DrinkCatalog drinkCatalog;
 
+        [Tooltip("상점 상품 목록. 비우면 상점 버튼이 꺼진다.")]
+        [SerializeField] private ShopCatalog shopCatalog;
+
         [Header("연결")]
         [SerializeField] private RoulettePresenter presenter;
         [SerializeField] private RouletteHud hud;
 
         [Tooltip("음료 선택 창(HUD와 같은 UIDocument).")]
         [SerializeField] private DrinkSelectionView drinkView;
+
+        [Tooltip("상점 창(HUD와 같은 UIDocument).")]
+        [SerializeField] private ShopView shopView;
 
         [Tooltip("3D 테이블 입력(칩 놓기·빼기·칩 고르기). 없으면 테이블 없이 돈다.")]
         [SerializeField] private TableBetInput tableInput;
@@ -85,6 +91,16 @@ namespace ProjectCR
             hud.ClearClicked += OnClearClicked;
             hud.SpinClicked += OnSpinClicked;
             hud.RestartClicked += StartNewRun;
+            hud.ShopClicked += OnShopClicked;
+
+            if (shopView != null)
+            {
+                shopView.Initialize();
+                shopView.Closed += OnShopClosed;
+                shopView.BuyRequested += OnShopBuy;
+                shopView.PickTargetRequested += OnShopPickTarget;
+                shopView.ItemUseRequested += OnShopUseItem;
+            }
             hud.ViewToggled += ToggleView;
 
             if (drinkView != null)
@@ -135,8 +151,15 @@ namespace ProjectCR
                 drinkView.Hide();
             }
 
+            if (shopView != null)
+            {
+                shopView.Hide();
+            }
+
+            pickingSlot = -1;
+
             // 새 객체라서 돈·라운드·음료 잔 수가 전부 처음으로 돌아간다.
-            flow = new GameFlowController(definition, balance, randomSeed, drinkCatalog);
+            flow = new GameFlowController(definition, balance, randomSeed, drinkCatalog, shopCatalog);
             for (int i = 0; i < debugStartDrinkStacks.Length && i < DrinkGroups.Count; i++)
             {
                 flow.Drinks.SetStacks((DrinkGroup)i, debugStartDrinkStacks[i]);
@@ -166,9 +189,134 @@ namespace ProjectCR
             presenter.SpeedMultiplier = presentationSpeed;
         }
 
-        private void OnTargetClicked(BetTarget target) => ApplyBetAction(flow.PlaceChip(target));
+        private void OnTargetClicked(BetTarget target)
+        {
+            if (pickingSlot >= 0)
+            {
+                FinishPick(target);
+                return;
+            }
 
-        private void OnTargetRemoveRequested(BetTarget target) => ApplyBetAction(flow.RemoveBet(target));
+            ApplyBetAction(flow.PlaceChip(target));
+        }
+
+        private void OnTargetRemoveRequested(BetTarget target)
+        {
+            if (pickingSlot >= 0)
+            {
+                FinishPick(BetTarget.None);
+                return;
+            }
+
+            ApplyBetAction(flow.RemoveBet(target));
+        }
+
+        // ---------- 상점 ----------
+
+        // 숫자 집중 대상을 판에서 고르는 중인 진열 칸. -1이면 아님.
+        private int pickingSlot = -1;
+
+        private void OnShopClicked()
+        {
+            if (shopView == null || verifying || !flow.EnterShop())
+            {
+                return;
+            }
+
+            shopView.Show(flow);
+            RefreshViews();
+        }
+
+        private void OnShopClosed()
+        {
+            pickingSlot = -1;
+            if (!flow.CloseShop())
+            {
+                return;
+            }
+
+            shopView.Hide();
+            RefreshViews();
+
+            // 상점에서 돈을 다 써서 걸 돈도 칩도 없으면 기존 규칙대로 납부 판정.
+            if (flow.Phase == GamePhase.RoundPayment)
+            {
+                StartCoroutine(ResolvePayment());
+            }
+        }
+
+        private void OnShopBuy(int slot, BetTarget target)
+        {
+            ShopError error = flow.Shop.Buy(slot, target);
+            shopView.ShowNotice(error == ShopError.None ? $"{flow.Shop.Offers[slot].Item.DisplayName} 구매" : error.ToKorean());
+            if (error == ShopError.None)
+            {
+                Debug.Log($"[RouletteGame] 상점 구매: {flow.Shop.Offers[slot].Item.Id} {target} → 보유 {flow.Wallet.Balance:N0}");
+            }
+
+            shopView.Refresh(flow);
+            RefreshViews();
+        }
+
+        private void OnShopUseItem(ShopEffect effect, bool unequip)
+        {
+            ItemError error;
+            string done;
+            switch (effect)
+            {
+                case ShopEffect.ExtraBall:
+                    error = flow.Items.UseExtraBall();
+                    done = "추가 공 사용: 이번 라운드 남은 회전에 공 +1";
+                    break;
+                case ShopEffect.SkullShield:
+                    error = unequip ? flow.Items.UnequipShield() : flow.Items.EquipShield();
+                    done = unequip ? "방패 해제" : "방패 장착";
+                    break;
+                case ShopEffect.SpareSpin:
+                    error = flow.Items.UseSpareSpin();
+                    done = "남은 회전 +1";
+                    break;
+                default:
+                    error = flow.Items.UseInsurance();
+                    done = "다음 회전에 보험 적용";
+                    break;
+            }
+
+            shopView.ShowNotice(error == ItemError.None ? done : error.ToKorean());
+            shopView.Refresh(flow);
+            RefreshViews();
+        }
+
+        /// <summary>숫자 집중 대상 고르기: 창을 접고 판 클릭을 기다린다. 오른쪽 클릭은 취소. 돈은 움직이지 않는다.</summary>
+        private void OnShopPickTarget(int slot)
+        {
+            pickingSlot = slot;
+            shopView.SetPicking(true);
+            hud.ShowMessage("숫자 집중 대상: 판에서 숫자 하나나 조합(0이 든 조합 제외)을 누르세요 · 오른쪽 클릭은 취소");
+        }
+
+        private void FinishPick(BetTarget target)
+        {
+            int slot = pickingSlot;
+            pickingSlot = -1;
+            shopView.SetPicking(false);
+
+            if (!target.IsNone && slot < flow.Shop.Offers.Count)
+            {
+                if (ShopController.IsValidFocusTarget(flow.Shop.Offers[slot].Item.Group, target))
+                {
+                    shopView.SetTarget(slot, target);
+                    shopView.ShowNotice($"대상: {DrinkOffer.TargetLabel(target)}");
+                }
+                else
+                {
+                    shopView.ShowNotice("숫자 하나나 0이 없는 조합만 고를 수 있습니다");
+                }
+            }
+
+            hud.ShowMessage("상점 이용 중");
+            shopView.Refresh(flow);
+        }
 
         private void OnUndoClicked() => ApplyBetAction(flow.UndoLastChip());
 
@@ -282,7 +430,8 @@ namespace ProjectCR
 
             if (flow.Phase == GamePhase.DrinkSelection && drinkView != null)
             {
-                hud.ShowMessage($"라운드 {round} 통과! 납부 {flow.LastPaidDue:N0} · 남은 돈 {flow.Wallet.Balance:N0}");
+                string refund = flow.LastPaymentRefund > 0 ? $" · 지원금 환급 +{flow.LastPaymentRefund:N0}" : string.Empty;
+                hud.ShowMessage($"라운드 {round} 통과! 납부 {flow.LastPaidDue:N0}{refund} · 남은 돈 {flow.Wallet.Balance:N0}");
                 drinkView.Show(flow);
             }
             else if (flow.Phase == GamePhase.DrinkSelection)

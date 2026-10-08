@@ -279,9 +279,11 @@ MonoBehaviour:
   definition: {fileID: 11400000, guid: 72cbfda85a27086479dc338e676e04c1, type: 2}
   balance: {fileID: 11400000, guid: 17402ebc411f8f64da65401a882a6131, type: 2}
   drinkCatalog: {fileID: 11400000, guid: fe0d12bcb8a513d42a57f5cf8a6e55c0, type: 2}
+  shopCatalog: {fileID: 11400000, guid: ec563a61b8475d0489efcd61cbbfb098, type: 2}
   presenter: {fileID: 942192219}
   hud: {fileID: 2083983754}
   drinkView: {fileID: 2083983757}
+  shopView: {fileID: 2083983758}
   tableInput: {fileID: 217825617}
   tableView: {fileID: 942192220}
   cameraRig: {fileID: 1345680696}
@@ -836,6 +838,7 @@ GameObject:
   - component: {fileID: 2083983755}
   - component: {fileID: 2083983754}
   - component: {fileID: 2083983757}
+  - component: {fileID: 2083983758}
   m_Layer: 0
   m_Name: HUD
   m_TagString: Untagged
@@ -905,6 +908,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23ed960205865ad478b2eb6409e006ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkSelectionView
+--- !u!114 &2083983758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2083983753}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75087e2eab957b44dbfbc06ea57e1559, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopView
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

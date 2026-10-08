@@ -51,7 +51,8 @@ namespace ProjectCR
                 return;
             }
 
-            header.text = $"라운드 {flow.Round.Round} 통과 · 납부 {flow.LastPaidDue:N0} · 남은 돈 {flow.Wallet.Balance:N0}";
+            string refund = flow.LastPaymentRefund > 0 ? $" · 지원금 환급 +{flow.LastPaymentRefund:N0}" : string.Empty;
+            header.text = $"라운드 {flow.Round.Round} 통과 · 납부 {flow.LastPaidDue:N0}{refund} · 남은 돈 {flow.Wallet.Balance:N0}";
 
             SpinConfig config = flow.BuildSpinConfig();
             cardRow.Clear();

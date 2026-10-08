@@ -161,7 +161,21 @@
 .button-row {
     flex-direction: row;
     align-items: center;
-    width: 600px;
+    width: 760px;
+}
+
+/* 상점 버튼: 호두나무 바탕에 황동 테두리. */
+.btn--shop {
+    background-color: rgb(58, 36, 22);
+    border-width: 2px;
+    border-color: rgb(198, 154, 78);
+    color: rgb(241, 232, 210);
+    font-size: 20px;
+    -unity-font-style: bold;
+}
+
+.btn--shop:hover {
+    background-color: rgb(78, 50, 30);
 }
 
 /* ---------- 버튼 ---------- */
@@ -476,4 +490,288 @@
 
 .drink-confirm:hover {
     background-color: rgb(226, 182, 100);
+}
+
+/* ---------- 상점 ----------
+   음료 창과 같은 호두나무 판 + 황동 테두리 + 펠트 카드. 카드는 줄바꿈되고 목록은 세로 스크롤. */
+
+.shop-modal {
+    background-color: rgba(4, 3, 2, 0.74);
+}
+
+.shop-box {
+    width: 92%;
+    max-width: 1500px;
+    height: 88%;
+    padding: 18px 24px 18px 24px;
+    background-color: rgb(58, 36, 22);
+    border-width: 3px;
+    border-color: rgb(198, 154, 78);
+    border-radius: 14px;
+}
+
+.shop-header {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.shop-title {
+    font-size: 34px;
+    -unity-font-style: bold;
+    color: rgb(241, 232, 210);
+    margin-right: 24px;
+}
+
+.shop-money {
+    font-size: 19px;
+    color: rgb(214, 182, 120);
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.shop-close {
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
+    flex-shrink: 0;
+    background-color: rgb(78, 50, 30);
+    border-color: rgb(198, 154, 78);
+}
+
+.shop-tabs {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.shop-tab {
+    height: 40px;
+    padding-left: 18px;
+    padding-right: 18px;
+    margin-right: 6px;
+    font-size: 18px;
+    color: rgb(226, 218, 196);
+    background-color: rgb(46, 30, 18);
+    border-width: 1px;
+    border-color: rgb(120, 92, 48);
+    border-radius: 8px;
+}
+
+.shop-tab--active {
+    background-color: rgb(198, 154, 78);
+    color: rgb(36, 22, 10);
+    -unity-font-style: bold;
+}
+
+.shop-notice {
+    margin-left: 12px;
+    font-size: 16px;
+    color: rgb(255, 214, 120);
+    flex-shrink: 1;
+    white-space: normal;
+}
+
+.shop-scroll {
+    flex-grow: 1;
+}
+
+.shop-groups {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.shop-group {
+    margin-right: 12px;
+}
+
+.shop-section {
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(214, 182, 120);
+}
+
+.shop-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.shop-card {
+    width: 330px;
+    min-height: 250px;
+    margin: 6px;
+    padding: 12px;
+    background-color: rgb(29, 74, 53);
+    border-width: 2px;
+    border-color: rgb(120, 92, 48);
+    border-radius: 10px;
+}
+
+.shop-card--cross {
+    background-color: rgb(32, 58, 70);
+}
+
+.shop-card--consumable {
+    background-color: rgb(62, 50, 34);
+}
+
+.shop-card__top {
+    flex-direction: row;
+    align-items: center;
+}
+
+.shop-icon {
+    width: 44px;
+    height: 44px;
+    margin-right: 10px;
+    border-radius: 22px;
+    border-width: 2px;
+    border-color: rgba(255, 245, 220, 0.6);
+    align-items: center;
+    justify-content: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.shop-icon__label {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(250, 240, 214);
+}
+
+.shop-name {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(241, 232, 210);
+    white-space: normal;
+}
+
+.shop-badge {
+    margin-top: 2px;
+    padding: 1px 8px 1px 8px;
+    font-size: 13px;
+    color: rgb(36, 22, 10);
+    background-color: rgb(198, 154, 78);
+    border-radius: 8px;
+    align-self: flex-start;
+}
+
+.shop-desc {
+    margin-top: 8px;
+    font-size: 15px;
+    color: rgb(226, 218, 196);
+    white-space: normal;
+}
+
+.shop-duration {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgb(190, 200, 184);
+    white-space: normal;
+}
+
+.shop-owned {
+    margin-top: 4px;
+    font-size: 14px;
+    color: rgb(255, 214, 120);
+    white-space: normal;
+}
+
+.shop-targets {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.shop-target {
+    height: 30px;
+    padding-left: 10px;
+    padding-right: 10px;
+    margin: 2px;
+    font-size: 14px;
+    color: rgb(226, 218, 196);
+    background-color: rgb(20, 46, 34);
+    border-width: 1px;
+    border-color: rgb(120, 92, 48);
+    border-radius: 6px;
+}
+
+.shop-target--selected {
+    background-color: rgb(198, 154, 78);
+    color: rgb(36, 22, 10);
+    -unity-font-style: bold;
+}
+
+.shop-buy-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.shop-price {
+    flex-grow: 1;
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(255, 214, 120);
+}
+
+.shop-buy {
+    width: 110px;
+    height: 40px;
+    font-size: 17px;
+    -unity-font-style: bold;
+    color: rgb(36, 22, 10);
+    background-color: rgb(198, 154, 78);
+    border-color: rgb(255, 222, 150);
+}
+
+.shop-buy:hover {
+    background-color: rgb(226, 182, 100);
+}
+
+.shop-reason {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgb(255, 150, 130);
+    white-space: normal;
+}
+
+.shop-item-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 4px 6px 4px 6px;
+    padding: 10px 12px 10px 12px;
+    background-color: rgb(46, 30, 18);
+    border-radius: 8px;
+}
+
+.shop-item-row .shop-desc {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-top: 0px;
+    margin-left: 12px;
+    width: 300px;
+}
+
+.shop-item-button {
+    height: 38px;
+    padding-left: 14px;
+    padding-right: 14px;
+    margin-left: 6px;
+    font-size: 15px;
+    color: rgb(36, 22, 10);
+    background-color: rgb(198, 154, 78);
+    border-color: rgb(255, 222, 150);
+}
+
+.shop-summary {
+    margin: 4px 8px 4px 8px;
+    font-size: 15px;
+    color: rgb(226, 218, 196);
+    white-space: normal;
 }

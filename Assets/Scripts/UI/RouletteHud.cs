@@ -25,6 +25,7 @@ namespace ProjectCR
         public event Action UndoClicked;
         public event Action ClearClicked;
         public event Action SpinClicked;
+        public event Action ShopClicked;
         public event Action RestartClicked;
         public event Action ViewToggled;
 
@@ -49,6 +50,7 @@ namespace ProjectCR
         private Label historyLabel;
         private Label gameOverLabel;
         private Button spinButton;
+        private Button shopButton;
         private VisualElement gameOverPanel;
 
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
@@ -75,6 +77,8 @@ namespace ProjectCR
             gameOverPanel = root.Q("gameover-panel");
 
             spinButton = root.Q<Button>("spin");
+            shopButton = root.Q<Button>("shop");
+            shopButton.clicked += () => ShopClicked?.Invoke();
             spinButton.clicked += () => SpinClicked?.Invoke();
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
             root.Q<Button>("view-toggle").clicked += () => ViewToggled?.Invoke();
@@ -135,9 +139,20 @@ namespace ProjectCR
                 ? DescribeBestCase(bet.Bets, preview, flow.Wallet.MaxMoney)
                 : DescribeMultipliers(preview, flow.Drinks.TotalStacks);
 
+            // 회전 전 안내: 다음 회전에 걸린 아이템·교차 강화(큰 효과 목록은 따로 두지 않는다).
+            string nextSpin = DescribeNextSpin(flow, preview);
+            if (nextSpin.Length > 0)
+            {
+                previewLabel.text = $"다음 회전: {nextSpin} · {previewLabel.text}";
+            }
+
             BetError error = flow.ValidateBet();
             errorLabel.text = betting && error != BetError.None ? error.ToKorean() : string.Empty;
             spinButton.SetEnabled(betting && error == BetError.None);
+
+            // 상점은 베팅을 고칠 수 있을 때만(회전·정산·납부·음료 선택·게임 오버 중에는 꺼진다).
+            shopButton.SetEnabled(betting && flow.Shop.HasCatalog);
+            shopButton.tooltip = betting ? string.Empty : "베팅 중에만 열 수 있습니다";
             spinButton.text = SpinButtonText(flow.Phase);
 
             RefreshGameOver(flow);
@@ -157,8 +172,27 @@ namespace ProjectCR
             int basePayout = config.PayoutFor(target);
             decimal final = config.MultiplierFor(target);
             DrinkGroup group = DrinkGroups.Of(target.Kind);
-            string payout = final > basePayout
-                ? $"{basePayout}배 → {NumberText.Multiplier(final)}배 ({group.ToKorean()} 음료 ×{NumberText.Multiplier(config.GroupBoost(group))})"
+            // 강화 내역: 음료 배율(×) 그리고 상점 강화(집중 + 다음 회전 교차, +%).
+            var boosts = new List<string>();
+            if (config.GroupBoost(group) != 1m)
+            {
+                boosts.Add($"음료 ×{NumberText.Multiplier(config.GroupBoost(group))}");
+            }
+
+            decimal focus = flow.Upgrades.PayoutIncrease(group);
+            decimal cross = flow.Cross.Pending(group);
+            if (focus > 0m)
+            {
+                boosts.Add($"집중 +{NumberText.Multiplier(focus * 100m)}%");
+            }
+
+            if (cross > 0m)
+            {
+                boosts.Add($"교차 다음 회전 +{NumberText.Multiplier(cross * 100m)}%");
+            }
+
+            string payout = final != basePayout
+                ? $"{basePayout}배 → {NumberText.Multiplier(final)}배 ({group.ToKorean()} {string.Join(", ", boosts)})"
                 : $"{basePayout}배";
 
             // 공 하나 기준 실제 등장 확률(확률 음료 반영, 해골 1/38 고정). 추첨과 같은 식.
@@ -213,6 +247,22 @@ namespace ProjectCR
                 default:
                     verdict = $"모두 낙첨 · 지급 0 (−{settlement.TotalStake:N0})";
                     break;
+            }
+
+            // 아이템·교차 강화 결과.
+            if (settlement.ShieldsUsed > 0)
+            {
+                verdict += $" · 방패 {settlement.ShieldsUsed}개로 해골을 막음";
+            }
+
+            if (settlement.InsuranceRefund > 0)
+            {
+                verdict += $" · 보험 환급 +{settlement.InsuranceRefund:N0}";
+            }
+
+            foreach (CrossTrigger trigger in settlement.CrossTriggers)
+            {
+                verdict += $" · 교차 발동 {ShopItemDefinition.GroupCode(trigger.Target)} +{NumberText.Multiplier(trigger.Increase * 100m)}%(다음 회전)";
             }
 
             resultLabel.text = $"결과 {numbers} — {verdict}";
@@ -331,6 +381,37 @@ namespace ProjectCR
                 : string.Join(", ", winners);
         }
 
+        /// <summary>다음 회전에 걸린 것: 공 수, 장착 방패, 보험, 교차 강화.</summary>
+        private static string DescribeNextSpin(GameFlowController flow, SpinConfig preview)
+        {
+            var parts = new List<string>();
+            if (flow.Inventory.RoundExtraBalls > 0)
+            {
+                parts.Add($"공 {preview.BallCount}개");
+            }
+
+            if (flow.Inventory.ShieldsEquipped > 0)
+            {
+                parts.Add($"방패 {flow.Inventory.ShieldsEquipped}");
+            }
+
+            if (flow.Inventory.InsuranceArmed)
+            {
+                parts.Add("보험");
+            }
+
+            for (int i = 0; i < DrinkGroups.Count; i++)
+            {
+                decimal pending = flow.Cross.Pending((DrinkGroup)i);
+                if (pending > 0m)
+                {
+                    parts.Add($"{ShopItemDefinition.GroupCode((DrinkGroup)i)} +{NumberText.Multiplier(pending * 100m)}%(교차)");
+                }
+            }
+
+            return string.Join(" · ", parts);
+        }
+
         private static string Signed(long value) => value >= 0 ? $"+{value:N0}" : $"−{-value:N0}";
 
         private static string SpinButtonText(GamePhase phase)
@@ -343,6 +424,8 @@ namespace ProjectCR
                     return "납부 판정 중…";
                 case GamePhase.DrinkSelection:
                     return "음료 선택 중";
+                case GamePhase.Shopping:
+                    return "상점 이용 중";
                 default:
                     return "회전";
             }

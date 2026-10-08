@@ -71,10 +71,25 @@ namespace ProjectCR
         /// </summary>
         public long SkullPenalty { get; private set; }
 
-        /// <summary>이번 회전의 손익 = 지급액 − 건 금액 − 해골 벌칙.</summary>
-        public long Net => TotalPayout - TotalStake - SkullPenalty;
+        /// <summary>보험 증서 환급(일반 낙첨일 때 베팅금 일부). 없으면 0.</summary>
+        public long InsuranceRefund { get; private set; }
+
+        /// <summary>이 회전에서 해골을 막느라 쓴 방패 수.</summary>
+        public int ShieldsUsed { get; private set; }
+
+        /// <summary>이 회전 당첨으로 발동한 교차 강화(다음 회전에 적용).</summary>
+        public IReadOnlyList<CrossTrigger> CrossTriggers { get; private set; } = new CrossTrigger[0];
+
+        /// <summary>이번 회전의 손익 = 지급액 − 건 금액 − 해골 벌칙 + 보험 환급.</summary>
+        public long Net => TotalPayout - TotalStake - SkullPenalty + InsuranceRefund;
 
         internal void ApplySkullPenalty(long amount) => SkullPenalty = Math.Max(0, amount);
+
+        internal void ApplyInsuranceRefund(long amount) => InsuranceRefund = Math.Max(0, amount);
+
+        internal void ApplyShieldsUsed(int count) => ShieldsUsed = Math.Max(0, count);
+
+        internal void ApplyCrossTriggers(IReadOnlyList<CrossTrigger> triggers) => CrossTriggers = triggers ?? new CrossTrigger[0];
 
         /// <summary>(베팅, 공) 적중 수의 합. 베팅 하나면 맞힌 공 수와 같다.</summary>
         public int WinCount

@@ -26,6 +26,31 @@ namespace ProjectCR
             return new SpinResult(balls);
         }
 
+        /// <summary>
+        /// 해골 방패: 해골이 나온 공마다 방패를 하나 쓰고 <b>그 공만</b> 같은 설정으로 다시 뽑는다(해골 확률도 그대로 1/38).
+        /// 다시 해골이면 남은 방패로 또 막는다. 방패가 없으면 해골로 남는다. 다른 공은 그대로다.
+        /// </summary>
+        public static SpinResult ShieldSkulls(SpinResult result, SpinConfig config, Random rng, int shields, out int used)
+        {
+            used = 0;
+            if (shields <= 0 || !result.HasSkull)
+            {
+                return result;
+            }
+
+            var balls = new List<BallResult>(result.Balls);
+            for (int i = 0; i < balls.Count; i++)
+            {
+                while (balls[i].IsSkull && used < shields)
+                {
+                    used++;
+                    balls[i] = BallResult.FromPocket(config.Definition, i, PickBall(config, rng));
+                }
+            }
+
+            return new SpinResult(balls);
+        }
+
         /// <summary>공 하나의 칸 인덱스. 해골이 있는 휠이면 난수를 늘 두 번(해골 판정, 일반 칸) 써서 소비 순서가 결과와 무관하다.</summary>
         public static int PickBall(SpinConfig config, Random rng)
         {

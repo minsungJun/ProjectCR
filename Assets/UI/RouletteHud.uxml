@@ -38,6 +38,7 @@
             <ui:VisualElement class="button-row">
                 <ui:Button name="bet-undo" class="btn btn--wide" text="마지막 칩 취소" />
                 <ui:Button name="bet-clear" class="btn btn--wide" text="전체 취소" />
+                <ui:Button name="shop" class="btn btn--wide btn--shop" text="상점" />
                 <ui:Button name="spin" class="btn btn--primary" text="회전" />
             </ui:VisualElement>
         </ui:VisualElement>
@@ -50,6 +51,24 @@
                 <ui:VisualElement name="drink-cards" class="drink-cards" />
                 <ui:Label name="drink-hint" class="drink-hint" text="카드를 눌러 고른 뒤 확정하세요. 효과는 이번 게임 끝까지 이어집니다. 지급 음료는 곱해서, 확률 음료는 더해서 쌓이고, 해골 확률(1/38)은 바뀌지 않습니다." />
                 <ui:Button name="drink-confirm" class="btn drink-confirm" text="선택 확정" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 상점. 상품 카드·보유 아이템은 ShopView가 그린다. -->
+        <ui:VisualElement name="shop-panel" class="modal shop-modal blocks-input">
+            <ui:VisualElement class="shop-box">
+                <ui:VisualElement class="shop-header">
+                    <ui:Label class="shop-title" text="상점" />
+                    <ui:Label name="shop-money" class="shop-money" />
+                    <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                    <ui:Button name="shop-close" class="btn shop-close" text="✕" />
+                </ui:VisualElement>
+                <ui:VisualElement class="shop-tabs">
+                    <ui:Button name="shop-tab-goods" class="shop-tab" text="상품" />
+                    <ui:Button name="shop-tab-items" class="shop-tab" text="보유 아이템" />
+                    <ui:Label name="shop-notice" class="shop-notice" />
+                </ui:VisualElement>
+                <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical" />
             </ui:VisualElement>
         </ui:VisualElement>
 

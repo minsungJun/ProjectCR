@@ -300,6 +300,9 @@ namespace ProjectCR.Editor
             // 라운드 통과 보상(음료 목록·선택 창).
             DrinkSetup.WireScene(DrinkSetup.CreateAssets());
 
+            // 상점(상품 목록·상점 창).
+            ShopSetup.WireScene(ShopSetup.CreateAssets());
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
         }
