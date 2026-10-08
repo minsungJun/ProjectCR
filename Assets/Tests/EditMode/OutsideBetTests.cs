@@ -177,7 +177,7 @@ namespace ProjectCR.Tests
 
             Assert.AreEqual(60, settlement.TotalPayout);
             Assert.AreEqual(140, flow.Wallet.Balance);
-            Assert.AreEqual(20, flow.Bet.StakeOn(BetTarget.Outside(BetKind.Dozen3)), "다음 회전에도 베팅이 남는다.");
+            Assert.IsFalse(flow.Bet.HasBets, "회전이 끝나면 칩을 회수한다.");
         }
 
         [Test]

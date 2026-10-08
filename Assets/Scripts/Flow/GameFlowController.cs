@@ -183,6 +183,9 @@ namespace ProjectCR
             CurrentSpin = null;
             Bet.Unlock(Wallet.Balance);
 
+            // 회전이 끝나면 판의 칩을 없앤다. 베팅금은 시작 때 빠졌고 당첨금은 원금 포함으로 들어왔으니 돈은 그대로다.
+            Bet.ClearBets();
+
             Phase = NextPhaseAfterSpin();
             return true;
         }

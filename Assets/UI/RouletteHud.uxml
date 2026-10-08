@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="RouletteHud.uss" />
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
-        <ui:VisualElement class="topbar">
+        <ui:VisualElement class="topbar blocks-input">
             <ui:Label name="round" class="stat" text="라운드 1" />
             <ui:Label name="spins" class="stat" text="남은 회전" />
             <ui:Label name="due" class="stat" text="납부금" />
@@ -11,56 +11,48 @@
             <ui:Button name="view-toggle" class="btn btn--small" text="시점 전환" />
         </ui:VisualElement>
 
-        <ui:VisualElement class="bet-panel">
-            <ui:Label class="panel-title" text="칩 놓기: 왼쪽 클릭 · 빼기: 오른쪽 클릭 · 칸 사이 점 = 안쪽 베팅" />
-            <ui:VisualElement name="number-grid" class="number-grid" />
-            <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
+        <ui:VisualElement class="result-panel" picking-mode="Ignore">
+            <ui:Label name="result" class="result" picking-mode="Ignore" />
+            <ui:Label name="history" class="history" picking-mode="Ignore" />
+        </ui:VisualElement>
 
-            <ui:VisualElement class="row">
-                <ui:Label class="field-label" text="칩 금액" />
-                <ui:Label name="chip-value" class="field-value" text="0" />
-            </ui:VisualElement>
-            <ui:VisualElement class="stake-buttons">
-                <ui:Button name="chip-minus10" class="btn btn--stake" text="-10" />
-                <ui:Button name="chip-minus1" class="btn btn--stake" text="-1" />
-                <ui:Button name="chip-plus1" class="btn btn--stake" text="+1" />
-                <ui:Button name="chip-plus10" class="btn btn--stake" text="+10" />
-                <ui:Button name="chip-half" class="btn btn--stake" text="½" />
-                <ui:Button name="chip-double" class="btn btn--stake" text="×2" />
-                <ui:Button name="chip-max" class="btn btn--stake" text="최대" />
+        <ui:VisualElement class="control-panel blocks-input">
+            <ui:VisualElement class="info">
+                <ui:VisualElement class="row">
+                    <ui:Label class="field-label" text="칩" />
+                    <ui:Label name="chip-value" class="chip-value" text="0" />
+                    <ui:Label name="hover-target" class="hover-target" />
+                    <ui:Label name="skull-notice" class="skull-notice" text="해골: 이번 회전의 모든 베팅 낙첨" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:Label class="field-label" text="베팅" />
+                    <ui:Label name="bet-summary" class="field-value" text="없음" />
+                    <ui:Label name="bet-list" class="bet-list" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:Label name="payout-preview" class="preview" />
+                    <ui:Label name="bet-error" class="error" />
+                </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement class="row">
-                <ui:Label class="field-label" text="베팅" />
-                <ui:Label name="bet-summary" class="field-value field-value--small" text="없음" />
-            </ui:VisualElement>
-            <ui:Label name="bet-list" class="bet-list" />
-            <ui:VisualElement class="stake-buttons">
+            <ui:VisualElement class="button-row">
                 <ui:Button name="bet-undo" class="btn btn--wide" text="마지막 칩 취소" />
                 <ui:Button name="bet-clear" class="btn btn--wide" text="전체 취소" />
+                <ui:Button name="spin" class="btn btn--primary" text="회전" />
             </ui:VisualElement>
-
-            <ui:Label name="payout-preview" class="preview" />
-            <ui:Label name="bet-error" class="error" />
-            <ui:Button name="spin" class="btn btn--primary" text="회전" />
         </ui:VisualElement>
 
-        <ui:VisualElement class="result-panel" picking-mode="Ignore">
-            <ui:Label name="result" class="result" />
-            <ui:Label name="history" class="history" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="payment-panel" class="modal">
+        <ui:VisualElement name="payment-panel" class="modal blocks-input">
             <ui:VisualElement class="modal__box">
                 <ui:Label name="payment-text" class="modal__text" />
-                <ui:Button name="pay" class="btn btn--primary" text="납부" />
+                <ui:Button name="pay" class="btn btn--primary btn--modal" text="납부" />
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <ui:VisualElement name="gameover-panel" class="modal">
+        <ui:VisualElement name="gameover-panel" class="modal blocks-input">
             <ui:VisualElement class="modal__box">
                 <ui:Label name="gameover-text" class="modal__text" />
-                <ui:Button name="restart" class="btn btn--primary" text="다시 시작" />
+                <ui:Button name="restart" class="btn btn--primary btn--modal" text="다시 시작" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

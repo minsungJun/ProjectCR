@@ -206,7 +206,7 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void SameBets_CanBeSpunAgain()
+        public void Bets_AreCollectedAfterSpin()
         {
             flow.ForcedNumbers = new[] { 2 };
             flow.PlaceBet(Red, 10);
@@ -216,9 +216,12 @@ namespace ProjectCR.Tests
             flow.CompleteSpin(first.Id, out _);
             Assert.AreEqual(110, flow.Wallet.Balance, "2(검정, 1–12): 빨강 낙첨, 1–12 30 지급.");
 
-            Assert.AreEqual(BetError.None, flow.TryBeginSpin(out ActiveSpin second));
-            Assert.AreEqual(90, flow.Wallet.Balance);
-            Assert.AreEqual(2, second.Bets.Count);
+            Assert.IsFalse(flow.Bet.HasBets, "회전이 끝나면 판의 칩을 회수한다.");
+            Assert.AreEqual(BetError.NoBetsPlaced, flow.TryBeginSpin(out _));
+            Assert.AreEqual(110, flow.Wallet.Balance, "회수는 돈을 바꾸지 않는다.");
+
+            Assert.AreEqual(BetError.None, flow.UndoLastChip(), "회수 뒤 취소할 칩 기록도 없다.");
+            Assert.IsFalse(flow.Bet.HasBets);
         }
 
         [Test]
@@ -233,6 +236,8 @@ namespace ProjectCR.Tests
             Assert.AreEqual(1, flow.ConsecutiveLosses);
 
             flow.ForcedNumbers = new[] { 32 };
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(Black, 10);
             flow.TryBeginSpin(out ActiveSpin b);
             flow.CompleteSpin(b.Id, out SettlementResult s);
             Assert.AreEqual(0, s.Net, "빨강·검정 동시 베팅은 손익 0이지만 지급은 있다.");

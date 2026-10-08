@@ -24,8 +24,14 @@ namespace ProjectCR
         [SerializeField] private SpinMotionSettings motion;
 
         [Header("구조")]
-        [Tooltip("로컬 Y축으로 도는 휠. 칸 앵커가 이 아래에 있어야 한다.")]
+        [Tooltip("공·칸 계산에 쓰는 휠 좌표계(Y가 위). 휠과 함께 돌아야 하고, 칸 앵커가 이 아래에 있어야 한다.")]
         [SerializeField] private Transform wheelPivot;
+
+        [Tooltip("실제로 돌리는 회전판. 비우면 wheelPivot을 로컬 Y축으로 돌린다(임시 모델). 모델을 쓸 때는 회전판(예: CRR_Rotor_SPIN_Z)을 넣고, wheelPivot은 그 아래 Y가 위인 자식으로 둔다.")]
+        [SerializeField] private Transform rotor;
+
+        [Tooltip("회전판의 회전축(회전판 로컬). CRR_Rotor_SPIN_Z는 로컬 Z(0, 0, 1).")]
+        [SerializeField] private Vector3 rotorAxis = Vector3.forward;
 
         [Tooltip("회전 중인 공이 머무는 곳. 안착하면 칸 앵커로 옮겨 간다.")]
         [SerializeField] private Transform ballsRoot;
@@ -64,6 +70,10 @@ namespace ProjectCR
         private WheelSpinPlan wheelPlan;
         private float wheelElapsed;
         private float wheelAngle;
+
+        // 회전판을 돌릴 때: 처음 자세와, + 각도가 위에서 볼 때 시계 방향이 되도록 맞추는 부호.
+        private Quaternion rotorBaseRotation;
+        private float rotorAxisSign = 1f;
 
         /// <summary>연출 배속. 37칸 순회 검증처럼 빨리 돌릴 때 쓴다.</summary>
         public float SpeedMultiplier { get; set; } = 1f;
@@ -112,7 +122,17 @@ namespace ProjectCR
             CacheBaseColors();
             ValidateLayout();
 
-            wheelAngle = wheelPivot.localEulerAngles.y;
+            if (rotor != null)
+            {
+                rotorBaseRotation = rotor.localRotation;
+                Vector3 axisWorld = rotor.TransformDirection(rotorAxis.normalized);
+                rotorAxisSign = Vector3.Dot(axisWorld, transform.up) >= 0f ? 1f : -1f;
+                wheelAngle = 0f;
+            }
+            else
+            {
+                wheelAngle = wheelPivot.localEulerAngles.y;
+            }
 
             EnsureBalls(1);
             ParkBallsOnTrack(1);
@@ -140,7 +160,7 @@ namespace ProjectCR
                     break;
             }
 
-            wheelPivot.localRotation = Quaternion.Euler(0f, wheelAngle, 0f);
+            ApplyWheelRotation();
 
             UpdateHighlight(dt);
         }
@@ -240,17 +260,17 @@ namespace ProjectCR
 
         /// <summary>
         /// 지금 각도·속도에서 출발해, duration 뒤에 targetPocket이 restAngle에 오도록 멈추는 휠 계획을 세운다.
-        /// 휠 각도 + 칸의 휠 로컬 각도 = 테이블 위 각도.
+        /// 휠 각도가 +x 늘면 칸의 테이블 위 각도도 +x 는다(회전 부호를 맞춰 두었다). 그래서 지금 칸 각도에서
+        /// restAngle까지 남은 만큼 휠을 더 돌리면 된다. 모델 축 방향과 상관없이 실제 위치로 계산한다.
         /// </summary>
         private void PlanWheel(int targetPocket, float duration)
         {
-            Vector3 pocketLocal = wheelPivot.InverseTransformPoint(pocketAnchors[targetPocket].transform.position);
-            float pocketAngle = BallTrajectory.AngleOf(pocketLocal);
             float startSpeed = WheelSpeed;
+            float pocketNow = PocketAngleOnTable(targetPocket);
 
             wheelAngle = Mathf.Repeat(wheelAngle, 360f);
             wheelPlan = WheelSpinPlan.Create(
-                wheelAngle, startSpeed, motion.restAngle - pocketAngle, motion.spinWheelSpeed,
+                wheelAngle, startSpeed, wheelAngle + motion.restAngle - pocketNow, motion.spinWheelSpeed,
                 motion.launchDuration, duration, motion.wheelStopDecelDuration);
             wheelElapsed = 0f;
             wheelState = WheelState.Planned;
@@ -332,6 +352,22 @@ namespace ProjectCR
             }
 
             return ok;
+        }
+
+        /// <summary>
+        /// 휠 각도를 실제 Transform에 반영한다. + 각도 = 위에서 볼 때 시계 방향.
+        /// 회전판이 있으면 그 축으로 돌리고(처음 자세 기준), 없으면 wheelPivot을 Y축으로 돌린다.
+        /// </summary>
+        private void ApplyWheelRotation()
+        {
+            if (rotor != null)
+            {
+                rotor.localRotation = rotorBaseRotation * Quaternion.AngleAxis(wheelAngle * rotorAxisSign, rotorAxis);
+            }
+            else
+            {
+                wheelPivot.localRotation = Quaternion.Euler(0f, wheelAngle, 0f);
+            }
         }
 
         private BallPlan PlanBall(int ballIndex, int ballCount, PocketAnchor anchor, int slot)

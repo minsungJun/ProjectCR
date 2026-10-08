@@ -216,17 +216,16 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void BetsStayAfterSpin_ButCannotExceedBalance()
+        public void BetsAreCollectedAfterSpin_AndChipShrinksToBalance()
         {
+            flow.SetChipValue(80);
             SpinAndSettle(7, 60, forced: 8);
 
             Assert.AreEqual(40, flow.Wallet.Balance);
-            Assert.AreEqual(60, flow.Bet.TotalStake, "베팅은 판에 남는다.");
-            Assert.AreEqual(BetError.InsufficientFunds, flow.ValidateBet());
-            Assert.AreEqual(BetError.InsufficientFunds, flow.TryBeginSpin(out _));
-            Assert.AreEqual(40, flow.Wallet.Balance);
+            Assert.AreEqual(0, flow.Bet.TotalStake, "회전이 끝나면 칩을 회수한다.");
+            Assert.AreEqual(BetError.NoBetsPlaced, flow.ValidateBet());
+            Assert.AreEqual(40, flow.Bet.ChipValue, "잔액보다 큰 칩 금액은 잔액으로 줄인다.");
 
-            flow.ClearBets();
             Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Straight(7), 40));
             Assert.AreEqual(BetError.None, flow.ValidateBet());
         }

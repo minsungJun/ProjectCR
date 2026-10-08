@@ -239,7 +239,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 35005838}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.44037747, y: -0.26672933, z: 0.13885048, w: 0.8459573}
+  m_LocalRotation: {x: 0.109381676, y: 0.8754261, z: -0.40821794, w: 0.23456974}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -256,6 +256,7 @@ GameObject:
   m_Component:
   - component: {fileID: 217825616}
   - component: {fileID: 217825615}
+  - component: {fileID: 217825617}
   m_Layer: 0
   m_Name: RouletteGame
   m_TagString: Untagged
@@ -277,8 +278,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.RouletteGame
   definition: {fileID: 11400000, guid: 72cbfda85a27086479dc338e676e04c1, type: 2}
   balance: {fileID: 11400000, guid: 17402ebc411f8f64da65401a882a6131, type: 2}
-  presenter: {fileID: 2062854714}
+  presenter: {fileID: 942192219}
   hud: {fileID: 2083983754}
+  tableInput: {fileID: 217825617}
+  tableView: {fileID: 942192220}
+  cameraRig: {fileID: 1345680696}
   presentationCamera: {fileID: 1345680692}
   topDownCamera: {fileID: 1575811433}
   randomSeed: 0
@@ -302,6 +306,145 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &217825617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 217825614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea2fd0e6b03a01044bfc5465ba3b0d7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.TableBetInput
+  board: {fileID: 942192221}
+  hud: {fileID: 2083983754}
+  cameras:
+  - {fileID: 1345680692}
+  - {fileID: 1575811433}
+  trayRayDistance: 10
+--- !u!1001 &942192218
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1945735557418802928, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5432395833028427138, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+      propertyPath: m_Name
+      value: RouletteRoot_CRR
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+--- !u!114 &942192219 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6919690103916075091, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+  m_PrefabInstance: {fileID: 942192218}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce374cd9060e097409815241a0c1d431, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.RoulettePresenter
+--- !u!114 &942192220 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4798524617085417186, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+  m_PrefabInstance: {fileID: 942192218}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5663b0bad58043a4e84d172325a15ec2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.TableChipView
+--- !u!114 &942192221 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5249218895374896639, guid: 9a752e631a0458e4eb109a824830f515, type: 3}
+  m_PrefabInstance: {fileID: 942192218}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbbd114491f73b048b15e8b0db16a318, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.TableBetBoard
+--- !u!1 &1073687183
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1073687184}
+  m_Layer: 0
+  m_Name: CameraPostion_Roulette
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1073687184
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073687183}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.7854774, z: -0.6188903, w: 0}
+  m_LocalPosition: {x: -0.011, y: 1.224, z: 0.303}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 76.47, y: 180, z: 0}
 --- !u!1 &1345680691
 GameObject:
   m_ObjectHideFlags: 0
@@ -313,6 +456,8 @@ GameObject:
   - component: {fileID: 1345680694}
   - component: {fileID: 1345680692}
   - component: {fileID: 1345680693}
+  - component: {fileID: 1345680695}
+  - component: {fileID: 1345680696}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -351,9 +496,9 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.05
   far clip plane: 1000
-  field of view: 42
+  field of view: 40
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -387,13 +532,129 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1345680691}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.43142062, y: 0, z: 0, w: 0.9021509}
-  m_LocalPosition: {x: 0.8, y: 3.1, z: -2.7}
+  m_LocalRotation: {x: -0, y: 0.80780184, z: -0.5894542, w: 0}
+  m_LocalPosition: {x: -1.168, y: 1.292, z: 0.52}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 72.237, y: 180, z: 0}
+--- !u!114 &1345680695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1345680691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
+--- !u!114 &1345680696
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1345680691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ef6d14189ef5b04c82a654b78c28690, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.CameraRig
+  cameraTransform: {fileID: 1345680694}
+  bettingPose: {fileID: 1812593561}
+  roulettePose: {fileID: 1073687184}
+  moveDuration: 0.9
+  ease:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  returnDelay: 1.5
+--- !u!1 &1530540365
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1530540366}
+  m_Layer: 0
+  m_Name: CameraPostion_Default
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1530540366
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1530540365}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.74702704, z: -0.6647937, w: 0}
+  m_LocalPosition: {x: -0.712, y: 2.063, z: 0.305}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 83.333, y: 180, z: 0}
 --- !u!1 &1575811432
 GameObject:
   m_ObjectHideFlags: 0
@@ -442,11 +703,11 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.05
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 1.85
+  orthographic size: 0.56
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -470,81 +731,44 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1575811432}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 1.07, y: 5, z: -0.13}
+  m_LocalRotation: {x: -0.000000030908623, y: 0.7071068, z: -0.7071068, w: -0.000000030908623}
+  m_LocalPosition: {x: -0.32, y: 2, z: 0.04}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &2062854713
-PrefabInstance:
+--- !u!1 &1812593560
+GameObject:
   m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213799186412225098, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2435906762943883846, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-      propertyPath: m_Name
-      value: RouletteRoot
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
---- !u!114 &2062854714 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3394427182551195126, guid: ad9521202bfffb14b859aed8a3424d47, type: 3}
-  m_PrefabInstance: {fileID: 2062854713}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce374cd9060e097409815241a0c1d431, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: ProjectCR::ProjectCR.RoulettePresenter
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1812593561}
+  m_Layer: 0
+  m_Name: CameraPostion_BettingBoard
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1812593561
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812593560}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.80780184, z: -0.5894542, w: 0}
+  m_LocalPosition: {x: -1.168, y: 1.292, z: 0.52}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 72.237, y: 180, z: 0}
 --- !u!1 &2083983753
 GameObject:
   m_ObjectHideFlags: 0
@@ -620,6 +844,9 @@ SceneRoots:
   - {fileID: 1345680694}
   - {fileID: 35005841}
   - {fileID: 1575811434}
-  - {fileID: 2062854713}
   - {fileID: 2083983756}
   - {fileID: 217825616}
+  - {fileID: 942192218}
+  - {fileID: 1073687184}
+  - {fileID: 1530540366}
+  - {fileID: 1812593561}

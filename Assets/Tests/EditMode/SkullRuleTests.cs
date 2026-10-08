@@ -194,6 +194,8 @@ namespace ProjectCR.Tests
             Assert.AreEqual(4, flow.Round.SpinsRemaining);
             Assert.AreEqual(GamePhase.Betting, flow.Phase, "해골은 게임을 끝내지 않는다.");
 
+            Assert.IsFalse(flow.Bet.HasBets, "해골 회전도 끝나면 칩을 회수한다.");
+            Assert.AreEqual(BetError.None, flow.PlaceBet(BetTarget.Straight(7), 10));
             Assert.AreEqual(BetError.None, flow.TryBeginSpin(out _), "남은 회전과 잔액이 있으면 바로 다음 베팅.");
         }
 

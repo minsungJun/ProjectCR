@@ -7,46 +7,32 @@ using UnityEngine.UIElements;
 namespace ProjectCR
 {
     /// <summary>
-    /// 룰렛 화면 UI. 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
+    /// 룰렛 화면 UI(상태 바, 베팅 요약·회전 패널, 결과, 납부·게임 오버 창). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
     /// 베팅 검증과 중복 방지는 GameFlowController가 한다. 여기서 버튼을 끄는 건 보기 좋으라고 하는 일이다.
     ///
-    /// 번호판: 왼쪽 클릭 = 칩 하나 놓기(같은 곳이면 쌓임), 오른쪽 클릭 = 그 자리 베팅 빼기.
-    /// 칩이 놓인 자리에는 금액 배지가 붙고, 마우스를 올리면 그 베팅에 포함되는 숫자 칸이 표시된다.
+    /// 칩을 놓는 건 3D 테이블에서 한다(TableBetInput). 3D 입력이 HUD 위 클릭을 무시하도록
+    /// <see cref="IsPointerOverUi"/>를 제공한다. 입력을 막는 요소에는 USS 클래스 blocks-input을 붙인다.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class RouletteHud : MonoBehaviour
     {
         private const int HistoryLength = 12;
-        private const int BetListLength = 8;
+        private const int BetListLength = 6;
         private const string SkullMark = "☠";
+        private const string BlocksInputClass = "blocks-input";
 
-        // 번호판 칸 간격(px). RouletteHud.uss의 .cell 크기(37×44)와 margin(1)에 맞춘 값이다. 바꾸면 같이 바꿀 것.
-        private const float ColumnPitch = 39f;
-        private const float RowPitch = 46f;
-        private const float ZeroCellPitch = 39f;
-        private const float HotspotSize = 16f;
-
-        public event Action<BetTarget> TargetClicked;
-        public event Action<BetTarget> TargetRemoveRequested;
         public event Action UndoClicked;
         public event Action ClearClicked;
-        public event Action<long> ChipAdjusted;
-        public event Action ChipHalved;
-        public event Action ChipDoubled;
-        public event Action ChipMaxed;
         public event Action SpinClicked;
         public event Action PayClicked;
         public event Action RestartClicked;
         public event Action ViewToggled;
 
-        private readonly Dictionary<BetTarget, Button> targetButtons = new Dictionary<BetTarget, Button>();
-        private readonly Dictionary<BetTarget, Label> chipBadges = new Dictionary<BetTarget, Label>();
-        private readonly Dictionary<int, Button> numberCells = new Dictionary<int, Button>();
         private readonly List<Button> betButtons = new List<Button>();
         private readonly List<SpinResult> history = new List<SpinResult>();
 
         private RouletteDefinition definition;
-        private BetTarget hoverTarget = BetTarget.None;
+        private UIDocument document;
 
         private Label roundLabel;
         private Label spinsLabel;
@@ -54,6 +40,7 @@ namespace ProjectCR
         private Label moneyLabel;
         private Label seedLabel;
         private Label chipLabel;
+        private Label hoverLabel;
         private Label betSummaryLabel;
         private Label betListLabel;
         private Label previewLabel;
@@ -71,7 +58,8 @@ namespace ProjectCR
         public void Initialize(RouletteDefinition definition)
         {
             this.definition = definition;
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            document = GetComponent<UIDocument>();
+            VisualElement root = document.rootVisualElement;
 
             roundLabel = root.Q<Label>("round");
             spinsLabel = root.Q<Label>("spins");
@@ -79,6 +67,7 @@ namespace ProjectCR
             moneyLabel = root.Q<Label>("money");
             seedLabel = root.Q<Label>("seed");
             chipLabel = root.Q<Label>("chip-value");
+            hoverLabel = root.Q<Label>("hover-target");
             betSummaryLabel = root.Q<Label>("bet-summary");
             betListLabel = root.Q<Label>("bet-list");
             previewLabel = root.Q<Label>("payout-preview");
@@ -97,17 +86,31 @@ namespace ProjectCR
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
             root.Q<Button>("view-toggle").clicked += () => ViewToggled?.Invoke();
 
-            BindBetButton(root, "chip-minus10", () => ChipAdjusted?.Invoke(-10));
-            BindBetButton(root, "chip-minus1", () => ChipAdjusted?.Invoke(-1));
-            BindBetButton(root, "chip-plus1", () => ChipAdjusted?.Invoke(1));
-            BindBetButton(root, "chip-plus10", () => ChipAdjusted?.Invoke(10));
-            BindBetButton(root, "chip-half", () => ChipHalved?.Invoke());
-            BindBetButton(root, "chip-double", () => ChipDoubled?.Invoke());
-            BindBetButton(root, "chip-max", () => ChipMaxed?.Invoke());
             BindBetButton(root, "bet-undo", () => UndoClicked?.Invoke());
             BindBetButton(root, "bet-clear", () => ClearClicked?.Invoke());
 
-            BuildBoard(root.Q("number-grid"));
+            ShowHover(BetTarget.None, null);
+        }
+
+        /// <summary>화면 좌표(Input System, 왼쪽 아래 원점)가 입력을 막는 HUD 요소 위인가.</summary>
+        public bool IsPointerOverUi(Vector2 screenPosition)
+        {
+            if (document == null || document.rootVisualElement?.panel == null)
+            {
+                return false;
+            }
+
+            IPanel panel = document.rootVisualElement.panel;
+            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(panel, new Vector2(screenPosition.x, Screen.height - screenPosition.y));
+            for (VisualElement element = panel.Pick(panelPosition); element != null; element = element.parent)
+            {
+                if (element.ClassListContains(BlocksInputClass))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void Refresh(GameFlowController flow)
@@ -128,17 +131,6 @@ namespace ProjectCR
                 : "없음";
             betListLabel.text = DescribeBets(bet.Bets);
 
-            foreach (KeyValuePair<BetTarget, Button> pair in targetButtons)
-            {
-                long stake = bet.StakeOn(pair.Key);
-                pair.Value.SetEnabled(betting);
-                pair.Value.EnableInClassList("cell--bet", stake > 0);
-
-                Label badge = chipBadges[pair.Key];
-                badge.text = ShortAmount(stake);
-                badge.style.display = stake > 0 ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-
             foreach (Button button in betButtons)
             {
                 button.SetEnabled(betting);
@@ -155,6 +147,21 @@ namespace ProjectCR
 
             RefreshPayment(flow);
             RefreshGameOver(flow);
+        }
+
+        /// <summary>테이블에서 마우스가 가리키는 베팅 자리와 그 배수.</summary>
+        public void ShowHover(BetTarget target, GameFlowController flow)
+        {
+            if (target.IsNone || flow == null)
+            {
+                hoverLabel.text = "판을 누르면 칩을 놓고, 오른쪽 클릭은 뺍니다. 트레이 칩을 누르면 칩 금액이 바뀝니다.";
+                return;
+            }
+
+            int multiplier = flow.BuildSpinConfig().PayoutFor(target);
+            long stake = flow.Bet.StakeOn(target);
+            string placed = stake > 0 ? $" · 놓인 칩 {stake:N0}" : string.Empty;
+            hoverLabel.text = $"{target.ToKorean(definition)} · {multiplier}배{placed}";
         }
 
         public void ShowSpinning()
@@ -226,7 +233,7 @@ namespace ProjectCR
         {
             if (bets.Count == 0)
             {
-                return "번호판을 누르면 칩이 놓입니다. 오른쪽 클릭은 빼기.";
+                return string.Empty;
             }
 
             var text = new StringBuilder();
@@ -312,22 +319,6 @@ namespace ProjectCR
 
         private static string Signed(long value) => value >= 0 ? $"+{value:N0}" : $"−{-value:N0}";
 
-        /// <summary>칩 배지용 짧은 금액: 950, 1.2K, 3.4M, 5.6B.</summary>
-        private static string ShortAmount(long value)
-        {
-            if (value < 1_000)
-            {
-                return value.ToString();
-            }
-
-            if (value < 1_000_000)
-            {
-                return $"{value / 1_000.0:0.#}K";
-            }
-
-            return value < 1_000_000_000 ? $"{value / 1_000_000.0:0.#}M" : $"{value / 1_000_000_000.0:0.#}B";
-        }
-
         private void RefreshPayment(GameFlowController flow)
         {
             bool visible = flow.Phase == GamePhase.RoundPayment;
@@ -393,185 +384,6 @@ namespace ProjectCR
             Button button = root.Q<Button>(name);
             button.clicked += onClick;
             betButtons.Add(button);
-        }
-
-        // ---------- 번호판 ----------
-
-        /// <summary>
-        /// 테이블식 베팅판.
-        /// 1행: 0(세로) | 12열 × 3행 번호(위 3·6·…·36, 아래 1·4·…·34) | 열 베팅(위 3열, 아래 1열)
-        ///      번호 위에 안쪽 베팅 클릭 점(칸 경계·모서리·줄 아랫변, InsideBets 위치)
-        /// 2행: 더즌 1–12 / 13–24 / 25–36
-        /// 3행: 1–18 / 짝수 / 빨강 / 검정 / 홀수 / 19–36
-        /// 해골 칸은 베팅할 수 없어 판에 없다.
-        /// </summary>
-        private void BuildBoard(VisualElement board)
-        {
-            board.Clear();
-            targetButtons.Clear();
-            chipBadges.Clear();
-            numberCells.Clear();
-
-            var numbersRow = Row(board);
-            numbersRow.AddToClassList("board-row--numbers");
-
-            Button zero = MakeNumberCell(0);
-            zero.AddToClassList("cell--zero");
-            numbersRow.Add(zero);
-
-            var columns = new VisualElement();
-            columns.AddToClassList("grid-columns");
-            numbersRow.Add(columns);
-
-            for (int column = 0; column < 12; column++)
-            {
-                var columnElement = new VisualElement();
-                columnElement.AddToClassList("grid-column");
-                columns.Add(columnElement);
-
-                for (int row = 0; row < 3; row++)
-                {
-                    columnElement.Add(MakeNumberCell(column * 3 + (3 - row)));
-                }
-            }
-
-            var columnBets = new VisualElement();
-            columnBets.AddToClassList("grid-column");
-            numbersRow.Add(columnBets);
-            columnBets.Add(MakeOutsideCell(BetKind.Column3, "outside--column"));
-            columnBets.Add(MakeOutsideCell(BetKind.Column2, "outside--column"));
-            columnBets.Add(MakeOutsideCell(BetKind.Column1, "outside--column"));
-
-            // 번호 칸 위에 겹쳐 놓는 안쪽 베팅 클릭 점. 마지막에 넣어 번호 칸보다 위에 그린다.
-            var overlay = new VisualElement { pickingMode = PickingMode.Ignore };
-            overlay.AddToClassList("inside-overlay");
-            numbersRow.Add(overlay);
-
-            foreach (InsideBetSpot spot in InsideBets.All)
-            {
-                // 누르는 영역은 16px로 두고, 보이는 건 가운데 작은 점만. 번호를 가리지 않게 한다.
-                var hotspot = new Button();
-                hotspot.AddToClassList("hotspot");
-                var dot = new VisualElement { pickingMode = PickingMode.Ignore };
-                dot.AddToClassList("hotspot__dot");
-                hotspot.Add(dot);
-                hotspot.style.left = ZeroCellPitch + spot.X * ColumnPitch - HotspotSize * 0.5f;
-                hotspot.style.top = spot.Y * RowPitch - HotspotSize * 0.5f;
-                Bind(hotspot, spot.Target, "chip-badge--spot");
-                overlay.Add(hotspot);
-            }
-
-            var dozensRow = Row(board);
-            dozensRow.AddToClassList("board-row--indent");
-            dozensRow.Add(MakeOutsideCell(BetKind.Dozen1, "outside--dozen"));
-            dozensRow.Add(MakeOutsideCell(BetKind.Dozen2, "outside--dozen"));
-            dozensRow.Add(MakeOutsideCell(BetKind.Dozen3, "outside--dozen"));
-
-            var evenRow = Row(board);
-            evenRow.AddToClassList("board-row--indent");
-            evenRow.Add(MakeOutsideCell(BetKind.Low, "outside--even"));
-            evenRow.Add(MakeOutsideCell(BetKind.Even, "outside--even"));
-            evenRow.Add(MakeOutsideCell(BetKind.Red, "outside--even", "cell--red"));
-            evenRow.Add(MakeOutsideCell(BetKind.Black, "outside--even", "cell--black"));
-            evenRow.Add(MakeOutsideCell(BetKind.Odd, "outside--even"));
-            evenRow.Add(MakeOutsideCell(BetKind.High, "outside--even"));
-        }
-
-        private static VisualElement Row(VisualElement parent)
-        {
-            var row = new VisualElement();
-            row.AddToClassList("board-row");
-            parent.Add(row);
-            return row;
-        }
-
-        private Button MakeNumberCell(int number)
-        {
-            var button = new Button { text = number.ToString() };
-            button.AddToClassList("cell");
-
-            switch (definition.ColorOfNumber(number))
-            {
-                case PocketColor.Red:
-                    button.AddToClassList("cell--red");
-                    break;
-                case PocketColor.Black:
-                    button.AddToClassList("cell--black");
-                    break;
-                default:
-                    button.AddToClassList("cell--green");
-                    break;
-            }
-
-            if (definition.ContainsNumber(number))
-            {
-                Bind(button, BetTarget.Straight(number), "chip-badge--cell");
-                numberCells[number] = button;
-            }
-            else
-            {
-                button.SetEnabled(false);
-            }
-
-            return button;
-        }
-
-        private Button MakeOutsideCell(BetKind kind, params string[] classes)
-        {
-            var button = new Button { text = BetTarget.OutsideLabel(kind) };
-            button.AddToClassList("cell");
-            button.AddToClassList("outside");
-            foreach (string name in classes)
-            {
-                button.AddToClassList(name);
-            }
-
-            Bind(button, BetTarget.Outside(kind), "chip-badge--cell");
-            return button;
-        }
-
-        /// <summary>왼쪽 클릭 = 칩 놓기, 오른쪽 클릭 = 빼기, 마우스 올림 = 포함 칸 표시. 칩 배지를 붙인다.</summary>
-        private void Bind(Button button, BetTarget target, string badgeClass)
-        {
-            button.clicked += () => TargetClicked?.Invoke(target);
-
-            button.RegisterCallback<PointerDownEvent>(evt =>
-            {
-                if (evt.button == 1)
-                {
-                    TargetRemoveRequested?.Invoke(target);
-                    evt.StopPropagation();
-                }
-            }, TrickleDown.TrickleDown);
-
-            button.RegisterCallback<PointerEnterEvent>(_ => SetHover(target));
-            button.RegisterCallback<PointerLeaveEvent>(_ =>
-            {
-                if (hoverTarget == target)
-                {
-                    SetHover(BetTarget.None);
-                }
-            });
-
-            var badge = new Label { pickingMode = PickingMode.Ignore };
-            badge.AddToClassList("chip-badge");
-            badge.AddToClassList(badgeClass);
-            badge.style.display = DisplayStyle.None;
-            button.Add(badge);
-
-            targetButtons[target] = button;
-            chipBadges[target] = badge;
-        }
-
-        private void SetHover(BetTarget target)
-        {
-            hoverTarget = target;
-            foreach (KeyValuePair<int, Button> pair in numberCells)
-            {
-                bool covered = !target.IsNone && !target.IsStraight &&
-                               target.CoversNumber(pair.Key, definition.ColorOfNumber(pair.Key));
-                pair.Value.EnableInClassList("cell--covered", covered);
-            }
         }
     }
 }

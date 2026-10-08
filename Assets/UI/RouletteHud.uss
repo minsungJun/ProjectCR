@@ -1,15 +1,13 @@
 /* 룰렛 HUD. 기준 해상도 1920x1080 (PanelSettings: Scale With Screen Size).
-   오른쪽에 베팅 패널, 위에 상태 바, 왼쪽 아래에 결과. 가운데는 3D 휠이 보이도록 비워 둔다. */
+   화면 대부분은 3D 테이블이다. 위에 상태 바와 결과, 아래에 베팅 요약·회전 띠만 둔다.
+   3D 입력을 막아야 하는 요소에는 blocks-input 클래스를 붙인다(RouletteHud.IsPointerOverUi). */
 
 :root {
-    --ink: rgba(12, 14, 20, 0.88);
+    --ink: rgba(12, 14, 20, 0.86);
     --line: rgba(255, 255, 255, 0.12);
     --text: rgb(236, 232, 222);
-    --muted: rgb(160, 156, 148);
+    --muted: rgb(170, 166, 156);
     --gold: rgb(255, 209, 64);
-    --red: rgb(178, 36, 44);
-    --black: rgb(28, 28, 32);
-    --green: rgb(28, 120, 60);
 }
 
 .root {
@@ -55,258 +53,115 @@
     color: var(--muted);
 }
 
-/* ---------- 베팅 패널 ---------- */
+/* ---------- 결과 (상태 바 아래 왼쪽) ---------- */
 
-.bet-panel {
+.result-panel {
     position: absolute;
+    left: 24px;
+    top: 68px;
+    max-width: 1100px;
+    padding: 10px 16px;
+    background-color: var(--ink);
+    border-radius: 8px;
+}
+
+.result {
+    font-size: 24px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.result--skull {
+    color: rgb(255, 120, 110);
+}
+
+.history {
+    margin-top: 4px;
+    font-size: 15px;
+    color: var(--muted);
+}
+
+/* ---------- 베팅 요약·회전 (화면 아래 띠) ---------- */
+
+.control-panel {
+    position: absolute;
+    left: 24px;
     right: 24px;
-    top: 80px;
-    width: 600px;
-    padding: 16px;
+    bottom: 16px;
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 16px;
     background-color: var(--ink);
     border-radius: 10px;
     border-width: 1px;
     border-color: var(--line);
 }
 
-.panel-title {
-    margin-bottom: 8px;
-    font-size: 18px;
-    color: var(--muted);
-}
-
-.number-grid {
-    flex-direction: column;
-    margin-bottom: 12px;
-}
-
-.board-row {
-    flex-direction: row;
-}
-
-/* 줄 아랫변의 스트리트·식스 라인 클릭 점이 들어갈 자리. */
-.board-row--numbers {
-    padding-bottom: 10px;
-}
-
-/* 더즌·색 줄은 0 칸 폭만큼 들여 번호 열에 맞춘다. */
-.board-row--indent {
-    margin-left: 39px;
-}
-
-.grid-columns {
-    flex-direction: row;
-}
-
-.grid-column {
-    flex-direction: column;
-}
-
-.cell {
-    width: 37px;
-    height: 44px;
-    margin: 1px;
-    padding: 0;
-    border-width: 2px;
-    border-color: rgba(0, 0, 0, 0);
-    border-radius: 4px;
-    color: rgb(255, 255, 255);
-    font-size: 18px;
-    -unity-font-style: bold;
-}
-
-.cell--zero {
-    height: 136px;
-}
-
-.outside {
-    background-color: rgb(30, 70, 46);
-    font-size: 16px;
-}
-
-.outside--column {
-    width: 50px;
-}
-
-.outside--dozen {
-    width: 154px;
-    height: 36px;
-}
-
-.outside--even {
-    width: 76px;
-    height: 36px;
-}
-
-.cell--red {
-    background-color: var(--red);
-}
-
-.cell--black {
-    background-color: var(--black);
-}
-
-.cell--green {
-    background-color: var(--green);
-}
-
-.cell:hover {
-    border-color: rgba(255, 255, 255, 0.6);
-}
-
-/* 칩이 놓인 자리. */
-.cell--bet {
-    border-color: var(--gold);
-}
-
-.hotspot.cell--bet > .hotspot__dot {
-    background-color: var(--gold);
-}
-
-/* 칩 금액 배지. 번호 칸·바깥 칸은 칸 안 오른쪽 위, 클릭 점은 가운데. */
-.chip-badge {
-    position: absolute;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 4px;
-    margin: 0;
-    border-width: 1px;
-    border-radius: 10px;
-    border-color: rgb(255, 255, 255);
-    background-color: rgb(230, 182, 60);
-    color: rgb(20, 18, 12);
-    font-size: 11px;
-    -unity-font-style: bold;
-    -unity-text-align: middle-center;
-}
-
-/* 칸 안쪽 오른쪽 위. 칸 밖으로 나가면 다음 칸에 가려진다(뒤 형제가 위에 그려짐). */
-.chip-badge--cell {
-    right: 0;
-    top: 0;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 3px;
-    border-radius: 8px;
-    font-size: 10px;
-}
-
-.chip-badge--spot {
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-}
-
-.cell--covered {
-    border-color: rgba(255, 209, 64, 0.8);
-}
-
-/* 안쪽 베팅 클릭 점. 크기는 RouletteHud.cs의 HotspotSize와 같다. */
-.inside-overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-}
-
-.hotspot {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    padding: 0;
-    border-width: 0;
-    background-color: rgba(0, 0, 0, 0);
-    align-items: center;
-    justify-content: center;
-}
-
-.hotspot:hover {
-    background-color: rgba(0, 0, 0, 0);
-}
-
-.hotspot__dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 3px;
-    background-color: rgba(255, 255, 255, 0.4);
-}
-
-.hotspot:hover > .hotspot__dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
-    background-color: rgba(255, 209, 64, 0.9);
-}
-
-.hotspot.cell--selected > .hotspot__dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
-    border-width: 2px;
-    border-color: rgb(255, 255, 255);
-    background-color: var(--gold);
-}
-
-.cell--selected {
-    border-color: var(--gold);
-    border-width: 3px;
-}
-
-.skull-notice {
-    margin-top: -4px;
-    margin-bottom: 12px;
-    font-size: 17px;
-    color: rgb(232, 224, 200);
+.info {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 16px;
 }
 
 .row {
     flex-direction: row;
     align-items: center;
-    margin-bottom: 6px;
+    min-height: 26px;
 }
 
 .field-label {
-    width: 120px;
+    width: 52px;
     color: var(--muted);
 }
 
 .field-value {
-    font-size: 24px;
+    margin-right: 16px;
+    font-size: 18px;
     -unity-font-style: bold;
 }
 
-.field-value--small {
-    font-size: 19px;
+.chip-value {
+    min-width: 80px;
+    margin-right: 16px;
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: var(--gold);
+}
+
+.hover-target {
+    flex-grow: 1;
+    font-size: 15px;
+    color: var(--muted);
+}
+
+.skull-notice {
+    font-size: 15px;
+    color: rgb(232, 224, 200);
 }
 
 .bet-list {
-    min-height: 22px;
-    margin-bottom: 4px;
-    font-size: 16px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    font-size: 15px;
     color: var(--muted);
-    white-space: normal;
-}
-
-.stake-buttons {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+    overflow: hidden;
 }
 
 .preview {
-    margin-bottom: 4px;
-    font-size: 17px;
+    margin-right: 16px;
+    font-size: 15px;
     color: var(--gold);
-    white-space: normal;
 }
 
 .error {
-    min-height: 24px;
-    font-size: 17px;
+    font-size: 15px;
     color: rgb(255, 120, 110);
-    white-space: normal;
+}
+
+.button-row {
+    flex-direction: row;
+    align-items: center;
+    width: 600px;
 }
 
 /* ---------- 버튼 ---------- */
@@ -331,24 +186,18 @@
     font-size: 16px;
 }
 
-.btn--stake {
-    width: 76px;
-    height: 40px;
-    font-size: 18px;
-}
-
 .btn--wide {
-    width: 180px;
-    height: 38px;
-    font-size: 17px;
+    width: 150px;
+    height: 64px;
+    font-size: 16px;
 }
 
 .btn--primary {
+    flex-grow: 1;
     height: 64px;
-    margin-top: 8px;
     background-color: rgb(196, 150, 40);
     color: rgb(20, 18, 12);
-    font-size: 26px;
+    font-size: 24px;
     -unity-font-style: bold;
 }
 
@@ -356,36 +205,14 @@
     background-color: rgb(230, 182, 60);
 }
 
+.btn--modal {
+    flex-grow: 0;
+    height: 64px;
+    margin-top: 8px;
+}
+
 .btn:disabled {
     opacity: 0.4;
-}
-
-/* ---------- 결과 ---------- */
-
-.result-panel {
-    position: absolute;
-    left: 24px;
-    bottom: 24px;
-    width: 1180px;
-    padding: 16px 20px;
-    background-color: var(--ink);
-    border-radius: 10px;
-}
-
-.result {
-    font-size: 30px;
-    -unity-font-style: bold;
-    white-space: normal;
-}
-
-.result--skull {
-    color: rgb(255, 120, 110);
-}
-
-.history {
-    margin-top: 6px;
-    font-size: 17px;
-    color: var(--muted);
 }
 
 /* ---------- 납부 / 게임 오버 ---------- */

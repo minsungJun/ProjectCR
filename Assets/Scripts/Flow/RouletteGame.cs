@@ -21,6 +21,15 @@ namespace ProjectCR
         [SerializeField] private RoulettePresenter presenter;
         [SerializeField] private RouletteHud hud;
 
+        [Tooltip("3D 테이블 입력(칩 놓기·빼기·칩 고르기). 없으면 테이블 없이 돈다.")]
+        [SerializeField] private TableBetInput tableInput;
+
+        [Tooltip("3D 테이블 표시(놓인 칩, 트레이, 잔액 표시).")]
+        [SerializeField] private TableChipView tableView;
+
+        [Tooltip("연출 카메라 자리 이동(베팅판 ↔ 룰렛). 없으면 카메라를 움직이지 않는다.")]
+        [SerializeField] private CameraRig cameraRig;
+
         [Tooltip("기울어진 연출 시점.")]
         [SerializeField] private Camera presentationCamera;
 
@@ -63,20 +72,27 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
-            hud.TargetClicked += OnTargetClicked;
-            hud.TargetRemoveRequested += OnTargetRemoveRequested;
             hud.UndoClicked += OnUndoClicked;
             hud.ClearClicked += OnClearClicked;
-            hud.ChipAdjusted += OnChipAdjusted;
-            hud.ChipHalved += OnChipHalved;
-            hud.ChipDoubled += OnChipDoubled;
-            hud.ChipMaxed += OnChipMaxed;
             hud.SpinClicked += OnSpinClicked;
             hud.PayClicked += OnPayClicked;
             hud.RestartClicked += StartNewRun;
             hud.ViewToggled += ToggleView;
 
+            if (tableInput != null)
+            {
+                tableInput.TargetClicked += OnTargetClicked;
+                tableInput.TargetRemoveRequested += OnTargetRemoveRequested;
+                tableInput.ChipSelected += OnChipSelected;
+                tableInput.HoverChanged += OnHoverChanged;
+            }
+
             ApplyView();
+            if (cameraRig != null)
+            {
+                cameraRig.SnapToBetting();
+            }
+
             StartNewRun();
         }
 
@@ -85,7 +101,7 @@ namespace ProjectCR
             if (Application.isPlaying && flow != null)
             {
                 ApplyDebugOptions();
-                hud.Refresh(flow);
+                RefreshViews();
             }
         }
 
@@ -94,6 +110,11 @@ namespace ProjectCR
             StopAllCoroutines();
             verifying = false;
             presenter.ResetView();
+            if (cameraRig != null)
+            {
+                // 게임 오버 뒤 다시 시작할 때 룰렛 자리에서 돌아온다. 처음 시작에서는 이미 그 자리다.
+                cameraRig.MoveToBetting();
+            }
 
             flow = new GameFlowController(definition, balance, randomSeed);
             ApplyDebugOptions();
@@ -102,8 +123,8 @@ namespace ProjectCR
             Debug.Log($"[RouletteGame] 새 게임. 시드 {flow.Seed}");
 
             hud.ClearHistory();
-            hud.ShowMessage("칩 금액을 정하고 번호판에 칩을 놓은 뒤 회전을 누르세요.");
-            hud.Refresh(flow);
+            hud.ShowMessage("트레이에서 칩을 고르고 테이블 베팅판에 놓은 뒤 회전을 누르세요.");
+            RefreshViews();
         }
 
         /// <summary>HUD 회전 버튼과 같은 경로. 상태가 Betting이 아니면 GameFlowController가 거절한다.</summary>
@@ -128,29 +149,34 @@ namespace ProjectCR
 
         private void OnClearClicked() => ApplyBetAction(flow.ClearBets());
 
+        /// <summary>트레이에서 고른 칩 금액. 보유보다 큰 칩도 고를 수 있고, 놓을 때 막힌다.</summary>
+        private void OnChipSelected(long value) => ApplyBetAction(flow.SetChipValue(value));
+
+        private void OnHoverChanged(BetTarget target)
+        {
+            hud.ShowHover(target, flow);
+            if (tableView != null)
+            {
+                tableView.SetHover(true, target);
+            }
+        }
+
         private void ApplyBetAction(BetError error)
         {
-            hud.Refresh(flow);
+            RefreshViews();
             if (error != BetError.None)
             {
                 hud.ShowBetError(error);
             }
         }
 
-        private void OnChipAdjusted(long delta) => SetChipClamped(flow.Bet.ChipValue + delta);
-
-        private void OnChipHalved() => SetChipClamped(flow.Bet.ChipValue / 2);
-
-        private void OnChipDoubled() => SetChipClamped(flow.Bet.ChipValue * 2);
-
-        /// <summary>남은 돈(보유 − 이미 놓은 칩) 전부를 칩 하나로.</summary>
-        private void OnChipMaxed() => SetChipClamped(flow.Wallet.Balance - flow.Bet.TotalStake);
-
-        private void SetChipClamped(long value)
+        private void RefreshViews()
         {
-            long max = Math.Max(balance.MinBet, flow.Wallet.Balance);
-            flow.SetChipValue(Math.Max(balance.MinBet, Math.Min(value, max)));
             hud.Refresh(flow);
+            if (tableView != null)
+            {
+                tableView.Refresh(flow);
+            }
         }
 
         private void OnSpinClicked()
@@ -172,12 +198,22 @@ namespace ProjectCR
             Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {Describe(spin.Bets)} → 결과 {Describe(spin.Result)}");
 
             hud.ShowSpinning();
-            hud.Refresh(flow);
+            RefreshViews();
             StartCoroutine(RunSpin(spin));
         }
 
         private IEnumerator RunSpin(ActiveSpin spin)
         {
+            // 베팅은 이미 확정·차감됐다. 카메라가 룰렛 자리에 도착한 뒤 휠과 공을 돌린다.
+            if (cameraRig != null)
+            {
+                cameraRig.MoveToRoulette();
+                while (cameraRig.IsMoving)
+                {
+                    yield return null;
+                }
+            }
+
             yield return presenter.Play(spin.Result);
 
             if (flow.CompleteSpin(spin.Id, out SettlementResult settlement))
@@ -186,7 +222,14 @@ namespace ProjectCR
                 hud.ShowSettlement(settlement);
             }
 
-            hud.Refresh(flow);
+            // 정산과 함께 베팅이 비었으니 판의 칩도 이 갱신에서 사라진다.
+            RefreshViews();
+
+            // 결과 칸을 잠시 보여 준 뒤 베팅판으로 돌아간다. 납부 단계면 룰렛에 머문다(납부 후 돌아감).
+            if (cameraRig != null && flow.Phase == GamePhase.Betting)
+            {
+                cameraRig.MoveToBetting(cameraRig.ReturnDelay);
+            }
         }
 
         private static string Describe(SpinResult result)
@@ -224,7 +267,12 @@ namespace ProjectCR
                 hud.ShowMessage($"납부 완료! 라운드 {flow.Round.Round} 시작 · 이월 {flow.Wallet.Balance:N0}");
             }
 
-            hud.Refresh(flow);
+            if (cameraRig != null && flow.Phase == GamePhase.Betting)
+            {
+                cameraRig.MoveToBetting();
+            }
+
+            RefreshViews();
         }
 
         private void ToggleView()

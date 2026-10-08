@@ -222,7 +222,7 @@ namespace ProjectCR.Tests
             Assert.IsTrue(flow.CompleteSpin(spin.Id, out SettlementResult settlement));
             Assert.AreEqual(90, settlement.TotalPayout);
             Assert.AreEqual(185, flow.Wallet.Balance);
-            Assert.AreEqual(5, flow.Bet.StakeOn(split));
+            Assert.AreEqual(0, flow.Bet.StakeOn(split), "회전이 끝나면 칩을 회수한다.");
         }
 
         [Test]

@@ -66,7 +66,7 @@ namespace ProjectCR
     /// 한 회전에 거는 베팅 목록(베팅판). 대상마다 금액이 하나씩 있고, 같은 대상에 다시 걸면 금액이 쌓인다.
     ///
     /// 회전 시작 때 <see cref="TryConfirm"/>가 전체를 검증하고 합계를 <b>한 번</b> 차감한 뒤 잠근다.
-    /// 정산이 끝나 <see cref="Unlock"/>되면 같은 베팅이 판에 그대로 남아 다시 돌릴 수 있다.
+    /// 정산이 끝나면 <see cref="Unlock"/>으로 풀고, 게임 흐름이 판을 비운다(칩 회수, GameFlowController.CompleteSpin).
     /// </summary>
     public sealed class BetManager
     {
@@ -293,8 +293,8 @@ namespace ProjectCR
         }
 
         /// <summary>
-        /// 정산 후 호출. 베팅은 판에 남겨 다시 돌릴 수 있게 한다.
-        /// 칩 금액은 잔액을 넘지 않게 줄인다(최소 베팅 아래로는 내리지 않는다).
+        /// 정산 후 호출. 잠금을 풀고, 칩 금액은 잔액을 넘지 않게 줄인다(최소 베팅 아래로는 내리지 않는다).
+        /// 판을 비우는 건 호출하는 쪽이 정한다.
         /// </summary>
         public void Unlock(long balance)
         {
