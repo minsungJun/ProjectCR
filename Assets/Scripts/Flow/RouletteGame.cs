@@ -349,7 +349,8 @@ namespace ProjectCR
             {
                 long chip = flow.Bet.ChipValue;
                 BetHoverInfo info = BetHoverInfo.Create(target, flow.BuildSpinConfig(), chip, flow.Wallet.MaxMoney,
-                    flow.Wallet.CanAfford(flow.Bet.TotalStake + chip));
+                    flow.Wallet.CanAfford(flow.Bet.TotalStake + chip),
+                    BetHoverInfo.CrossProgressOf(target, flow.Cross, flow.Round.CurrentDue));
                 hud.ShowBetTooltip(info, !picking);
                 if (tableView != null)
                 {

@@ -39,6 +39,19 @@ namespace ProjectCR
         Insurance,
     }
 
+    /// <summary>교차 강화 발동 조건.</summary>
+    public enum CrossTriggerMode
+    {
+        /// <summary>발동 묶음에 건 베팅이 하나라도 당첨되면 회전당 한 번.</summary>
+        Win,
+
+        /// <summary>
+        /// 발동 묶음 베팅의 원금 포함 지급액을 이번 라운드 동안 누적해서, 목표(납부금 × 기준 비율, 올림)에 닿을 때마다 한 번.
+        /// 초과분은 같은 라운드 다음 달성으로 이월하고, 라운드가 바뀌면 미달 누적액은 버린다.
+        /// </summary>
+        Gain,
+    }
+
     /// <summary>
     /// 상점 상품 하나(정적 데이터). 실행 중 수량·중첩은 여기 두지 않는다(<see cref="ShopRunState"/>, <see cref="InventoryState"/> 등).
     ///
@@ -50,6 +63,24 @@ namespace ProjectCR
     public class ShopItemDefinition : ScriptableObject
     {
         private const long PriceUnit = 5;
+
+        /// <summary>Gain 발동 기본 기준(납부금의 50%). 첫 시험값.</summary>
+        public const float DefaultGainRatio = 0.5f;
+
+        /// <summary>기본 상품 정의에서 발동 조건만 이 에셋에 옮긴다(가격·아이콘·문구 등은 그대로). 에디터 갱신 메뉴용.</summary>
+        public bool CopyCrossTriggerFrom(ShopItemDefinition source)
+        {
+            if (source == null || (crossTrigger == source.crossTrigger && Mathf.Approximately(gainThresholdRatio, source.gainThresholdRatio)
+                                   && gainTriggerCapPerSpin == source.gainTriggerCapPerSpin))
+            {
+                return false;
+            }
+
+            crossTrigger = source.crossTrigger;
+            gainThresholdRatio = source.gainThresholdRatio;
+            gainTriggerCapPerSpin = source.gainTriggerCapPerSpin;
+            return true;
+        }
 
         [SerializeField] private string id = "item";
         [SerializeField] private string displayName = "상품";
@@ -74,6 +105,17 @@ namespace ProjectCR
 
         [Tooltip("교차: 발동 묶음.")]
         [SerializeField] private DrinkGroup triggerGroup;
+
+        [Tooltip("교차: 발동 조건. Win = 발동 묶음 베팅 당첨 시(회전당 1번), Gain = 발동 묶음 지급액 이번 라운드 누적이 목표에 닿을 때마다.")]
+        [SerializeField] private CrossTriggerMode crossTrigger = CrossTriggerMode.Win;
+
+        [Tooltip("교차(Gain): 목표 = 올림(현재 납부금 × 이 비율), 최소 1. 0.5 = 납부금의 50%.")]
+        [Min(0.01f)]
+        [SerializeField] private float gainThresholdRatio = 0.5f;
+
+        [Tooltip("교차(Gain): 한 회전에 달성할 수 있는 최대 횟수. 0 = 제한 없음. 넘친 배수는 버린다(나머지만 이월).")]
+        [Min(0)]
+        [SerializeField] private int gainTriggerCapPerSpin;
 
         [Tooltip("효과 크기 N. 집중 0.1 = 가중치·지급 +10%, 교차 0.25 = 다음 회전 +25%, 납부 지원 0.25 = 납부금의 25%, 보험 0.5 = 베팅금 50%.")]
         [Min(0f)]
@@ -108,6 +150,16 @@ namespace ProjectCR
         public ShopEffect Effect => effect;
         public DrinkGroup Group => group;
         public DrinkGroup TriggerGroup => triggerGroup;
+        public CrossTriggerMode CrossTrigger => crossTrigger;
+        public int GainTriggerCapPerSpin => Mathf.Max(0, gainTriggerCapPerSpin);
+
+        /// <summary>Gain 발동 기준 비율(decimal로 정확히).</summary>
+        public decimal GainThresholdRatio => (decimal)Mathf.Max(0.01f, gainThresholdRatio);
+
+        /// <summary>Gain 발동 목표 금액 = 올림(납부금 × 기준 비율), 최소 1.</summary>
+        public long GainThreshold(long due) => ThresholdOf(due, GainThresholdRatio);
+
+        public static long ThresholdOf(long due, decimal ratio) => Math.Max(1L, (long)Math.Ceiling(Math.Max(0L, due) * ratio));
         public int StockPerRound => stockPerRound;
         public int BuyLimitPerRound => buyLimitPerRound;
 
@@ -119,10 +171,20 @@ namespace ProjectCR
         /// <summary>대상을 골라야 살 수 있다(집중 강화).</summary>
         public bool NeedsTarget => effect == ShopEffect.Focus;
 
-        public string Description => string.IsNullOrWhiteSpace(description) ? DefaultDescription() : description;
+        public string Description => DescriptionFor(0);
 
         /// <summary>상점 카드의 짧은 설명(두 줄).</summary>
-        public string CardText => string.IsNullOrWhiteSpace(cardText) ? DefaultCardText() : cardText;
+        public string CardText => CardTextFor(0);
+
+        /// <summary>자세한 설명. due가 있으면 Gain 목표를 실제 금액으로 쓴다(0이면 "납부금의 n%").</summary>
+        public string DescriptionFor(long due) => string.IsNullOrWhiteSpace(description) ? DefaultDescription(due) : description;
+
+        /// <summary>카드 설명. due가 있으면 Gain 목표를 실제 금액으로 쓴다(0이면 "납부금의 n%").</summary>
+        public string CardTextFor(long due) => string.IsNullOrWhiteSpace(cardText) ? DefaultCardText(due) : cardText;
+
+        /// <summary>Gain 목표 문구: 납부금을 알면 금액, 모르면 비율.</summary>
+        private string GainGoalText(long due) =>
+            due > 0 ? $"{GainThreshold(due):N0}" : $"납부금의 {(GainThresholdRatio * 100m).ToString("0.#")}%";
 
         /// <summary>적용 기간 문구.</summary>
         public string Duration
@@ -134,7 +196,9 @@ namespace ProjectCR
                     case ShopEffect.Focus:
                         return "이번 게임 동안 · 구매 즉시 적용";
                     case ShopEffect.Cross:
-                        return "이번 게임 동안 보유 · 발동하면 다음 회전 1번";
+                        return crossTrigger == CrossTriggerMode.Gain
+                            ? "이번 게임 동안 보유 · 이번 라운드 누적 · 달성할 때마다 다음 회전 1번"
+                            : "이번 게임 동안 보유 · 발동하면 다음 회전 1번";
                     case ShopEffect.PaymentSupport:
                         return "이번 게임 동안 · 구매 즉시 적용 · 납부할 때마다 환급";
                     case ShopEffect.ExtraBall:
@@ -168,7 +232,7 @@ namespace ProjectCR
             return Math.Max(Math.Max(1, minPrice), (long)rounded);
         }
 
-        private string DefaultCardText()
+        private string DefaultCardText(long due)
         {
             string percent = (Value * 100m).ToString("0.#") + "%";
             switch (effect)
@@ -176,7 +240,9 @@ namespace ProjectCR
                 case ShopEffect.Focus:
                     return $"고른 대상 확률 +{percent}\n{group.ToKorean()} 지급액 +{percent}";
                 case ShopEffect.Cross:
-                    return $"{GroupCode(triggerGroup)} 당첨 시\n다음 회전 {GroupCode(group)} +{percent}";
+                    return crossTrigger == CrossTriggerMode.Gain
+                        ? $"이번 라운드 {GroupCode(triggerGroup)} 누적 지급 {GainGoalText(due)}마다\n다음 회전 {GroupCode(group)} +{percent}"
+                        : $"{GroupCode(triggerGroup)} 당첨 시\n다음 회전 {GroupCode(group)} +{percent}";
                 case ShopEffect.PaymentSupport:
                     return $"납부할 때마다\n납부금 {percent} 환급";
                 case ShopEffect.ExtraBall:
@@ -190,7 +256,7 @@ namespace ProjectCR
             }
         }
 
-        private string DefaultDescription()
+        private string DefaultDescription(long due)
         {
             string percent = (Value * 100m).ToString("0.#") + "%";
             switch (effect)
@@ -198,7 +264,9 @@ namespace ProjectCR
                 case ShopEffect.Focus:
                     return $"고른 {group.ToKorean()} 대상 추첨 가중치 +{percent}, {group.BetsKorean()} 베팅 지급액 +{percent}";
                 case ShopEffect.Cross:
-                    return $"{GroupCode(triggerGroup)} 베팅이 당첨되면 다음 회전 {GroupCode(group)} 지급액 +{percent} (회전당 1번)";
+                    return crossTrigger == CrossTriggerMode.Gain
+                        ? $"이번 라운드 {GroupCode(triggerGroup)} 베팅 지급액(원금 포함) 누적이 {GainGoalText(due)}에 닿을 때마다 다음 회전 {GroupCode(group)} 지급액 +{percent}. 초과분은 이월, 라운드가 바뀌면 미달분은 사라집니다"
+                        : $"{GroupCode(triggerGroup)} 베팅이 당첨되면 다음 회전 {GroupCode(group)} 지급액 +{percent} (회전당 1번)";
                 case ShopEffect.PaymentSupport:
                     return $"라운드가 끝나 납부할 때마다 낸 납부금의 {percent}를 돌려받습니다(납부금은 그대로). 여러 개면 더해집니다";
                 case ShopEffect.ExtraBall:
@@ -278,9 +346,18 @@ namespace ProjectCR
                         continue;
                     }
 
-                    items.Add(Create($"cross_{trigger.ToString().ToLowerInvariant()}_{target.ToString().ToLowerInvariant()}",
+                    ShopItemDefinition cross = Create($"cross_{trigger.ToString().ToLowerInvariant()}_{target.ToString().ToLowerInvariant()}",
                         $"{GroupCode(trigger)} → {GroupCode(target)}",
-                        ShopCategory.Cross, ShopEffect.Cross, 0.25f, 0.2f, 1.3f, 1, 1, target, trigger));
+                        ShopCategory.Cross, ShopEffect.Cross, 0.25f, 0.2f, 1.3f, 1, 1, target, trigger);
+
+                    // DOZEN → COLUMN만 누적 지급액 발동(납부금의 50%마다). 나머지는 당첨 발동.
+                    if (trigger == DrinkGroup.Dozen && target == DrinkGroup.Column)
+                    {
+                        cross.crossTrigger = CrossTriggerMode.Gain;
+                        cross.gainThresholdRatio = DefaultGainRatio;
+                    }
+
+                    items.Add(cross);
                 }
             }
 

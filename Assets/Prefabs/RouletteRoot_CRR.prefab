@@ -1220,6 +1220,135 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.PocketAnchor
   pocketIndex: 21
   number: 24
+--- !u!1 &3833958830513854638
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3215975884752095224}
+  - component: {fileID: 3085133802156417092}
+  - component: {fileID: 5592095559763309508}
+  - component: {fileID: 2559008808015048583}
+  m_Layer: 0
+  m_Name: ChipTrayGlow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3215975884752095224
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3833958830513854638}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3246844066728606620}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &3085133802156417092
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3833958830513854638}
+  m_Mesh: {fileID: 0}
+--- !u!23 &5592095559763309508
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3833958830513854638}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 574c0f82777de4f48a38ba545fd15270, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2559008808015048583
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3833958830513854638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23f9afcfcb3f1a547950009c34823b72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.ChipTrayGlow
+  centers:
+  - {x: 0.15462506, y: 0.8008001, z: 0.46499982}
+  - {x: 0.08187497, y: 0.8008001, z: 0.46499982}
+  - {x: 0.009124994, y: 0.8008001, z: 0.46499982}
+  - {x: -0.06362498, y: 0.8008001, z: 0.46499982}
+  - {x: -0.13637495, y: 0.8008001, z: 0.46499982}
+  - {x: -0.20912498, y: 0.8008001, z: 0.46499982}
+  - {x: -0.28187507, y: 0.8008001, z: 0.46499982}
+  - {x: -0.35462505, y: 0.8008001, z: 0.46499982}
+  halfSizes:
+  - {x: 0.034875095, y: 0.066000015}
+  - {x: 0.034874976, y: 0.066000015}
+  - {x: 0.034874976, y: 0.066000015}
+  - {x: 0.034874976, y: 0.066000015}
+  - {x: 0.034874976, y: 0.066000015}
+  - {x: 0.034875035, y: 0.066000015}
+  - {x: 0.034875035, y: 0.066000015}
+  - {x: 0.034875095, y: 0.066000015}
+  axisX: {x: 1, y: 0, z: 0}
+  axisZ: {x: 0, y: 0, z: 1}
+  glowColor: {r: 1, g: 0.84, b: 0.42, a: 1}
+  lineWidth: 0.0025
+  outerHalo: 0.009
+  innerHalo: 0.006
+  pulsePeriod: 1.6
+  pulseMin: 0.65
 --- !u!1 &3838043850429547807
 GameObject:
   m_ObjectHideFlags: 0
@@ -1261,6 +1390,7 @@ Transform:
   - {fileID: 1349984337478662926}
   - {fileID: 5815044522110396604}
   - {fileID: 1943830066146818078}
+  - {fileID: 3215975884752095224}
   m_Father: {fileID: 3963213486689556728}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5249218895374896639
@@ -1376,6 +1506,7 @@ MonoBehaviour:
   - {fileID: 4496369613812045236}
   - {fileID: 3425082283283297539}
   trayChipSlot: 00000000000000000000000000000000000000000000000000000000000000000100000001000000010000000100000001000000010000000100000001000000020000000200000002000000020000000200000002000000020000000200000003000000030000000300000003000000030000000300000003000000030000000400000004000000040000000400000004000000040000000400000004000000050000000500000005000000050000000500000005000000050000000500000006000000060000000600000006000000060000000600000006000000060000000700000007000000070000000700000007000000070000000700000007000000
+  trayGlow: {fileID: 2559008808015048583}
   chipHeight: 0.003400147
   chipScale: 1.4
   trayLift: 0.012

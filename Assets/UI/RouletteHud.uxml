@@ -63,6 +63,7 @@
             </ui:VisualElement>
             <ui:Label name="bet-tooltip-targets" class="bet-tooltip__targets" picking-mode="Ignore" />
             <ui:Label name="bet-tooltip-stake" class="bet-tooltip__stake" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-progress" class="bet-tooltip__progress" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <ui:VisualElement name="gameover-panel" class="modal blocks-input">

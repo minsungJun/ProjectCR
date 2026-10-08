@@ -38,6 +38,9 @@ namespace ProjectCR.Editor
         private const string HoverMaterialPath = "Assets/Materials/Table_Hover.mat";
         private const string HighlightMaterialPath = "Assets/Materials/Table_BetHighlight.mat";
         private const string HighlightObjectName = "BetHighlight";
+        private const string TrayGlowObjectName = "ChipTrayGlow";
+        private const string TrayMeshName = "CRT_ChipTray_600x150_Depth35";
+        private const string TrayDividerPrefix = "CRT_Tray_Divider_";
 
         // 잔액 표시 장치를 태블릿으로 바꾼다(2026-10-09). 태블릿은 새 모델에서 뽑아 낸 독립 프리팹이고,
         // 놓는 자리는 그 모델에서 잰 태블릿 아랫면 가운데(모델 로컬 좌표).
@@ -436,6 +439,7 @@ namespace ProjectCR.Editor
             hover.transform.localScale = new Vector3(0.022f, 0.0006f, 0.022f);
             hover.GetComponent<Renderer>().sharedMaterial = HoverMaterial();
             BetHighlightView highlight = BuildHighlight(board, tableBoard);
+            ChipTrayGlow trayGlow = BuildTrayGlow(board, model);
 
             // 태블릿 프리팹이 있으면 옛 잔액 표시 장치를 끄고 태블릿을 쓴다(보유 금액 + 이번 판 베팅 + 버튼).
             TabletPanel tablet = AssetDatabase.LoadAssetAtPath<GameObject>(TabletPrefabPath) != null ? BuildTablet(model) : null;
@@ -463,6 +467,7 @@ namespace ProjectCR.Editor
             so.FindProperty("chipHeight").floatValue = WorldBounds(templates[0].transform).size.y;
             Set(so, "hoverMarker", hover.transform);
             Set(so, "highlight", highlight);
+            Set(so, "trayGlow", trayGlow);
             Set(so, "balanceText", balanceText);
             Set(so, "dueText", tablet != null ? tablet.DueValue : null);
             Set(so, "tablet", tablet);
@@ -536,6 +541,116 @@ namespace ProjectCR.Editor
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        /// <summary>이미 만든 RouletteRoot_CRR 프리팹에 고른 칩 칸 테두리 빛(ChipTrayGlow)을 붙인다. 다시 돌려도 하나만 생긴다.</summary>
+        [MenuItem("Tools/ProjectCR/Model (CRR)/Add Chip Tray Glow")]
+        public static void AddChipTrayGlow()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(RoulettePrefabPath);
+            try
+            {
+                TableChipView view = root.GetComponentInChildren<TableChipView>(true)
+                    ?? throw new InvalidOperationException("RouletteRoot_CRR에 TableChipView가 없다.");
+                Transform board = view.Board.transform;
+                Transform model = FindDeep(root.transform, TrayMeshName)?.parent
+                    ?? throw new InvalidOperationException($"모델에 {TrayMeshName}이 없다.");
+
+                var so = new SerializedObject(view);
+                Set(so, "trayGlow", BuildTrayGlow(board, model));
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, RoulettePrefabPath);
+                Debug.Log("[RouletteModelSetup] 칩 트레이 칸 테두리 빛 추가");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// 트레이 메시와 칸막이(CRT_Tray_Divider_*)로 칸 8개의 안쪽 사각형을 재고, 판 아래 ChipSlot_금액 위치로 금액 순서에 맞춘다.
+        /// 테두리 높이는 트레이 윗면. 칸막이 사이 폭을 칸 폭으로 보고 양 끝 칸도 같은 폭으로 둔다. 이미 있으면 지우고 다시 만든다.
+        /// </summary>
+        private static ChipTrayGlow BuildTrayGlow(Transform board, Transform model)
+        {
+            Transform old = board.Find(TrayGlowObjectName);
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            Bounds tray = WorldBounds(FindDeep(model, TrayMeshName)
+                ?? throw new InvalidOperationException($"모델에 {TrayMeshName}이 없다."));
+            var dividers = new System.Collections.Generic.List<Bounds>();
+            foreach (Transform t in model.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name.StartsWith(TrayDividerPrefix) && t.GetComponent<MeshFilter>() != null)
+                {
+                    dividers.Add(WorldBounds(t));
+                }
+            }
+
+            if (dividers.Count < 1)
+            {
+                throw new InvalidOperationException("트레이 칸막이를 찾지 못했다.");
+            }
+
+            // 긴 방향(트레이 x 크기가 크면 월드 x)으로 정렬해 칸 경계를 만든다.
+            bool alongX = tray.size.x >= tray.size.z;
+            float Along(Vector3 v) => alongX ? v.x : v.z;
+            dividers.Sort((a, b) => Along(a.center).CompareTo(Along(b.center)));
+            float pitch = dividers.Count > 1 ? (Along(dividers[dividers.Count - 1].center) - Along(dividers[0].center)) / (dividers.Count - 1) : 0.07f;
+            float inner = pitch - (alongX ? dividers[0].size.x : dividers[0].size.z);
+
+            var edges = new System.Collections.Generic.List<(float min, float max)>();
+            edges.Add((Along(dividers[0].min) - inner, Along(dividers[0].min)));
+            for (int i = 0; i + 1 < dividers.Count; i++)
+            {
+                edges.Add((Along(dividers[i].max), Along(dividers[i + 1].min)));
+            }
+
+            edges.Add((Along(dividers[dividers.Count - 1].max), Along(dividers[dividers.Count - 1].max) + inner));
+
+            Bounds depthRef = dividers[0];
+            float depthMin = alongX ? depthRef.min.z : depthRef.min.x;
+            float depthMax = alongX ? depthRef.max.z : depthRef.max.x;
+            float top = tray.max.y + 0.0008f;
+
+            var go = new GameObject(TrayGlowObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(ChipTrayGlow));
+            go.transform.SetParent(board, false);
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = HighlightMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            Vector3 longAxis = alongX ? Vector3.right : Vector3.forward;
+            Vector3 depthAxis = alongX ? Vector3.forward : Vector3.right;
+            var centers = new Vector3[Denominations.Length];
+            var halves = new Vector2[Denominations.Length];
+            for (int d = 0; d < Denominations.Length; d++)
+            {
+                Transform slot = board.Find($"ChipSlot_{Denominations[d]}")
+                    ?? throw new InvalidOperationException($"ChipSlot_{Denominations[d]}이 없다.");
+                float at = Along(slot.position);
+                int index = edges.FindIndex(e => at >= e.min && at <= e.max);
+                if (index < 0)
+                {
+                    throw new InvalidOperationException($"{Denominations[d]} 칩 칸을 칸막이 사이에서 찾지 못했다.");
+                }
+
+                (float min, float max) edge = edges[index];
+                float mid = (edge.min + edge.max) * 0.5f;
+                float depthMid = (depthMin + depthMax) * 0.5f;
+                Vector3 world = alongX ? new Vector3(mid, top, depthMid) : new Vector3(depthMid, top, mid);
+                centers[d] = go.transform.InverseTransformPoint(world);
+                halves[d] = new Vector2((edge.max - edge.min) * 0.5f, (depthMax - depthMin) * 0.5f);
+            }
+
+            go.GetComponent<ChipTrayGlow>().Configure(centers, halves,
+                go.transform.InverseTransformDirection(longAxis), go.transform.InverseTransformDirection(depthAxis));
+            return go.GetComponent<ChipTrayGlow>();
         }
 
         /// <summary>판 아래 BetHighlight 오브젝트(메시 + 전용 머티리얼 + BetHighlightView). 이미 있으면 지우고 다시 만든다.</summary>

@@ -188,7 +188,7 @@ namespace ProjectCR
             body.Add(BuildIcon(item));
             body.Add(MakeLabel(item.DisplayName, "shop-name"));
             body.Add(MakeElement("shop-dash"));
-            body.Add(MakeLabel(item.CardText, "shop-desc"));
+            body.Add(MakeLabel(item.CardTextFor(flow.Round.CurrentDue), "shop-desc"));
             body.Add(MakeLabel(StateText(flow, offer), "shop-state"));
             if (item.NeedsTarget)
             {
@@ -329,7 +329,9 @@ namespace ProjectCR
                 case ShopEffect.Focus:
                     return $"보유 {flow.Upgrades.StacksOf(item.Group)}개 · {item.Group.ToKorean()} 지급 +{Percent(flow.Upgrades.PayoutIncrease(item.Group))}";
                 case ShopEffect.Cross:
-                    return $"보유 {flow.Cross.CountOf(item.TriggerGroup, item.Group)}개 · 발동 시 +{Percent(flow.Cross.IncreaseOf(item.TriggerGroup, item.Group))}";
+                    return item.CrossTrigger == CrossTriggerMode.Gain
+                        ? $"보유 {flow.Cross.CountOf(item.TriggerGroup, item.Group)}개 · 이번 라운드 목표 {item.GainThreshold(flow.Round.CurrentDue):N0}"
+                        : $"보유 {flow.Cross.CountOf(item.TriggerGroup, item.Group)}개 · 발동 시 +{Percent(flow.Cross.IncreaseOf(item.TriggerGroup, item.Group))}";
                 case ShopEffect.PaymentSupport:
                     return $"보유 {flow.Upgrades.PaymentRefundStacks}개 · 지금 환급 {Percent(flow.Upgrades.PaymentRefund)}";
                 case ShopEffect.ExtraBall:
@@ -371,7 +373,10 @@ namespace ProjectCR
                     var target = (DrinkGroup)g;
                     if (flow.Cross.CountOf(trigger, target) > 0)
                     {
-                        lines.Add($"교차 · {ShopItemDefinition.GroupCode(trigger)} → {ShopItemDefinition.GroupCode(target)} +{Percent(flow.Cross.IncreaseOf(trigger, target))}");
+                        string rule = flow.Cross.ModeOf(trigger, target) == CrossTriggerMode.Gain
+                            ? $" (누적 {flow.Cross.ProgressOf(trigger, target):0.##} / {flow.Cross.ThresholdOf(trigger, target, flow.Round.CurrentDue):N0}마다)"
+                            : string.Empty;
+                        lines.Add($"교차 · {ShopItemDefinition.GroupCode(trigger)} → {ShopItemDefinition.GroupCode(target)} +{Percent(flow.Cross.IncreaseOf(trigger, target))}{rule}");
                     }
                 }
             }

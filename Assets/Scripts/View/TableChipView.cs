@@ -30,6 +30,9 @@ namespace ProjectCR
         [Tooltip("trayChips 각각이 어느 금액 칸인지(denominations 인덱스).")]
         [SerializeField] private int[] trayChipSlot = new int[0];
 
+        [Tooltip("고른 금액 칸 테두리를 빛나게 하는 표시. 비우면 칩만 들어 올린다.")]
+        [SerializeField] private ChipTrayGlow trayGlow;
+
         [Tooltip("모델 칩 한 장의 두께(m). 쌓는 간격은 이 값 × chipScale.")]
         [SerializeField] private float chipHeight = 0.0034f;
 
@@ -316,6 +319,11 @@ namespace ProjectCR
 
         private void RefreshTray(long chipValue)
         {
+            if (trayGlow != null)
+            {
+                trayGlow.Show(Array.IndexOf(denominations, chipValue));
+            }
+
             for (int i = 0; i < trayChips.Length; i++)
             {
                 bool selected = denominations[trayChipSlot[i]] == chipValue;

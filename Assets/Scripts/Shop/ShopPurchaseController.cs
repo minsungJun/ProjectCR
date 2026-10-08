@@ -142,7 +142,7 @@ namespace ProjectCR
                     flow.Upgrades.AddFocus(item.Group, target, item.Value);
                     break;
                 case ShopEffect.Cross:
-                    flow.Cross.Add(item.TriggerGroup, item.Group, item.Value);
+                    flow.Cross.Add(item.TriggerGroup, item.Group, item.Value, item.CrossTrigger, item.GainThresholdRatio, item.GainTriggerCapPerSpin);
                     break;
                 case ShopEffect.PaymentSupport:
                     flow.Upgrades.AddPaymentRefund(item.Value);

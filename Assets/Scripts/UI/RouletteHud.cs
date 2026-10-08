@@ -50,6 +50,7 @@ namespace ProjectCR
         private Label tooltipFinal;
         private Label tooltipTargets;
         private Label tooltipStake;
+        private Label tooltipProgress;
 
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
         public void Initialize(RouletteDefinition definition)
@@ -69,6 +70,7 @@ namespace ProjectCR
             tooltipFinal = root.Q<Label>("bet-tooltip-final");
             tooltipTargets = root.Q<Label>("bet-tooltip-targets");
             tooltipStake = root.Q<Label>("bet-tooltip-stake");
+            tooltipProgress = root.Q<Label>("bet-tooltip-progress");
 
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
 
@@ -146,6 +148,10 @@ namespace ProjectCR
             tooltipStake.text = stake;
             tooltipStake.EnableInClassList("bet-tooltip__stake--short", !info.Affordable);
             tooltipStake.style.display = showPayout ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // 누적형 교차 강화 진행도(예: DOZEN 위에서 "COLUMN 강화까지 35 / 60").
+            tooltipProgress.text = info.Progress;
+            tooltipProgress.style.display = showPayout && info.Progress.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             betTooltip.style.display = DisplayStyle.Flex;
         }
 

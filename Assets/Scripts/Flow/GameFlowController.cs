@@ -269,8 +269,9 @@ namespace ProjectCR
                 settlement.ApplyInsuranceRefund(Wallet.Add(refund));
             }
 
-            // 교차 강화: 발동 묶음 베팅이 당첨됐으면 다음 회전 강화(해골 낙첨이면 없음).
-            settlement.ApplyCrossTriggers(Cross.OnSettled(settlement));
+            // 교차 강화: 발동 묶음 베팅 당첨(Win) 또는 이번 라운드 누적 지급액 목표 달성(Gain)이면 다음 회전 강화(해골 낙첨이면 없음).
+            // 정산이 이 한 곳뿐이라(단계·회전 번호 검사) 같은 회전이 두 번 누적되지 않는다.
+            settlement.ApplyCrossTriggers(Cross.OnSettled(settlement, Round.CurrentDue));
 
             LastSettlement = settlement;
             SpinsPlayed++;
@@ -479,8 +480,9 @@ namespace ProjectCR
         /// </summary>
         private void StartNextRound()
         {
-            // 추가 공 효과 끝, 쓰지 않은 납부 지원금 만료. 다음 회전 교차 강화는 남긴다(다음 라운드 첫 회전).
+            // 추가 공 효과 끝. 교차 강화는 누적 지급액(Gain) 미달분만 버리고 다음 회전 강화는 남긴다(다음 라운드 첫 회전).
             Inventory.OnRoundEnded();
+            Cross.OnRoundEnded();
             Round.AdvanceRound();
             Bet.Unlock(Wallet.Balance);
             Bet.ClearBets();

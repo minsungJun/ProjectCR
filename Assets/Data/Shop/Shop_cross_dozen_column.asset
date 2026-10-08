@@ -15,12 +15,16 @@ MonoBehaviour:
   id: cross_dozen_column
   displayName: "DOZEN \u2192 COLUMN"
   description: 
+  cardText: 
   icon: {fileID: 0}
   tint: {r: 0.9764706, g: 0.4117647, b: 0.17254902, a: 1}
   category: 1
   effect: 1
   group: 0
   triggerGroup: 1
+  crossTrigger: 1
+  gainThresholdRatio: 0.5
+  gainTriggerCapPerSpin: 0
   value: 0.25
   priceRatio: 0.2
   priceGrowth: 1.3

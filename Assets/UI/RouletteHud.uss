@@ -908,6 +908,12 @@
     color: rgb(200, 210, 186);
 }
 
+.bet-tooltip__progress {
+    margin-top: 3px;
+    font-size: 15px;
+    color: rgb(240, 192, 80);
+}
+
 .bet-tooltip__stake--short {
     color: rgb(150, 150, 136);
 }

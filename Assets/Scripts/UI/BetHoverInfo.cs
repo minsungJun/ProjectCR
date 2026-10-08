@@ -13,8 +13,9 @@ namespace ProjectCR
     public readonly struct BetHoverInfo
     {
         private BetHoverInfo(BetTarget target, string kindName, string targets, int basePayout, decimal multiplier,
-            long chipValue, long expectedPayout, int ballCount, bool affordable)
+            long chipValue, long expectedPayout, int ballCount, bool affordable, string progress)
         {
+            Progress = progress ?? string.Empty;
             Target = target;
             KindName = kindName;
             Targets = targets;
@@ -53,12 +54,42 @@ namespace ProjectCR
         /// <summary>지금 이 칩을 한 개 더 놓을 돈이 있는가.</summary>
         public bool Affordable { get; }
 
-        public static BetHoverInfo Create(BetTarget target, SpinConfig config, long chipValue, long maxMoney, bool affordable)
+        /// <summary>이 베팅 묶음이 발동 조건인 누적형 교차 강화 진행도("COLUMN 강화까지 35 / 60"). 없으면 빈 문자열.</summary>
+        public string Progress { get; }
+
+        public static BetHoverInfo Create(BetTarget target, SpinConfig config, long chipValue, long maxMoney, bool affordable,
+            string progress = null)
         {
             decimal multiplier = config.MultiplierFor(target);
             long payout = PayoutCalculator.ToMoney(PayoutCalculator.ExactPayout(chipValue, multiplier, maxMoney), maxMoney);
             return new BetHoverInfo(target, KindNameOf(target), TargetsOf(target), config.PayoutFor(target), multiplier,
-                chipValue, payout, config.BallCount, affordable);
+                chipValue, payout, config.BallCount, affordable, progress);
+        }
+
+        /// <summary>
+        /// 대상 베팅의 묶음을 발동 조건으로 하는 누적형(Gain) 교차 강화의 이번 라운드 진행도. 읽기만 한다.
+        /// 예: DOZEN 베팅 → "COLUMN 강화까지 35 / 60". 여러 개면 " · "로 잇는다.
+        /// </summary>
+        public static string CrossProgressOf(BetTarget target, CrossBetEffectState cross, long roundDue)
+        {
+            if (target.IsNone || cross == null)
+            {
+                return string.Empty;
+            }
+
+            DrinkGroup trigger = DrinkGroups.Of(target.Kind);
+            var parts = new List<string>();
+            for (int g = 0; g < DrinkGroups.Count; g++)
+            {
+                var goal = (DrinkGroup)g;
+                if (cross.CountOf(trigger, goal) > 0 && cross.ModeOf(trigger, goal) == CrossTriggerMode.Gain)
+                {
+                    long done = (long)decimal.Floor(cross.ProgressOf(trigger, goal));
+                    parts.Add($"{ShopItemDefinition.GroupCode(goal)} 강화까지 {done:N0} / {cross.ThresholdOf(trigger, goal, roundDue):N0}");
+                }
+            }
+
+            return string.Join(" · ", parts);
         }
 
         public static string KindNameOf(BetTarget target)
