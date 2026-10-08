@@ -151,8 +151,9 @@ namespace ProjectCR
             spinButton.SetEnabled(betting && error == BetError.None);
 
             // 상점은 베팅을 고칠 수 있을 때만(회전·정산·납부·음료 선택·게임 오버 중에는 꺼진다).
-            shopButton.SetEnabled(betting && flow.Shop.HasCatalog);
-            shopButton.tooltip = betting ? string.Empty : "베팅 중에만 열 수 있습니다";
+            // 상점은 라운드가 끝난 뒤 새 라운드의 첫 회전 전에만 열린다.
+            shopButton.SetEnabled(flow.CanEnterShop);
+            shopButton.tooltip = flow.CanEnterShop ? string.Empty : "라운드를 통과한 뒤, 다음 라운드 첫 회전 전에만 열 수 있습니다";
             spinButton.text = SpinButtonText(flow.Phase);
 
             RefreshGameOver(flow);
@@ -390,14 +391,14 @@ namespace ProjectCR
                 parts.Add($"공 {preview.BallCount}개");
             }
 
-            if (flow.Inventory.ShieldsEquipped > 0)
+            if (flow.Inventory.Shields > 0)
             {
-                parts.Add($"방패 {flow.Inventory.ShieldsEquipped}");
+                parts.Add($"방패 {flow.Inventory.Shields}");
             }
 
-            if (flow.Inventory.InsuranceArmed)
+            if (flow.Inventory.Insurances > 0)
             {
-                parts.Add("보험");
+                parts.Add($"보험 (남은 {flow.Inventory.Insurances}장)");
             }
 
             for (int i = 0; i < DrinkGroups.Count; i++)

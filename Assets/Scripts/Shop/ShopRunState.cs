@@ -41,6 +41,8 @@ namespace ProjectCR
 
         public bool HasCatalog => catalog != null && catalog.Items.Count > 0;
 
+        public bool OpenOnFirstRound => catalog != null && catalog.OpenOnFirstRound;
+
         /// <summary>진열을 만든 라운드. 0이면 아직 없음.</summary>
         public int DisplayRound { get; private set; }
 

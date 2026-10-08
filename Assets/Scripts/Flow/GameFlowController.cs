@@ -105,7 +105,6 @@ namespace ProjectCR
             Upgrades = new BettingUpgradeState();
             Cross = new CrossBetEffectState();
             Shop = new ShopController(this, shopCatalog, Seed ^ ShopSeedSalt);
-            Items = new ItemEffectController(this);
             Phase = GamePhase.Betting;
         }
 
@@ -130,9 +129,6 @@ namespace ProjectCR
 
         /// <summary>상점(진열·재고·구매).</summary>
         public ShopController Shop { get; }
-
-        /// <summary>소모품 사용.</summary>
-        public ItemEffectController Items { get; }
 
         /// <summary>소모품 보유·장착·이번 라운드 효과.</summary>
         public InventoryState Inventory { get; }
@@ -229,9 +225,9 @@ namespace ProjectCR
             SpinResult result = SpinResolver.Resolve(config, rng);
             result = ApplyResultOverrides(result);
 
-            // 해골 방패: 장착한 방패로 해골 공만 같은 설정으로 다시 뽑는다.
-            result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.ShieldsEquipped, out int shieldsUsed);
-            Inventory.ConsumeEquippedShields(shieldsUsed);
+            // 해골 방패(자동): 가진 방패로 해골 공만 같은 설정으로 다시 뽑는다.
+            result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out int shieldsUsed);
+            Inventory.ConsumeShields(shieldsUsed);
 
             spin = new ActiveSpin(++lastSpinId, bets, config, result, insured, Inventory.InsuranceRatio, shieldsUsed);
             CurrentSpin = spin;
@@ -363,12 +359,20 @@ namespace ProjectCR
         // ---------- 상점 ----------
 
         /// <summary>
-        /// 상점에 들어간다. 베팅 중(Betting)에만 된다. 놓아 둔 베팅은 그대로 두고, 회전·라운드는 진행되지 않는다.
+        /// 상점을 열 수 있는 때: 라운드가 끝나고(음료 선택까지 마치고) 새 라운드의 <b>첫 회전을 시작하기 전</b>, 베팅 중일 때만.
+        /// 1라운드는 끝난 라운드가 없어서 닫혀 있다(ShopCatalog.openOnFirstRound로 열 수 있다).
+        /// </summary>
+        public bool CanEnterShop =>
+            Phase == GamePhase.Betting && Shop.HasCatalog && Round.SpinsTaken == 0
+            && (Round.Round > 1 || Shop.State.OpenOnFirstRound);
+
+        /// <summary>
+        /// 상점에 들어간다(<see cref="CanEnterShop"/>일 때만). 놓아 둔 베팅은 그대로 두고, 회전·라운드는 진행되지 않는다.
         /// 이번 라운드 진열이 없으면 만든다(다시 들어와도 같은 진열·재고).
         /// </summary>
         public bool EnterShop()
         {
-            if (Phase != GamePhase.Betting || !Shop.HasCatalog)
+            if (!CanEnterShop)
             {
                 return false;
             }

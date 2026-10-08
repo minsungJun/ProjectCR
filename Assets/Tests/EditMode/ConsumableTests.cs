@@ -29,7 +29,7 @@ namespace ProjectCR.Tests
         /// <summary>그 상품만 있는 상점에서 n개 사서 보관한 상태(상점 안).</summary>
         private GameFlowController Bought(string id, int count, int seed = 5)
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == id), paymentSupportChance: 1f);
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == id), paymentSupportChance: 1f, openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, seed, null, only);
             flow.Wallet.Add(10_000);
             Assert.IsTrue(flow.EnterShop());
@@ -60,23 +60,14 @@ namespace ProjectCR.Tests
             Assert.AreEqual(PaymentOutcome.Paid, flow.SubmitPayment());
         }
 
-        [Test]
-        public void Buying_DoesNotUseItem()
-        {
-            GameFlowController flow = Bought("extra_ball", 1);
-            Assert.AreEqual(1, flow.Inventory.CountOf(ShopEffect.ExtraBall));
-            Assert.AreEqual(1, flow.BuildSpinConfig().BallCount, "사기만 해서는 효과가 없다.");
-        }
-
-        // ---------- 추가 공 ----------
+        // ---------- 추가 공 (사는 즉시 적용) ----------
 
         [Test]
-        public void ExtraBall_AddsBallUntilRoundEnd_WithMax()
+        public void ExtraBall_AppliesOnPurchase_UntilRoundEnd()
         {
             GameFlowController flow = Bought("extra_ball", 2);
-            Assert.AreEqual(ItemError.None, flow.Items.UseExtraBall());
-            Assert.AreEqual(ItemError.None, flow.Items.UseExtraBall());
-            Assert.AreEqual(3, flow.BuildSpinConfig().BallCount, "1 + 2");
+            Assert.AreEqual(3, flow.BuildSpinConfig().BallCount, "1 + 2, 사는 즉시");
+            Assert.AreEqual(0, flow.Inventory.CountOf(ShopEffect.ExtraBall), "보관하지 않는다.");
             flow.CloseShop();
 
             SettlementResult s = Spin(flow, Red, 10, 32, 34, 1);
@@ -88,38 +79,25 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void ExtraBall_CannotExceedMax()
+        public void ExtraBall_CannotBeBought_AtMax()
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "extra_ball"));
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "extra_ball"), openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, 5, null, only);
             flow.Wallet.Add(10_000);
-            flow.EnterShop();
-            flow.Shop.Buy(0, BetTarget.None);
-            flow.Shop.Buy(0, BetTarget.None);
             flow.ExtraBallCount = 2; // 이미 3개(최대)
+            flow.EnterShop();
+            long before = flow.Wallet.Balance;
 
-            Assert.AreEqual(ItemError.MaxBalls, flow.Items.UseExtraBall());
-            Assert.AreEqual(2, flow.Inventory.CountOf(ShopEffect.ExtraBall), "거절되면 소모하지 않는다.");
+            Assert.AreEqual(ShopError.MaxBalls, flow.Shop.Buy(0, BetTarget.None));
+            Assert.AreEqual(before, flow.Wallet.Balance, "거절되면 돈이 빠지지 않는다.");
         }
 
-        // ---------- 해골 방패 ----------
+        // ---------- 해골 방패 (해골이 나오면 자동) ----------
 
         [Test]
-        public void Shield_OnlyEquippedOnesAreUsed()
+        public void Shield_IsUsedAutomatically_RerollingOnlyTheSkullBall()
         {
             GameFlowController flow = Bought("skull_shield", 2);
-            flow.CloseShop();
-
-            SettlementResult s = Spin(flow, Red, 10, Skull);
-            Assert.AreEqual(SpinOutcome.SkullBust, s.Outcome, "장착하지 않은 방패는 쓰지 않는다.");
-            Assert.AreEqual(2, flow.Inventory.CountOf(ShopEffect.SkullShield));
-        }
-
-        [Test]
-        public void Shield_RerollsOnlyTheSkullBall_WithoutExtraCharge()
-        {
-            GameFlowController flow = Bought("skull_shield", 2);
-            Assert.AreEqual(ItemError.None, flow.Items.EquipShield());
             flow.CloseShop();
             long before = flow.Wallet.Balance;
             int spins = flow.Round.SpinsRemaining;
@@ -132,15 +110,23 @@ namespace ProjectCR.Tests
             Assert.AreEqual(32, s.Spin.Balls[0].Number, "다른 공 결과는 그대로.");
             Assert.AreEqual(spins - 1, flow.Round.SpinsRemaining, "회전 1번만 쓴다.");
             Assert.AreEqual(before - 10 + s.TotalPayout, flow.Wallet.Balance, "추가 베팅금 없음, 해골 벌칙 없음.");
-            Assert.AreEqual(1, flow.Inventory.CountOf(ShopEffect.SkullShield));
-            Assert.AreEqual(0, flow.Inventory.ShieldsEquipped);
+            Assert.AreEqual(1, flow.Inventory.Shields);
+        }
+
+        [Test]
+        public void Shield_NotUsed_WithoutSkull()
+        {
+            GameFlowController flow = Bought("skull_shield", 1);
+            flow.CloseShop();
+            SettlementResult s = Spin(flow, Red, 10, 32);
+            Assert.AreEqual(0, s.ShieldsUsed);
+            Assert.AreEqual(1, flow.Inventory.Shields, "해골이 안 나오면 아끼어 둔다.");
         }
 
         [Test]
         public void Shield_NotEnough_StillBusts()
         {
             GameFlowController flow = Bought("skull_shield", 1);
-            flow.Items.EquipShield();
             flow.CloseShop();
             flow.ExtraBallCount = 1;
 
@@ -148,61 +134,50 @@ namespace ProjectCR.Tests
             SettlementResult s = Spin(flow, Red, 10, Skull, Skull);
             Assert.AreEqual(1, s.ShieldsUsed);
             Assert.AreEqual(SpinOutcome.SkullBust, s.Outcome);
+            Assert.AreEqual(0, flow.Inventory.Shields);
         }
 
-        // ---------- 여분의 회전권 ----------
+        // ---------- 여분의 회전권 (사는 즉시) ----------
 
         [Test]
-        public void SpareSpin_AddsOneSpin()
+        public void SpareSpin_AddsOneSpin_OnPurchase()
         {
             GameFlowController flow = Bought("spare_spin", 1);
-            Assert.AreEqual(ItemError.None, flow.Items.UseSpareSpin());
             Assert.AreEqual(6, flow.Round.SpinsRemaining);
-            Assert.AreEqual(ItemError.NoItem, flow.Items.UseSpareSpin());
+            Assert.AreEqual(0, flow.Inventory.CountOf(ShopEffect.SpareSpin));
         }
 
-        [Test]
-        public void Items_CannotBeUsed_OutsideShop()
-        {
-            GameFlowController flow = Bought("spare_spin", 1);
-            flow.CloseShop();
-            Assert.AreEqual(ItemError.NotInShop, flow.Items.UseSpareSpin());
-            Assert.AreEqual(5, flow.Round.SpinsRemaining);
-        }
-
-        // ---------- 보험 증서 ----------
+        // ---------- 보험 증서 (회전마다 1장 자동) ----------
 
         [Test]
-        public void Insurance_RefundsHalf_OnPlainLossOnly_ThenConsumed()
+        public void Insurance_UsesOnePerSpin_RefundsHalfOnPlainLoss()
         {
             GameFlowController flow = Bought("insurance", 2);
-            Assert.AreEqual(ItemError.None, flow.Items.UseInsurance());
-            Assert.AreEqual(ItemError.AlreadyArmed, flow.Items.UseInsurance(), "한 회전에 하나만.");
+            Assert.AreEqual(2, flow.Inventory.Insurances);
             flow.CloseShop();
             long before = flow.Wallet.Balance;
 
             SettlementResult lose = Spin(flow, Red, 21, 2);
             Assert.AreEqual(10, lose.InsuranceRefund, "21의 50% = 10.5 → 10");
             Assert.AreEqual(before - 21 + 10, flow.Wallet.Balance);
+            Assert.AreEqual(1, flow.Inventory.Insurances, "회전마다 1장씩.");
 
-            SettlementResult next = Spin(flow, Red, 20, 2);
-            Assert.AreEqual(0, next.InsuranceRefund, "다음 회전에는 이미 소비됐다.");
+            Assert.AreEqual(10, Spin(flow, Red, 20, 2).InsuranceRefund, "두 번째 장도 자동.");
+            Assert.AreEqual(0, Spin(flow, Red, 20, 2).InsuranceRefund, "다 쓰면 환급 없음.");
         }
 
         [Test]
-        public void Insurance_NoRefund_OnWinOrSkull()
+        public void Insurance_NoRefund_OnWinOrSkull_ButStillUsed()
         {
             GameFlowController flow = Bought("insurance", 2);
-            flow.Items.UseInsurance();
             flow.CloseShop();
-            Assert.AreEqual(0, Spin(flow, Red, 20, 32).InsuranceRefund, "당첨이면 환급 없음(소비).");
+            Assert.AreEqual(0, Spin(flow, Red, 20, 32).InsuranceRefund, "당첨이면 환급 없음.");
+            Assert.AreEqual(1, flow.Inventory.Insurances, "당첨이어도 그 회전에 1장 쓴다.");
 
-            flow.EnterShop();
-            flow.Items.UseInsurance();
-            flow.CloseShop();
             SettlementResult skull = Spin(flow, Red, 20, Skull);
             Assert.AreEqual(SpinOutcome.SkullBust, skull.Outcome);
             Assert.AreEqual(0, skull.InsuranceRefund, "해골 낙첨에는 환급 없음.");
+            Assert.AreEqual(0, flow.Inventory.Insurances);
         }
 
         // ---------- 납부 지원금(지속 효과) ----------
@@ -245,7 +220,7 @@ namespace ProjectCR.Tests
         [Test]
         public void PaymentSupport_NoRefund_WhenPaymentFails_OrWithoutIt()
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "payment_support"), paymentSupportChance: 1f);
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "payment_support"), paymentSupportChance: 1f, openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, 5, null, only);
             flow.EnterShop();
             flow.Shop.Buy(0, BetTarget.None);
@@ -276,7 +251,7 @@ namespace ProjectCR.Tests
         [Test]
         public void SpendingAllMoney_ThenClosing_GoesToPayment()
         {
-            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "extra_ball"));
+            ShopCatalog only = ShopCatalog.Create(full.Items.Where(i => i.Id == "extra_ball"), openOnFirstRound: true);
             var flow = new GameFlowController(definition, balance, 5, null, only);
             flow.Wallet.TrySpend(55); // 보유 45 = 추가 공 가격
             flow.EnterShop();

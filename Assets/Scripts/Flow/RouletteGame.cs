@@ -99,7 +99,6 @@ namespace ProjectCR
                 shopView.Closed += OnShopClosed;
                 shopView.BuyRequested += OnShopBuy;
                 shopView.PickTargetRequested += OnShopPickTarget;
-                shopView.ItemUseRequested += OnShopUseItem;
             }
             hud.ViewToggled += ToggleView;
 
@@ -254,35 +253,6 @@ namespace ProjectCR
                 Debug.Log($"[RouletteGame] 상점 구매: {flow.Shop.Offers[slot].Item.Id} {target} → 보유 {flow.Wallet.Balance:N0}");
             }
 
-            shopView.Refresh(flow);
-            RefreshViews();
-        }
-
-        private void OnShopUseItem(ShopEffect effect, bool unequip)
-        {
-            ItemError error;
-            string done;
-            switch (effect)
-            {
-                case ShopEffect.ExtraBall:
-                    error = flow.Items.UseExtraBall();
-                    done = "추가 공 사용: 이번 라운드 남은 회전에 공 +1";
-                    break;
-                case ShopEffect.SkullShield:
-                    error = unequip ? flow.Items.UnequipShield() : flow.Items.EquipShield();
-                    done = unequip ? "방패 해제" : "방패 장착";
-                    break;
-                case ShopEffect.SpareSpin:
-                    error = flow.Items.UseSpareSpin();
-                    done = "남은 회전 +1";
-                    break;
-                default:
-                    error = flow.Items.UseInsurance();
-                    done = "다음 회전에 보험 적용";
-                    break;
-            }
-
-            shopView.ShowNotice(error == ItemError.None ? done : error.ToKorean());
             shopView.Refresh(flow);
             RefreshViews();
         }

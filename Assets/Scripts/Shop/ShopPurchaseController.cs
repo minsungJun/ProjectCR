@@ -13,6 +13,7 @@ namespace ProjectCR
         NeedTarget,
         InvalidTarget,
         InsufficientFunds,
+        MaxBalls,
     }
 
     public static class ShopErrorMessages
@@ -35,6 +36,8 @@ namespace ProjectCR
                     return "고를 수 없는 대상입니다";
                 case ShopError.InsufficientFunds:
                     return "잔액 부족";
+                case ShopError.MaxBalls:
+                    return "공 수가 이미 최대";
                 default:
                     return string.Empty;
             }
@@ -46,6 +49,7 @@ namespace ProjectCR
     ///
     /// 구매 한 번은 한 덩어리로 처리한다:
     /// 상태·상품·재고·제한·대상·가격·가용 금액 검증 → 돈 차감 → 재고 감소 → 효과 적용/아이템 지급.
+    /// 소모품도 자동 사용이라 따로 쓰는 단계가 없다(추가 공·회전권은 사는 즉시, 방패·보험은 필요할 때 저절로).
     /// 검증에서 실패하면 돈·재고·효과 모두 그대로다. 집중 강화는 대상이 정해져야 검증을 통과한다(돈을 먼저 빼지 않는다).
     /// </summary>
     public sealed class ShopController
@@ -93,6 +97,11 @@ namespace ProjectCR
                 return ShopError.LimitReached;
             }
 
+            if (offer.Item.Effect == ShopEffect.ExtraBall && flow.BuildSpinConfig().BallCount >= flow.GameBalance.MaxBallCount)
+            {
+                return ShopError.MaxBalls;
+            }
+
             if (offer.Item.NeedsTarget)
             {
                 if (target.IsNone)
@@ -137,6 +146,14 @@ namespace ProjectCR
                     break;
                 case ShopEffect.PaymentSupport:
                     flow.Upgrades.AddPaymentRefund(item.Value);
+                    break;
+
+                // 소모품은 자동 사용: 추가 공·회전권은 사는 즉시, 방패·보험은 보관했다가 필요할 때 저절로.
+                case ShopEffect.ExtraBall:
+                    flow.Inventory.AddRoundBall();
+                    break;
+                case ShopEffect.SpareSpin:
+                    flow.Round.AddSpin();
                     break;
                 default:
                     flow.Inventory.Add(item);

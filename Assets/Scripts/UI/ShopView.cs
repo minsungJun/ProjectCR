@@ -8,7 +8,7 @@ namespace ProjectCR
 {
     /// <summary>
     /// 상점 창(HUD와 같은 UIDocument의 shop-panel). 상품 탭과 보유 아이템 탭을 그리고, 버튼 입력을 이벤트로 넘긴다.
-    /// 구매·사용 검증과 돈 처리는 GameFlowController(ShopController, ItemEffectController)가 한다.
+    /// 구매 검증과 돈 처리는 GameFlowController(ShopController)가 한다. 소모품은 자동 사용이라 보유 아이템 탭은 상태만 보여 준다.
     /// 창 전체에 blocks-input이 붙어 열려 있는 동안 3D 테이블 입력이 막힌다.
     /// 숫자 집중 대상은 판에서 고른다: 창을 잠시 접고(<see cref="SetPicking"/>) RouletteGame이 판 클릭을 대상으로 넘겨준다.
     /// </summary>
@@ -20,9 +20,6 @@ namespace ProjectCR
         public event Action Closed;
         public event Action<int, BetTarget> BuyRequested;
         public event Action<int> PickTargetRequested;
-
-        /// <summary>소모품 사용. 두 번째 값은 해골 방패 해제(true)·장착(false).</summary>
-        public event Action<ShopEffect, bool> ItemUseRequested;
 
         // 진열 칸별로 고른 집중 강화 대상. 라운드가 바뀌면(진열이 바뀌면) 비운다.
         private readonly Dictionary<int, BetTarget> chosenTargets = new Dictionary<int, BetTarget>();
@@ -318,6 +315,10 @@ namespace ProjectCR
                 case ShopEffect.PaymentSupport:
                     long now = (long)Math.Floor(flow.Round.CurrentDue * (flow.Upgrades.PaymentRefund + item.Value));
                     return $"보유 {flow.Upgrades.PaymentRefundStacks}개 · 지금 환급 {Percent(flow.Upgrades.PaymentRefund)} · 사면 이번 납부 때 +{now:N0}";
+                case ShopEffect.ExtraBall:
+                    return $"이번 라운드 공 {flow.BuildSpinConfig().BallCount}개 (최대 {flow.GameBalance.MaxBallCount})";
+                case ShopEffect.SpareSpin:
+                    return $"남은 회전 {flow.Round.SpinsRemaining}";
                 default:
                     return $"보유 {flow.Inventory.CountOf(item.Effect)}개";
             }
@@ -330,48 +331,25 @@ namespace ProjectCR
             InventoryState inv = flow.Inventory;
             SpinConfig config = flow.BuildSpinConfig();
 
-            scroll.Add(MakeLabel("소모품", "shop-section"));
-            scroll.Add(ItemRow("추가 공", inv.CountOf(ShopEffect.ExtraBall),
-                $"이번 라운드 공 {config.BallCount}개 (최대 {flow.GameBalance.MaxBallCount})",
-                Use("사용", ShopEffect.ExtraBall, false, inv.CountOf(ShopEffect.ExtraBall) > 0 && config.BallCount < flow.GameBalance.MaxBallCount)));
-            scroll.Add(ItemRow("해골 방패", inv.CountOf(ShopEffect.SkullShield),
-                $"장착 {inv.ShieldsEquipped} / 보유 {inv.CountOf(ShopEffect.SkullShield)} · 장착한 방패만 해골을 막는다",
-                Use("장착", ShopEffect.SkullShield, false, inv.ShieldsEquipped < inv.CountOf(ShopEffect.SkullShield)),
-                Use("해제", ShopEffect.SkullShield, true, inv.ShieldsEquipped > 0)));
-            scroll.Add(ItemRow("여분의 회전권", inv.CountOf(ShopEffect.SpareSpin),
-                $"남은 회전 {flow.Round.SpinsRemaining}",
-                Use("사용", ShopEffect.SpareSpin, false, inv.CountOf(ShopEffect.SpareSpin) > 0)));
-            scroll.Add(ItemRow("보험 증서", inv.CountOf(ShopEffect.Insurance),
-                inv.InsuranceArmed ? "다음 회전 보험 적용 중" : $"다음 회전이 일반 낙첨이면 베팅금 {Percent(inv.InsuranceRatio)} 환급",
-                Use("다음 회전에 사용", ShopEffect.Insurance, false, inv.CountOf(ShopEffect.Insurance) > 0 && !inv.InsuranceArmed)));
-
+            scroll.Add(MakeLabel("소모품 (자동 사용)", "shop-section"));
+            scroll.Add(ItemRow("추가 공", $"이번 라운드 공 {config.BallCount}개 (최대 {flow.GameBalance.MaxBallCount}) · 사는 즉시 적용, 라운드가 끝나면 원래대로"));
+            scroll.Add(ItemRow($"해골 방패 ×{inv.Shields}", "해골이 나오면 1개씩 자동으로 써서 그 공을 다시 굴립니다"));
+            scroll.Add(ItemRow("여분의 회전권", $"남은 회전 {flow.Round.SpinsRemaining} · 사는 즉시 +1"));
+            scroll.Add(ItemRow($"보험 증서 ×{inv.Insurances}",
+                $"다음 회전부터 회전마다 1장씩 자동 적용 · 일반 낙첨이면 베팅금 {Percent(inv.InsuranceRatio)} 환급"));
 
             scroll.Add(MakeLabel("강화", "shop-section"));
             scroll.Add(MakeLabel(UpgradeSummary(flow), "shop-summary"));
         }
 
-        private Button Use(string text, ShopEffect effect, bool flag, bool enabled)
-        {
-            var button = new Button(() => ItemUseRequested?.Invoke(effect, flag)) { text = text };
-            button.AddToClassList("btn");
-            button.AddToClassList("shop-item-button");
-            button.SetEnabled(enabled);
-            return button;
-        }
-
-        private static VisualElement ItemRow(string name, int count, string state, params Button[] buttons)
+        private static VisualElement ItemRow(string name, string state)
         {
             var row = new VisualElement();
             row.AddToClassList("shop-item-row");
-            var title = MakeLabel($"{name} ×{count}", "shop-name");
+            var title = MakeLabel(name, "shop-name");
             title.style.width = 190;
             row.Add(title);
             row.Add(MakeLabel(state, "shop-desc"));
-            foreach (Button button in buttons)
-            {
-                row.Add(button);
-            }
-
             return row;
         }
 

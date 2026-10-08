@@ -37,6 +37,9 @@ namespace ProjectCR
 
         public long CurrentDue => balance.GetDue(Round);
 
+        /// <summary>이번 라운드에 시작한 회전 수(버린 회전은 세지 않는다). 상점은 0일 때만 열린다.</summary>
+        public int SpinsTaken { get; private set; }
+
         public bool TryConsumeSpin()
         {
             if (SpinsRemaining <= 0)
@@ -45,6 +48,7 @@ namespace ProjectCR
             }
 
             SpinsRemaining--;
+            SpinsTaken++;
             return true;
         }
 
@@ -97,6 +101,7 @@ namespace ProjectCR
             Round++;
             SpinsRemaining = balance.SpinsPerRound;
             ForfeitedSpins = 0;
+            SpinsTaken = 0;
             IsPaid = false;
             return true;
         }

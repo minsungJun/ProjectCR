@@ -48,7 +48,7 @@ namespace ProjectCR.Tests
             definition = assets.Definition();
             balance = assets.Balance();
             catalog = assets.Drinks(withProbability: true);
-            shopCatalog = assets.Shop();
+            shopCatalog = assets.Shop(openOnFirstRound: false); // 게임 규칙: 라운드를 통과한 뒤부터
         }
 
         [TearDown]

@@ -26,6 +26,10 @@ namespace ProjectCR
         [Min(0)]
         [SerializeField] private int consumableSlots = 1;
 
+        [Header("열리는 때")]
+        [Tooltip("1라운드 시작(첫 회전 전)에도 상점을 연다. 끄면 라운드를 하나 통과한 뒤부터 열린다.")]
+        [SerializeField] private bool openOnFirstRound;
+
         [Tooltip("납부 지원금이 진열될 확률. 안 나오면 소모품 한 칸으로 채운다.")]
         [Range(0f, 1f)]
         [SerializeField] private float paymentSupportChance = 0.5f;
@@ -36,6 +40,7 @@ namespace ProjectCR
         public bool KeyConsumableSlot => keyConsumableSlot;
         public int ConsumableSlots => consumableSlots;
         public float PaymentSupportChance => paymentSupportChance;
+        public bool OpenOnFirstRound => openOnFirstRound;
 
         public List<ShopItemDefinition> ItemsOf(ShopCategory category)
         {
@@ -52,12 +57,13 @@ namespace ProjectCR
         }
 
         /// <summary>코드로 만든다(테스트, 기본 에셋 생성).</summary>
-        public static ShopCatalog Create(IEnumerable<ShopItemDefinition> items, float paymentSupportChance = 0.5f)
+        public static ShopCatalog Create(IEnumerable<ShopItemDefinition> items, float paymentSupportChance = 0.5f, bool openOnFirstRound = false)
         {
             var catalog = CreateInstance<ShopCatalog>();
             catalog.name = "ShopCatalog";
             catalog.items = new List<ShopItemDefinition>(items).ToArray();
             catalog.paymentSupportChance = paymentSupportChance;
+            catalog.openOnFirstRound = openOnFirstRound;
             return catalog;
         }
     }

@@ -16,7 +16,7 @@ namespace ProjectCR
         /// <summary>납부 지원: 이번 게임 동안, 라운드가 끝나 납부할 때마다 낸 납부금의 일부를 돌려받는다.</summary>
         PaymentSupport,
 
-        /// <summary>소모품: 보관했다가 보유 아이템 탭에서 쓴다.</summary>
+        /// <summary>소모품: 자동 사용(추가 공·회전권은 사는 즉시, 방패·보험은 필요할 때 저절로).</summary>
         Consumable,
     }
 
@@ -130,13 +130,13 @@ namespace ProjectCR
                     case ShopEffect.PaymentSupport:
                         return "이번 게임 동안 · 구매 즉시 적용 · 납부할 때마다 환급";
                     case ShopEffect.ExtraBall:
-                        return "보관 후 사용 · 사용한 라운드 끝까지";
+                        return "자동 사용 · 구매 즉시 이번 라운드 끝까지";
                     case ShopEffect.SkullShield:
-                        return "보관 후 장착 · 해골이 나오면 1개 소모";
+                        return "자동 사용 · 해골이 나오면 1개씩";
                     case ShopEffect.Insurance:
-                        return "보관 후 사용 · 다음 회전 1번";
+                        return "자동 사용 · 다음 회전부터 회전마다 1장씩";
                     default:
-                        return "보관 후 사용 · 즉시";
+                        return "자동 사용 · 구매 즉시";
                 }
             }
         }
@@ -174,7 +174,7 @@ namespace ProjectCR
                 case ShopEffect.ExtraBall:
                     return "이번 라운드 남은 모든 회전에 공 +1 (여러 개 쓰면 누적)";
                 case ShopEffect.SkullShield:
-                    return "장착해 두면 해골이 나온 공 하나를 다시 굴립니다. 다른 공은 그대로";
+                    return "해골이 나오면 그 공 하나를 다시 굴립니다(방패 1개 소모). 다른 공은 그대로";
                 case ShopEffect.SpareSpin:
                     return "이번 라운드 남은 회전 +1";
                 default:

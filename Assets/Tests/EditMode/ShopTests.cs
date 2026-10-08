@@ -30,7 +30,7 @@ namespace ProjectCR.Tests
 
         /// <summary>지정한 상품만 있는 목록(진열에 반드시 나온다).</summary>
         private ShopCatalog Only(params string[] ids) =>
-            ShopCatalog.Create(all.Where(i => ids.Contains(i.Id)), paymentSupportChance: 1f);
+            ShopCatalog.Create(all.Where(i => ids.Contains(i.Id)), paymentSupportChance: 1f, openOnFirstRound: true);
 
         private GameFlowController Flow(ShopCatalog catalog, int seed = 3) => new GameFlowController(definition, balance, seed, null, catalog);
 
@@ -99,6 +99,47 @@ namespace ProjectCR.Tests
             flow.TryBeginSpin(out ActiveSpin spin);
             Assert.IsFalse(flow.EnterShop(), "회전 중에는 못 연다.");
             flow.CompleteSpin(spin.Id, out _);
+        }
+
+        [Test]
+        public void Shop_OpensOnlyAfterRoundEnd_BeforeFirstSpin()
+        {
+            // 게임 규칙: 1라운드는 닫혀 있고, 라운드를 통과한 뒤 새 라운드 첫 회전 전에만 열린다.
+            var flow = new GameFlowController(definition, balance, 3, null, ShopCatalog.Create(all));
+            flow.Wallet.Add(1000);
+            Assert.IsFalse(flow.CanEnterShop, "1라운드 시작: 끝난 라운드가 없다.");
+            Assert.IsFalse(flow.EnterShop());
+
+            while (flow.Phase == GamePhase.Betting)
+            {
+                Spin(flow, BetTarget.Straight(7), 1, 8);
+            }
+
+            flow.SubmitPayment();
+            Assert.AreEqual(2, flow.Round.Round);
+            Assert.IsTrue(flow.CanEnterShop, "라운드 통과 직후, 첫 회전 전.");
+
+            flow.PlaceBet(Red, 10);
+            Assert.IsTrue(flow.CanEnterShop, "칩을 놓아도 첫 회전 전이면 열린다.");
+            Assert.IsTrue(flow.EnterShop());
+            Assert.IsTrue(flow.CloseShop());
+            Assert.IsTrue(flow.EnterShop(), "첫 회전 전에는 다시 들어갈 수 있다.");
+            flow.CloseShop();
+
+            flow.TryBeginSpin(out ActiveSpin spin);
+            flow.CompleteSpin(spin.Id, out _);
+            Assert.AreEqual(GamePhase.Betting, flow.Phase);
+            Assert.IsFalse(flow.CanEnterShop, "첫 회전을 시작하면 그 라운드에는 닫힌다.");
+            Assert.IsFalse(flow.EnterShop());
+        }
+
+        [Test]
+        public void Shop_FirstRoundOption_OpensBeforeFirstSpinOnly()
+        {
+            var flow = new GameFlowController(definition, balance, 3, null, ShopCatalog.Create(all, openOnFirstRound: true));
+            Assert.IsTrue(flow.CanEnterShop);
+            Spin(flow, BetTarget.Straight(7), 1, 8);
+            Assert.IsFalse(flow.CanEnterShop);
         }
 
         [Test]

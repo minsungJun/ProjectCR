@@ -44,8 +44,11 @@ namespace ProjectCR.Tests
             return Track(DrinkCatalog.Create(drinks, offerCount, chances));
         }
 
-        /// <summary>기본 상점 41종 목록. supportChance로 납부 지원금 진열 확률을 정한다.</summary>
-        public ShopCatalog Shop(float supportChance = 0.5f)
+        /// <summary>
+        /// 기본 상점 41종 목록. supportChance로 납부 지원금 진열 확률을 정한다.
+        /// 테스트 편의상 기본은 1라운드에도 열린다(게임 에셋은 1라운드에 닫혀 있다).
+        /// </summary>
+        public ShopCatalog Shop(float supportChance = 0.5f, bool openOnFirstRound = true)
         {
             var items = ShopItemDefinition.CreateDefaults();
             foreach (ShopItemDefinition item in items)
@@ -53,7 +56,7 @@ namespace ProjectCR.Tests
                 Track(item);
             }
 
-            return Track(ShopCatalog.Create(items, supportChance));
+            return Track(ShopCatalog.Create(items, supportChance, openOnFirstRound));
         }
 
         public void DestroyAll()
