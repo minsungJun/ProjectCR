@@ -100,6 +100,101 @@ namespace ProjectCR.Tests
         }
 
         [Test]
+        public void RemoveChip_TakesOneChipValue_ThenWholeTarget()
+        {
+            flow.SetChipValue(10);
+            flow.PlaceChip(Red);
+            flow.PlaceChip(Red);
+            flow.PlaceChip(Red);
+            flow.PlaceBet(BetTarget.Straight(17), 5);
+
+            Assert.AreEqual(BetError.None, flow.RemoveChip(Red));
+            Assert.AreEqual(20, flow.Bet.StakeOn(Red), "칩 하나(10)만 빠진다");
+            flow.RemoveChip(Red);
+            Assert.AreEqual(10, flow.Bet.StakeOn(Red));
+            flow.RemoveChip(Red);
+            Assert.AreEqual(0, flow.Bet.StakeOn(Red));
+            Assert.AreEqual(1, flow.Bet.Count, "다 빼면 그 대상이 사라진다");
+            Assert.AreEqual(BetError.None, flow.RemoveChip(Red), "빈 칸에서 빼도 오류가 아니다");
+            Assert.AreEqual(5, flow.Bet.TotalStake);
+        }
+
+        [Test]
+        public void RemoveChip_LessThanChipLeft_RemovesTarget()
+        {
+            flow.PlaceBet(Red, 15);
+            flow.SetChipValue(10);
+            flow.RemoveChip(Red);
+            Assert.AreEqual(5, flow.Bet.StakeOn(Red));
+            flow.RemoveChip(Red);
+            Assert.IsFalse(flow.Bet.HasBets, "칩 금액보다 적게 남았으면 통째로 뺀다");
+        }
+
+        [Test]
+        public void RemoveChip_KeepsUndoHistory_InLineWithStakes()
+        {
+            flow.SetChipValue(10);
+            flow.PlaceChip(Red);
+            flow.PlaceChip(BetTarget.Straight(17));
+            flow.PlaceChip(Red);
+
+            flow.RemoveChip(Red);
+            Assert.AreEqual(10, flow.Bet.StakeOn(Red));
+
+            flow.UndoLastChip();
+            Assert.AreEqual(0, flow.Bet.StakeOn(BetTarget.Straight(17)), "마지막 기록은 17번 칩");
+            flow.UndoLastChip();
+            Assert.IsFalse(flow.Bet.HasBets, "빨강에 남은 10은 기록과 맞아 한 번에 빠진다");
+        }
+
+        [Test]
+        public void MoveBet_MovesWholeStack_AndMergesIntoTarget()
+        {
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(Dozen1, 5);
+
+            Assert.AreEqual(BetError.None, flow.MoveBet(Red, Dozen1));
+            Assert.AreEqual(0, flow.Bet.StakeOn(Red));
+            Assert.AreEqual(25, flow.Bet.StakeOn(Dozen1), "있던 5에 20이 합쳐진다");
+            Assert.AreEqual(1, flow.Bet.Count);
+            Assert.AreEqual(25, flow.Bet.TotalStake, "합계는 그대로");
+
+            Assert.AreEqual(BetError.None, flow.MoveBet(Dozen1, Black));
+            Assert.AreEqual(25, flow.Bet.StakeOn(Black), "빈 칸이면 그대로 옮긴다");
+        }
+
+        [Test]
+        public void MoveBet_ToNone_RemovesBet_AndInvalidTarget_ChangesNothing()
+        {
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(Dozen1, 5);
+
+            Assert.AreEqual(BetError.SkullNotBettable, flow.MoveBet(Red, BetTarget.Straight(RouletteDefinition.SkullNumber)));
+            Assert.AreEqual(10, flow.Bet.StakeOn(Red), "걸 수 없는 칸이면 그대로");
+
+            Assert.AreEqual(BetError.None, flow.MoveBet(Red, BetTarget.None));
+            Assert.AreEqual(0, flow.Bet.StakeOn(Red), "판 밖에 놓으면 뺀다");
+            Assert.AreEqual(5, flow.Bet.TotalStake);
+        }
+
+        [Test]
+        public void MoveBet_UndoFollowsMovedChips()
+        {
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(Dozen1, 5);
+            flow.PlaceBet(Red, 10);
+            flow.MoveBet(Red, Black);
+
+            flow.UndoLastChip();
+            Assert.AreEqual(10, flow.Bet.StakeOn(Black), "마지막 칩(빨강 10)은 이제 검정에 있다");
+            flow.UndoLastChip();
+            Assert.AreEqual(0, flow.Bet.StakeOn(Dozen1));
+            flow.UndoLastChip();
+            Assert.IsFalse(flow.Bet.HasBets);
+        }
+
+        [Test]
         public void ClearBets_EmptiesBoard()
         {
             flow.PlaceBet(Red, 10);

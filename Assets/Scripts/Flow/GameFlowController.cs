@@ -210,6 +210,12 @@ namespace ProjectCR
 
         public BetError RemoveBet(BetTarget target) => WhenBetting(() => Bet.RemoveBet(target));
 
+        /// <summary>칩 끌기: from 베팅을 통째로 to로 옮기고(있으면 합침), to가 None이면 뺀다.</summary>
+        public BetError MoveBet(BetTarget from, BetTarget to) => WhenBetting(() => Bet.MoveBet(from, to));
+
+        /// <summary>대상에서 칩 하나(칩 금액)만큼 뺀다. 남는 게 최소 베팅보다 적으면 통째로 뺀다.</summary>
+        public BetError RemoveChip(BetTarget target) => WhenBetting(() => Bet.RemoveChip(target));
+
         public BetError UndoLastChip() => WhenBetting(Bet.UndoLastChip);
 
         public BetError ClearBets() => WhenBetting(Bet.ClearBets);

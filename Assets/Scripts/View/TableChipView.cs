@@ -80,6 +80,14 @@ namespace ProjectCR
         private readonly Stack<StackLabel> freeLabels = new Stack<StackLabel>();
         private Vector3[] trayBase;
 
+        // 끄는 중인 칩 더미(없으면 None)와 커서 아래 판 위 자리.
+        private BetTarget dragTarget = BetTarget.None;
+        private Vector3 dragPoint;
+
+        [Header("칩 끌기")]
+        [Tooltip("끄는 칩 더미를 판 위로 띄우는 높이(m).")]
+        [SerializeField] private float dragLift = 0.012f;
+
         // 트레이 칩 들림: 지금 높이, SmoothDamp 속도, 지금 고른 금액(목표). 목표에 닿으면 움직임을 멈춘다.
         private float[] trayLiftNow;
         private float[] trayLiftVelocity;
@@ -203,6 +211,41 @@ namespace ProjectCR
         {
             Transform eye = view.transform;
             label.Root.SetPositionAndRotation(label.Anchor + eye.up * amountLabelLift, eye.rotation);
+        }
+
+        /// <summary>칩 더미 끌기 시작: 이 칸 더미가 커서를 따라간다(<see cref="MoveDrag"/>).</summary>
+        public void BeginDrag(BetTarget target, Vector3 point)
+        {
+            dragTarget = target;
+            MoveDrag(point);
+        }
+
+        /// <summary>끄는 칩 더미를 판 위 point로 옮긴다(살짝 띄워서).</summary>
+        public void MoveDrag(Vector3 point)
+        {
+            dragPoint = point;
+            if (dragTarget.IsNone || !stacks.TryGetValue(dragTarget, out List<GameObject> chips))
+            {
+                return;
+            }
+
+            Vector3 up = board.transform.up;
+            Vector3 basePosition = point + up * dragLift;
+            for (int i = 0; i < chips.Count; i++)
+            {
+                chips[i].transform.position = basePosition + up * (chipHeight * chipScale * i);
+            }
+
+            if (labels.TryGetValue(dragTarget, out StackLabel label))
+            {
+                label.Anchor = basePosition + up * (chipHeight * chipScale * Mathf.Max(1, chips.Count));
+            }
+        }
+
+        /// <summary>끌기 끝. 다음 Refresh가 칩 더미를 베팅 자리대로 다시 놓는다.</summary>
+        public void EndDrag()
+        {
+            dragTarget = BetTarget.None;
         }
 
         /// <summary>호버 표시: 칩 놓는 자리 원판 + (정의가 있으면) 포함 칸 강조. 숨기면 둘 다 끈다.</summary>
@@ -371,6 +414,12 @@ namespace ProjectCR
             }
 
             PlaceLabel(target, amount, chips.Count);
+
+            // 끄는 중에 다시 그려도(칩 금액 변경 등) 커서를 따라가던 자리를 지킨다.
+            if (target == dragTarget)
+            {
+                MoveDrag(dragPoint);
+            }
         }
 
         private void RefreshTray(long chipValue)

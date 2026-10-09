@@ -184,6 +184,88 @@ namespace ProjectCR
             return BetError.None;
         }
 
+        /// <summary>
+        /// 대상에서 칩 금액(<see cref="ChipValue"/>)만큼 뺀다(오른쪽 클릭). 남는 금액이 최소 베팅보다 적으면 그 대상을 통째로 뺀다.
+        /// 건 게 없으면 아무것도 하지 않는다. "마지막 취소" 기록도 남은 금액에 맞춘다.
+        /// </summary>
+        public BetError RemoveChip(BetTarget target)
+        {
+            if (IsLocked)
+            {
+                return BetError.NotInBettingPhase;
+            }
+
+            if (!stakes.TryGetValue(target, out long current))
+            {
+                return BetError.None;
+            }
+
+            long left = current - ChipValue;
+            if (left < System.Math.Max(1, minBet))
+            {
+                stakes.Remove(target);
+                order.Remove(target);
+            }
+            else
+            {
+                stakes[target] = left;
+            }
+
+            RebuildHistory();
+            return BetError.None;
+        }
+
+        /// <summary>
+        /// from에 건 베팅을 통째로 to로 옮긴다(칩 끌기). to에 이미 건 게 있으면 합친다. to가 None이면(판 밖에 놓음) 뺀다.
+        /// 합계는 그대로라 잔액 검사는 없다. to가 걸 수 없는 대상이면 오류이고 아무것도 바뀌지 않는다.
+        /// "마지막 취소" 기록도 from 칩을 to 칩으로 바꿔 둔다.
+        /// </summary>
+        public BetError MoveBet(BetTarget from, BetTarget to)
+        {
+            if (IsLocked)
+            {
+                return BetError.NotInBettingPhase;
+            }
+
+            if (!stakes.TryGetValue(from, out long amount) || from == to)
+            {
+                return BetError.None;
+            }
+
+            if (to.IsNone)
+            {
+                return RemoveBet(from);
+            }
+
+            BetError error = ValidateTarget(to);
+            if (error != BetError.None)
+            {
+                return error;
+            }
+
+            stakes.Remove(from);
+            order.Remove(from);
+            if (stakes.TryGetValue(to, out long current))
+            {
+                stakes[to] = current + amount;
+            }
+            else
+            {
+                order.Add(to);
+                stakes[to] = amount;
+            }
+
+            var newestFirst = new List<(BetTarget Target, long Amount)>(history);
+            history.Clear();
+            for (int i = newestFirst.Count - 1; i >= 0; i--)
+            {
+                (BetTarget target, long chip) = newestFirst[i];
+                history.Push((target == from ? to : target, chip));
+            }
+
+            return BetError.None;
+        }
+
         /// <summary>대상에 건 베팅을 통째로 뺀다.</summary>
         public BetError RemoveBet(BetTarget target)
         {
@@ -343,19 +425,21 @@ namespace ProjectCR
         /// <summary>베팅을 통째로 뺀 뒤, 남은 베팅만으로 칩 기록을 다시 맞춘다.</summary>
         private void RebuildHistory()
         {
-            var kept = new List<(BetTarget, long)>();
-            foreach ((BetTarget target, long amount) in history)
-            {
-                if (stakes.ContainsKey(target))
-                {
-                    kept.Add((target, amount));
-                }
-            }
-
+            // 오래된 칩부터 대상별 남은 금액만큼만 남긴다(빠진 대상은 전부, 줄어든 대상은 최근 칩부터 지워진다).
+            var oldestFirst = new List<(BetTarget Target, long Amount)>(history);
+            oldestFirst.Reverse();
+            var budget = new Dictionary<BetTarget, long>(stakes);
             history.Clear();
-            for (int i = kept.Count - 1; i >= 0; i--)
+            foreach ((BetTarget target, long amount) in oldestFirst)
             {
-                history.Push(kept[i]);
+                if (!budget.TryGetValue(target, out long left) || left <= 0)
+                {
+                    continue;
+                }
+
+                long take = System.Math.Min(amount, left);
+                budget[target] = left - take;
+                history.Push((target, take));
             }
         }
     }

@@ -7,7 +7,7 @@ namespace ProjectCR
     /// 1인칭 시점(FirstPersonView 카메라) 고개 돌리기. 오른쪽 버튼을 누른 채 끌면 돈다.
     /// 좌우(Y)는 yawRange 안, 위아래(X)는 pitchRange 안으로만 돈다. 이 카메라가 켜져 있을 때만 움직인다.
     ///
-    /// 오른쪽 클릭(끌지 않고 떼기)은 그대로 베팅 빼기다(TableBetInput). HUD 위에서 누른 끌기는 무시한다.
+    /// 1인칭에서는 테이블 입력(TableBetInput)이 꺼져 있어 오른쪽 버튼이 베팅 빼기와 겹치지 않는다. HUD 위에서 누른 끌기는 무시한다.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class FirstPersonLook : MonoBehaviour

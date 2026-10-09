@@ -134,6 +134,11 @@ namespace ProjectCR
                 tableInput.DrinkHoverChanged += OnDrinkHover;
                 tableInput.DrinkClicked += OnDrinkClicked;
                 tableInput.BadgeHoverChanged += OnBadgeHover;
+                tableInput.DragStarted += OnChipDragStarted;
+                tableInput.DragDropped += OnChipDragDropped;
+                tableInput.DragCancelled += OnChipDragCancelled;
+                tableInput.HasChipsAt = target =>
+                    flow != null && !InputLocked && pickingSlot < 0 && flow.Phase == GamePhase.Betting && flow.Bet.StakeOn(target) > 0;
             }
 
             if (tutorial != null)
@@ -281,11 +286,67 @@ namespace ProjectCR
 
             if (pickingSlot >= 0)
             {
+                tableInput.CancelHold();
                 FinishPick(BetTarget.None);
                 return;
             }
 
-            ApplyBetAction(flow.RemoveBet(target));
+            // 칩 하나만큼 뺀다. 길게 눌러 빼다가 그 칸이 비면 멈춘다.
+            BetError error = flow.RemoveChip(target);
+            if ((error != BetError.None || flow.Bet.StakeOn(target) == 0) && tableInput != null)
+            {
+                tableInput.CancelHold();
+            }
+
+            ApplyBetAction(error);
+        }
+
+        // ---------- 칩 끌기 ----------
+
+        private void OnChipDragStarted(BetTarget from)
+        {
+            if (tableView != null)
+            {
+                tableView.BeginDrag(from, tableInput.DragPoint);
+            }
+
+            if (sfx != null)
+            {
+                sfx.PlayGrabChip();
+            }
+        }
+
+        /// <summary>끌던 칩 더미를 놓았다: 다른 칸이면 통째로 옮기고(있으면 합침), 판 밖이면 뺀다. 같은 칸이면 제자리.</summary>
+        private void OnChipDragDropped(BetTarget from, BetTarget to)
+        {
+            if (tableView != null)
+            {
+                tableView.EndDrag();
+            }
+
+            if (InputLocked || from == to)
+            {
+                RefreshViews();
+                return;
+            }
+
+            BetError error = flow.MoveBet(from, to);
+            if (error == BetError.None && !to.IsNone && sfx != null)
+            {
+                sfx.PlayBetChip();
+            }
+
+            ApplyBetAction(error);
+        }
+
+        private void OnChipDragCancelled()
+        {
+            if (tableView != null)
+            {
+                tableView.EndDrag();
+            }
+
+            RefreshViews();
         }
 
         /// <summary>테이블 태블릿 버튼: 회전 · 서비스(상점) · 전체 회수(전체 취소). HUD 버튼과 같은 경로라 규칙도 같다.</summary>
@@ -471,6 +532,23 @@ namespace ProjectCR
             }
 
             BetTarget target = tableInput.CurrentHover;
+
+            // 칩 더미를 끄는 중: 더미가 커서를 따라가고, 놓일 칸만 강조한다(놓기 툴팁은 숨긴다).
+            if (tableInput.IsDragging)
+            {
+                if (tableView != null)
+                {
+                    tableView.MoveDrag(tableInput.DragPoint);
+                    tableView.SetHover(!target.IsNone, target, definition);
+                }
+
+                hud.HideBetTooltip();
+                guideShown = true;
+                guideDirty = true;
+                guideTarget = BetTarget.None;
+                return;
+            }
+
             bool picking = pickingSlot >= 0;
             bool allowed = !verifying
                            && (cameraRig == null || !cameraRig.IsMoving)
