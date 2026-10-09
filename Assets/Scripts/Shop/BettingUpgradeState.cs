@@ -22,6 +22,11 @@ namespace ProjectCR
         /// <summary>산 납부 지원금 수.</summary>
         public int PaymentRefundStacks { get; private set; }
 
+        /// <summary>특수 강화 추가 공: 이번 게임 동안 매 회전 공 +n(최대 공 수까지, GameFlowController.BuildSpinConfig).</summary>
+        public int ExtraBalls { get; private set; }
+
+        public void AddExtraBall() => ExtraBalls++;
+
         /// <summary>납부 지원금 한 개(상점 구매, 테스트). 환급 비율을 더한다.</summary>
         public void AddPaymentRefund(decimal ratio)
         {

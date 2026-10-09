@@ -246,6 +246,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 64.459, y: 158.762, z: 8.189}
+--- !u!1 &111567281
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 111567282}
+  m_Layer: 0
+  m_Name: RobotEntryPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &111567282
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 111567281}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -3.2480001, y: -0.8, z: 1.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &217825614
 GameObject:
   m_ObjectHideFlags: 0
@@ -282,7 +313,7 @@ MonoBehaviour:
   shopCatalog: {fileID: 11400000, guid: ec563a61b8475d0489efcd61cbbfb098, type: 2}
   presenter: {fileID: 942192219}
   hud: {fileID: 2083983754}
-  drinkView: {fileID: 2083983757}
+  drinkServer: {fileID: 1185195988}
   shopView: {fileID: 2083983758}
   tableInput: {fileID: 217825617}
   tableView: {fileID: 942192220}
@@ -329,6 +360,37 @@ MonoBehaviour:
   - {fileID: 1345680692}
   - {fileID: 1575811433}
   trayRayDistance: 10
+--- !u!1 &752045719
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 752045720}
+  m_Layer: 0
+  m_Name: CameraPostion_Default (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &752045720
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 752045719}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.1623846, y: 0.6815246, z: -0.18270966, w: -0.68976283}
+  m_LocalPosition: {x: -1.168, y: 0.774, z: 1.048}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 28.233, y: 271.191, z: 1.998}
 --- !u!1 &875305376
 GameObject:
   m_ObjectHideFlags: 0
@@ -785,6 +847,113 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 76.47, y: 180, z: 0}
+--- !u!1001 &1185195987
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1952024473169166780, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_Name
+      value: ServingRobot
+      objectReference: {fileID: 0}
+    - target: {fileID: 5726239206780455819, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: entryPoint
+      value: 
+      objectReference: {fileID: 111567282}
+    - target: {fileID: 5726239206780455819, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: servePoint
+      value: 
+      objectReference: {fileID: 1328214687}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.2480001
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7227664833889623563, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+--- !u!114 &1185195988 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5726239206780455819, guid: a17abacc123aebe478accd962cb2f871, type: 3}
+  m_PrefabInstance: {fileID: 1185195987}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9569e01fe16624544a142c281ca0b809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkServerRobot
+--- !u!1 &1328214686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1328214687}
+  m_Layer: 0
+  m_Name: RobotServePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1328214687
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1328214686}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -1.848, y: -0.8, z: 1.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1345680691
 GameObject:
   m_ObjectHideFlags: 0
@@ -938,6 +1107,7 @@ MonoBehaviour:
   cameraTransform: {fileID: 1345680694}
   bettingPose: {fileID: 1812593561}
   roulettePose: {fileID: 1073687184}
+  drinkPose: {fileID: 1486298376}
   moveDuration: 0.9
   ease:
     serializedVersion: 2
@@ -964,6 +1134,37 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   returnDelay: 1.5
+--- !u!1 &1486298375
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1486298376}
+  m_Layer: 0
+  m_Name: CameraPosition_Drink
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1486298376
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1486298375}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0788466, y: -0.70269716, z: 0.0788466, w: 0.7026971}
+  m_LocalPosition: {x: -0.748, y: 0.050000012, z: 1.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1530540365
 GameObject:
   m_ObjectHideFlags: 0
@@ -1165,7 +1366,6 @@ GameObject:
   - component: {fileID: 2083983756}
   - component: {fileID: 2083983755}
   - component: {fileID: 2083983754}
-  - component: {fileID: 2083983757}
   - component: {fileID: 2083983758}
   m_Layer: 0
   m_Name: HUD
@@ -1224,18 +1424,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2083983757
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083983753}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 23ed960205865ad478b2eb6409e006ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkSelectionView
 --- !u!114 &2083983758
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1260,5 +1448,10 @@ SceneRoots:
   - {fileID: 942192218}
   - {fileID: 1073687184}
   - {fileID: 1530540366}
+  - {fileID: 752045720}
   - {fileID: 875305377}
   - {fileID: 1812593561}
+  - {fileID: 1328214687}
+  - {fileID: 111567282}
+  - {fileID: 1486298376}
+  - {fileID: 1185195987}

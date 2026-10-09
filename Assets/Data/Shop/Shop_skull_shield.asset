@@ -13,17 +13,21 @@ MonoBehaviour:
   m_Name: Shop_skull_shield
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: skull_shield
-  displayName: "\uD574\uACE8 \uBC29\uD328"
+  displayName: "\uD574\uACE8 \uBC29\uC5B4"
   description: 
+  cardText: 
   icon: {fileID: 0}
   tint: {r: 0.78, g: 0.6, b: 0.3, a: 1}
-  category: 3
+  category: 4
   effect: 4
   group: 0
   triggerGroup: 0
+  crossTrigger: 0
+  gainThresholdRatio: 0.5
+  gainTriggerCapPerSpin: 0
   value: 1
-  priceRatio: 0.25
+  priceRatio: 0.3
   priceGrowth: 1
   minPrice: 5
-  stockPerRound: 2
-  buyLimitPerRound: 2
+  stockPerRound: 1
+  buyLimitPerRound: 1

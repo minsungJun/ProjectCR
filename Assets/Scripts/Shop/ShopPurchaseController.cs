@@ -148,10 +148,12 @@ namespace ProjectCR
                     flow.Upgrades.AddPaymentRefund(item.Value);
                     break;
 
-                // 소모품은 자동 사용: 추가 공·회전권은 사는 즉시, 방패·보험은 보관했다가 필요할 때 저절로.
+                // 특수 강화 추가 공: 이번 게임 동안 매 회전 공 +1. 해골 방어는 1회분을 보관(아래 default).
                 case ShopEffect.ExtraBall:
-                    flow.Inventory.AddRoundBall();
+                    flow.Upgrades.AddExtraBall();
                     break;
+
+                // 소모품은 자동 사용: 회전권은 사는 즉시, 보험·귀띔·더블 업은 보관했다가 필요할 때 저절로.
                 case ShopEffect.SpareSpin:
                     flow.Round.AddSpin();
                     break;

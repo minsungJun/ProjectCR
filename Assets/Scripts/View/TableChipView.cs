@@ -98,6 +98,9 @@ namespace ProjectCR
 
         public TableBetBoard Board => board;
 
+        /// <summary>테이블 태블릿(없으면 null).</summary>
+        public TabletPanel Tablet => tablet;
+
         private void Awake()
         {
             trayBase = new Vector3[trayChips.Length];

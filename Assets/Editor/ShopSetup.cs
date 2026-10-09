@@ -72,6 +72,63 @@ namespace ProjectCR.Editor
             return catalog;
         }
 
+        // 규칙을 기본 정의로 다시 맞출 상품(2026-10-09: 추가 공·해골 방어를 소모품 → 특수 강화로).
+        private static readonly string[] RuleSyncIds = { "extra_ball", "skull_shield" };
+
+        /// <summary>
+        /// 기존 상점 데이터를 기본 정의에 맞춘다(목록을 다시 만들지 않는다).
+        /// - 기본 정의에 있는데 에셋이 없는 상품(딜러의 귀띔, 더블 업 쿠폰 등)은 만들어 목록에 넣는다.
+        /// - RuleSyncIds 상품은 분류·효과·이름·값·가격·재고만 기본 정의로 옮긴다(아이콘·색·수동 문구는 그대로).
+        /// 다시 돌려도 바뀐 것만 고친다.
+        /// </summary>
+        [MenuItem("Tools/ProjectCR/Shop/Sync Item Defaults")]
+        public static void SyncItemDefaults()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<ShopCatalog>(CatalogPath)
+                ?? throw new InvalidOperationException($"{CatalogPath}가 없다.");
+            var items = new List<ShopItemDefinition>(catalog.Items);
+            var log = new List<string>();
+
+            foreach (ShopItemDefinition source in ShopItemDefinition.CreateDefaults())
+            {
+                string path = $"{ShopFolder}/{source.name}.asset";
+                var asset = AssetDatabase.LoadAssetAtPath<ShopItemDefinition>(path);
+                if (asset == null)
+                {
+                    AssetDatabase.CreateAsset(source, path);
+                    items.Add(source);
+                    log.Add($"+{source.Id}");
+                    continue;
+                }
+
+                if (Array.IndexOf(RuleSyncIds, source.Id) >= 0 && asset.CopyRulesFrom(source))
+                {
+                    EditorUtility.SetDirty(asset);
+                    log.Add($"~{asset.Id}");
+                }
+
+                if (!items.Contains(asset))
+                {
+                    items.Add(asset);
+                    log.Add($"+목록 {asset.Id}");
+                }
+
+                Object.DestroyImmediate(source);
+            }
+
+            var so = new SerializedObject(catalog);
+            SerializedProperty list = so.FindProperty("items");
+            list.arraySize = items.Count;
+            for (int i = 0; i < items.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[ShopSetup] 상품 기본값 맞춤: {(log.Count > 0 ? string.Join(", ", log) : "바뀐 것 없음")} (목록 {items.Count}종)");
+        }
+
         /// <summary>
         /// 이미 있는 교차 강화 에셋에 기본 정의의 발동 조건(Win/Gain, 기준 비율, 회전당 상한)만 옮긴다.
         /// 상품 ID로 짝을 맞추고 가격·아이콘·재고·강화량·수동 문구·목록은 건드리지 않는다. 다시 돌려도 바뀐 것만 고친다.

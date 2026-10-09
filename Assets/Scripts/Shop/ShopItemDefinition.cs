@@ -16,8 +16,11 @@ namespace ProjectCR
         /// <summary>납부 지원: 이번 게임 동안, 라운드가 끝나 납부할 때마다 낸 납부금의 일부를 돌려받는다.</summary>
         PaymentSupport,
 
-        /// <summary>소모품: 자동 사용(추가 공·회전권은 사는 즉시, 방패·보험은 필요할 때 저절로).</summary>
+        /// <summary>소모품: 자동 사용(회전권은 사는 즉시, 보험·귀띔·더블 업은 필요할 때 저절로).</summary>
         Consumable,
+
+        /// <summary>특수 강화(지속): 추가 공(매 라운드 공 +1), 해골 방어(게임 전체 1회). 강화 탭에 섞여 나온다.</summary>
+        Special,
     }
 
     public enum ShopEffect
@@ -26,10 +29,10 @@ namespace ProjectCR
         Cross,
         PaymentSupport,
 
-        /// <summary>이번 라운드 남은 회전에 공 +1.</summary>
+        /// <summary>특수 강화: 이번 게임 동안 매 회전 공 +1(최대 공 수까지).</summary>
         ExtraBall,
 
-        /// <summary>장착해 두면 해골이 나온 공 하나를 다시 뽑는다.</summary>
+        /// <summary>특수 강화: 게임 전체에서 한 번, 해골이 나온 공 하나를 다시 뽑는다.</summary>
         SkullShield,
 
         /// <summary>이번 라운드 남은 회전 +1.</summary>
@@ -37,6 +40,12 @@ namespace ProjectCR
 
         /// <summary>다음 회전이 일반 낙첨이면 베팅금 일부 환급.</summary>
         Insurance,
+
+        /// <summary>딜러의 귀띔: 상점을 나간 뒤 첫 회전에 나오지 않을 바깥 베팅 하나를 알려 준다(결과를 미리 뽑아 둔다).</summary>
+        DealerHint,
+
+        /// <summary>더블 업 쿠폰: 이번 라운드 마지막 회전 지급 ×N(1.2).</summary>
+        DoubleUp,
     }
 
     /// <summary>교차 강화 발동 조건.</summary>
@@ -66,6 +75,32 @@ namespace ProjectCR
 
         /// <summary>Gain 발동 기본 기준(납부금의 50%). 첫 시험값.</summary>
         public const float DefaultGainRatio = 0.5f;
+
+        /// <summary>
+        /// 기본 상품 정의에서 규칙(분류·효과·이름·값·가격·재고)만 이 에셋에 옮긴다. 아이콘·색·수동 문구는 그대로. 에디터 갱신 메뉴용.
+        /// 바뀐 게 있으면 true.
+        /// </summary>
+        public bool CopyRulesFrom(ShopItemDefinition source)
+        {
+            bool same = category == source.category && effect == source.effect && displayName == source.displayName
+                        && Mathf.Approximately(value, source.value) && Mathf.Approximately(priceRatio, source.priceRatio)
+                        && Mathf.Approximately(priceGrowth, source.priceGrowth) && stockPerRound == source.stockPerRound
+                        && buyLimitPerRound == source.buyLimitPerRound;
+            if (same)
+            {
+                return false;
+            }
+
+            category = source.category;
+            effect = source.effect;
+            displayName = source.displayName;
+            value = source.value;
+            priceRatio = source.priceRatio;
+            priceGrowth = source.priceGrowth;
+            stockPerRound = source.stockPerRound;
+            buyLimitPerRound = source.buyLimitPerRound;
+            return true;
+        }
 
         /// <summary>기본 상품 정의에서 발동 조건만 이 에셋에 옮긴다(가격·아이콘·문구 등은 그대로). 에디터 갱신 메뉴용.</summary>
         public bool CopyCrossTriggerFrom(ShopItemDefinition source)
@@ -166,7 +201,8 @@ namespace ProjectCR
         /// <summary>효과 크기(decimal로 정확히). 0.1f → 0.1.</summary>
         public decimal Value => (decimal)Mathf.Max(0f, value);
 
-        public bool IsPermanent => category == ShopCategory.Focus || category == ShopCategory.Cross || category == ShopCategory.PaymentSupport;
+        public bool IsPermanent => category == ShopCategory.Focus || category == ShopCategory.Cross || category == ShopCategory.PaymentSupport
+                                   || category == ShopCategory.Special;
 
         /// <summary>대상을 골라야 살 수 있다(집중 강화).</summary>
         public bool NeedsTarget => effect == ShopEffect.Focus;
@@ -202,11 +238,15 @@ namespace ProjectCR
                     case ShopEffect.PaymentSupport:
                         return "이번 게임 동안 · 구매 즉시 적용 · 납부할 때마다 환급";
                     case ShopEffect.ExtraBall:
-                        return "자동 사용 · 구매 즉시 이번 라운드 끝까지";
+                        return "이번 게임 동안 · 구매 즉시 적용";
                     case ShopEffect.SkullShield:
-                        return "자동 사용 · 해골이 나오면 1개씩";
+                        return "게임 전체 1회 · 해골이 나오면 자동";
                     case ShopEffect.Insurance:
                         return "자동 사용 · 다음 회전부터 회전마다 1장씩";
+                    case ShopEffect.DealerHint:
+                        return "자동 사용 · 상점을 나간 뒤 첫 회전";
+                    case ShopEffect.DoubleUp:
+                        return "자동 사용 · 이번 라운드 마지막 회전";
                     default:
                         return "자동 사용 · 구매 즉시";
                 }
@@ -246,11 +286,15 @@ namespace ProjectCR
                 case ShopEffect.PaymentSupport:
                     return $"납부할 때마다\n납부금 {percent} 환급";
                 case ShopEffect.ExtraBall:
-                    return "이번 라운드\n공 1개 추가";
+                    return "매 라운드\n공 1개 추가";
                 case ShopEffect.SkullShield:
-                    return "해골이 나오면\n해당 공 재회전";
+                    return "해골이 나오면\n해당 공 재회전(1회)";
                 case ShopEffect.SpareSpin:
                     return "남은 회전\n+1회";
+                case ShopEffect.DealerHint:
+                    return "다음 회전에 안 나올\n베팅 하나 알림";
+                case ShopEffect.DoubleUp:
+                    return $"이번 라운드 마지막 회전\n지급 ×{Value.ToString("0.##")}";
                 default:
                     return $"일반 낙첨 시\n베팅금 {percent} 환급";
             }
@@ -270,11 +314,15 @@ namespace ProjectCR
                 case ShopEffect.PaymentSupport:
                     return $"라운드가 끝나 납부할 때마다 낸 납부금의 {percent}를 돌려받습니다(납부금은 그대로). 여러 개면 더해집니다";
                 case ShopEffect.ExtraBall:
-                    return "이번 라운드 남은 모든 회전에 공 +1 (여러 개 쓰면 누적)";
+                    return "이번 게임 동안 모든 회전에 공 +1 (최대 공 수까지)";
                 case ShopEffect.SkullShield:
-                    return "해골이 나오면 그 공 하나를 다시 굴립니다(방패 1개 소모). 다른 공은 그대로";
+                    return "게임 전체에서 한 번, 해골이 나오면 그 공 하나를 다시 굴립니다. 다른 공은 그대로";
                 case ShopEffect.SpareSpin:
                     return "이번 라운드 남은 회전 +1";
+                case ShopEffect.DealerHint:
+                    return "상점을 나간 뒤 첫 회전에 나오지 않을 바깥 베팅 하나(없으면 숫자 하나)를 알려 줍니다. 거짓말은 하지 않습니다";
+                case ShopEffect.DoubleUp:
+                    return $"이번 라운드 마지막 회전의 지급액 ×{Value.ToString("0.##")}. 라운드가 끝나면 사라집니다";
                 default:
                     return $"다음 회전이 모두 일반 낙첨이면 베팅금의 {percent} 환급 (해골 낙첨은 제외)";
             }
@@ -318,15 +366,16 @@ namespace ProjectCR
             item.buyLimitPerRound = buyLimitPerRound;
             item.group = group;
             item.triggerGroup = triggerGroup;
-            item.tint = category == ShopCategory.Consumable || category == ShopCategory.PaymentSupport
+            item.tint = category == ShopCategory.Consumable || category == ShopCategory.PaymentSupport || category == ShopCategory.Special
                 ? new Color(0.78f, 0.6f, 0.3f)
                 : DrinkColors.Of(group);
             return item;
         }
 
         /// <summary>
-        /// 기본 41종(첫 시험값): 집중 6(N 10%, 납부금의 30% × 1.5^산 수), 교차 30(N 25%, 20% × 1.3^산 수),
-        /// 납부 지원 1(납부할 때마다 25% 환급, 15% × 1.5^산 수), 추가 공(35%), 해골 방패(25%), 여분의 회전권(30%), 보험 증서(50% 환급, 10%).
+        /// 기본 43종(첫 시험값): 집중 6(N 10%, 납부금의 30% × 1.5^산 수), 교차 30(N 25%, 20% × 1.3^산 수),
+        /// 납부 지원 1(납부할 때마다 25% 환급, 15% × 1.5^산 수), 특수 강화 2(추가 공 100%, 해골 방어 30%),
+        /// 소모품 4(딜러의 귀띔 20%, 더블 업 쿠폰 ×1.2 10%, 회전권 30%, 보험 증서 50% 환급 10%).
         /// </summary>
         public static List<ShopItemDefinition> CreateDefaults()
         {
@@ -362,8 +411,13 @@ namespace ProjectCR
             }
 
             items.Add(Create("payment_support", "납부 지원금", ShopCategory.PaymentSupport, ShopEffect.PaymentSupport, 0.25f, 0.15f, 1.5f, 1, 1));
-            items.Add(Create("extra_ball", "추가 공", ShopCategory.Consumable, ShopEffect.ExtraBall, 1f, 0.35f, 1f, 2, 2));
-            items.Add(Create("skull_shield", "해골 방패", ShopCategory.Consumable, ShopEffect.SkullShield, 1f, 0.25f, 1f, 2, 2));
+            // 특수 강화(2026-10-09 소모품에서 옮김, 한 번 사면 다시 진열되지 않음).
+            items.Add(Create("extra_ball", "추가 공", ShopCategory.Special, ShopEffect.ExtraBall, 1f, 1f, 1f, 1, 1));
+            items.Add(Create("skull_shield", "해골 방어", ShopCategory.Special, ShopEffect.SkullShield, 1f, 0.3f, 1f, 1, 1));
+
+            // 소모품(자동 사용).
+            items.Add(Create("dealer_hint", "딜러의 귀띔", ShopCategory.Consumable, ShopEffect.DealerHint, 1f, 0.2f, 1f, 1, 1));
+            items.Add(Create("double_up", "더블 업 쿠폰", ShopCategory.Consumable, ShopEffect.DoubleUp, 1.2f, 0.1f, 1f, 1, 1));
             items.Add(Create("spare_spin", "회전권", ShopCategory.Consumable, ShopEffect.SpareSpin, 1f, 0.3f, 1f, 1, 1));
             items.Add(Create("insurance", "보험 증서", ShopCategory.Consumable, ShopEffect.Insurance, 0.5f, 0.1f, 1f, 2, 2));
             return items;

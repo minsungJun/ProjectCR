@@ -7,7 +7,7 @@ namespace ProjectCR
     /// 판매 가능한 상품 목록과 진열 규칙(정적 데이터).
     /// 라운드마다 진열을 한 번 만든다. 상점 창은 [소모품] / [강화] 두 탭이다.
     /// - 소모품 탭: 소모품 전부(showAllConsumables, 기본). 끄면 예전처럼 고정 1칸 + 무작위 칸.
-    /// - 강화 탭: 지속 효과 상품(집중·교차·납부 지원)을 분류 구분 없이 모두 섞어 upgradeSlots(4)개를 뽑는다(2026-10-09 사용자 요청).
+    /// - 강화 탭: 지속 효과 상품(집중·교차·납부 지원·특수 강화)을 분류 구분 없이 모두 섞어 upgradeSlots(4)개를 뽑는다(2026-10-09 사용자 요청).
     ///   상품마다 같은 확률이라 종류가 많은 교차 강화(30종)가 자주 나온다.
     /// </summary>
     [CreateAssetMenu(fileName = "ShopCatalog", menuName = "ProjectCR/Shop Catalog")]

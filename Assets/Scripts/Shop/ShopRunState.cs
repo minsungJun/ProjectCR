@@ -80,6 +80,7 @@ namespace ProjectCR
             List<ShopItemDefinition> upgrades = catalog.ItemsOf(ShopCategory.Focus);
             upgrades.AddRange(catalog.ItemsOf(ShopCategory.Cross));
             upgrades.AddRange(catalog.ItemsOf(ShopCategory.PaymentSupport));
+            upgrades.AddRange(catalog.ItemsOf(ShopCategory.Special));
             AddFrom(upgrades, catalog.UpgradeSlots, used);
 
             List<ShopItemDefinition> consumables = catalog.ItemsOf(ShopCategory.Consumable);

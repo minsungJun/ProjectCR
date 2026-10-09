@@ -54,8 +54,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2b9817b83f97f92419fdec5826d30d2f, type: 2}
   - {fileID: 11400000, guid: 222914164e6a1ef4a87083c61664c308, type: 2}
   - {fileID: 11400000, guid: dbedb16008b019640885c3c90ab2f81e, type: 2}
-  focusSlots: 2
-  crossSlots: 2
+  - {fileID: 11400000, guid: c7367c1df98b03b42942d1de5ac6ad24, type: 2}
+  - {fileID: 11400000, guid: 8a307cb3fcb48a74296cfeb3ffbe5eca, type: 2}
+  moneyIcon: {fileID: 0}
+  upgradeSlots: 4
+  showAllConsumables: 1
   keyConsumableSlot: 1
   consumableSlots: 1
-  paymentSupportChance: 0.5
+  openOnFirstRound: 0

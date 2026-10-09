@@ -27,8 +27,8 @@ namespace ProjectCR
         [SerializeField] private RoulettePresenter presenter;
         [SerializeField] private RouletteHud hud;
 
-        [Tooltip("음료 선택 창(HUD와 같은 UIDocument).")]
-        [SerializeField] private DrinkSelectionView drinkView;
+        [Tooltip("음료를 서빙하는 로봇(라운드 통과 보상). 없으면 첫 후보를 바로 마신다.")]
+        [SerializeField] private DrinkServerRobot drinkServer;
 
         [Tooltip("상점 창(HUD와 같은 UIDocument).")]
         [SerializeField] private ShopView shopView;
@@ -98,11 +98,6 @@ namespace ProjectCR
             }
             hud.ViewToggled += ToggleView;
 
-            if (drinkView != null)
-            {
-                drinkView.Initialize();
-                drinkView.Confirmed += OnDrinkConfirmed;
-            }
 
             if (tableInput != null)
             {
@@ -110,6 +105,8 @@ namespace ProjectCR
                 tableInput.TargetRemoveRequested += OnTargetRemoveRequested;
                 tableInput.ChipSelected += OnChipSelected;
                 tableInput.TabletPressed += OnTabletPressed;
+                tableInput.DrinkHoverChanged += OnDrinkHover;
+                tableInput.DrinkClicked += OnDrinkClicked;
             }
 
             ApplyView();
@@ -141,10 +138,13 @@ namespace ProjectCR
                 cameraRig.MoveToBetting();
             }
 
-            if (drinkView != null)
+            if (drinkServer != null)
             {
-                drinkView.Hide();
+                drinkServer.ResetToEntry();
             }
+
+            drinkHovered = -1;
+            drinkSelected = -1;
 
             if (shopView != null)
             {
@@ -211,6 +211,9 @@ namespace ProjectCR
         {
             switch (action)
             {
+                case TabletAction.Spin when flow.Phase == GamePhase.DrinkSelection:
+                    ConfirmServedDrink();
+                    break;
                 case TabletAction.Spin:
                     OnSpinClicked();
                     break;
@@ -314,6 +317,20 @@ namespace ProjectCR
         private void LateUpdate()
         {
             UpdateBetGuide();
+
+            // 음료 툴팁은 커서를 따라간다.
+            if (drinkHovered >= 0 && flow != null && tableInput != null)
+            {
+                if (CanPickDrink)
+                {
+                    hud.MoveBetTooltip(tableInput.PointerScreen);
+                }
+                else
+                {
+                    drinkHovered = -1;
+                    hud.HideBetTooltip();
+                }
+            }
         }
 
         private void OnDisable()
@@ -399,6 +416,11 @@ namespace ProjectCR
         {
             guideDirty = true;
             hud.Refresh(flow);
+            if (tableView != null && tableView.Tablet != null)
+            {
+                tableView.Tablet.DrinkReady = drinkSelected >= 0 && flow.Phase == GamePhase.DrinkSelection;
+            }
+
             if (tableView != null)
             {
                 tableView.Refresh(flow);
@@ -479,14 +501,23 @@ namespace ProjectCR
 
             Debug.Log($"[RouletteGame] 라운드 {round} 납부 {outcome}: 납부금 {due:N0}, 남은 돈 {flow.Wallet.Balance:N0}");
 
-            if (flow.Phase == GamePhase.DrinkSelection && drinkView != null)
+            if (flow.Phase == GamePhase.DrinkSelection && drinkServer != null)
             {
-                drinkView.Show(flow);
+                // 로봇이 오른쪽으로 와서 선반에 후보를 올려 둔다. 카메라는 로봇 쪽으로.
+                drinkHovered = -1;
+                drinkSelected = -1;
+                if (cameraRig != null)
+                {
+                    cameraRig.MoveToDrink();
+                }
+
+                RefreshViews();
+                yield return drinkServer.Serve(flow.Rewards.CurrentOffer);
             }
             else if (flow.Phase == GamePhase.DrinkSelection)
             {
-                // 창이 연결되지 않았으면 진행이 막히지 않게 첫 후보를 마신다.
-                Debug.LogWarning("[RouletteGame] 음료 선택 창이 연결되지 않아 첫 후보를 고른다.");
+                // 로봇이 연결되지 않았으면 진행이 막히지 않게 첫 후보를 마신다.
+                Debug.LogWarning("[RouletteGame] 서빙 로봇이 연결되지 않아 첫 후보를 고른다.");
                 OnDrinkConfirmed(0);
                 yield break;
             }
@@ -504,23 +535,86 @@ namespace ProjectCR
             RefreshViews();
         }
 
+        // ---------- 음료(서빙 로봇) ----------
+
+        // 로봇 선반에서 마우스가 가리키는 잔, 고른 잔(후보 번호). -1이면 없음.
+        private int drinkHovered = -1;
+        private int drinkSelected = -1;
+
+        private bool CanPickDrink => flow.Phase == GamePhase.DrinkSelection && drinkServer != null && drinkServer.IsServing;
+
+        private void OnDrinkHover(ServedDrink drink)
+        {
+            drinkHovered = drink != null && CanPickDrink ? drink.OfferIndex : -1;
+            if (drinkServer != null)
+            {
+                drinkServer.SetHovered(drinkHovered);
+            }
+
+            ShowDrinkTooltip();
+        }
+
+        /// <summary>한 번 누르면 고르고(외곽선 고정), 고른 잔을 한 번 더 누르면 마신다. 태블릿 [마시기]도 같다.</summary>
+        private void OnDrinkClicked(ServedDrink drink)
+        {
+            if (drink == null || !CanPickDrink)
+            {
+                return;
+            }
+
+            if (drinkSelected == drink.OfferIndex)
+            {
+                ConfirmServedDrink();
+                return;
+            }
+
+            drinkSelected = drink.OfferIndex;
+            drinkServer.SetSelected(drinkSelected);
+            ShowDrinkTooltip();
+            RefreshViews();
+        }
+
+        private void ConfirmServedDrink()
+        {
+            if (drinkSelected < 0 || !CanPickDrink)
+            {
+                return;
+            }
+
+            OnDrinkConfirmed(drinkSelected);
+        }
+
+        private void ShowDrinkTooltip()
+        {
+            IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
+            if (drinkHovered < 0 || offer == null || drinkHovered >= offer.Count)
+            {
+                hud.HideBetTooltip();
+                return;
+            }
+
+            string hint = drinkSelected == drinkHovered ? "한 번 더 누르면 마십니다 · 태블릿 [마시기]" : "누르면 고릅니다";
+            hud.ShowDrinkTooltip(DrinkHoverText.For(offer[drinkHovered], flow), hint);
+            hud.MoveBetTooltip(tableInput.PointerScreen);
+        }
+
         private void OnDrinkConfirmed(int offerIndex)
         {
             DrinkOffer drink = flow.ConfirmDrink(offerIndex);
             if (drink == null)
             {
-                // 이미 확정했거나 상태가 바뀌었다. 창만 상태에 맞춘다.
-                if (flow.Phase != GamePhase.DrinkSelection && drinkView != null)
-                {
-                    drinkView.Hide();
-                }
-
+                // 이미 확정했거나 상태가 바뀌었다.
                 return;
             }
 
-            if (drinkView != null)
+            // 고른 잔은 치우고 로봇은 나머지를 싣고 돌아간다.
+            drinkHovered = -1;
+            drinkSelected = -1;
+            hud.HideBetTooltip();
+            if (drinkServer != null)
             {
-                drinkView.Hide();
+                drinkServer.SetSelected(-1);
+                StartCoroutine(drinkServer.Leave(offerIndex));
             }
 
             if (drink.IsProbability)

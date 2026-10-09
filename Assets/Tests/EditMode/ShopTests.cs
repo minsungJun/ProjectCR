@@ -48,14 +48,15 @@ namespace ProjectCR.Tests
         // ---------- 데이터 ----------
 
         [Test]
-        public void Catalog_Has41Items_InFourCategories()
+        public void Catalog_Has43Items_InFiveCategories()
         {
-            Assert.AreEqual(41, all.Count);
+            Assert.AreEqual(43, all.Count);
+            Assert.AreEqual(2, all.Count(i => i.Category == ShopCategory.Special), "추가 공·해골 방어");
             Assert.AreEqual(6, all.Count(i => i.Category == ShopCategory.Focus));
             Assert.AreEqual(30, all.Count(i => i.Category == ShopCategory.Cross));
             Assert.AreEqual(1, all.Count(i => i.Category == ShopCategory.PaymentSupport));
             Assert.AreEqual(4, all.Count(i => i.Category == ShopCategory.Consumable));
-            Assert.AreEqual(41, all.Select(i => i.Id).Distinct().Count());
+            Assert.AreEqual(43, all.Select(i => i.Id).Distinct().Count());
 
             var pairs = all.Where(i => i.Category == ShopCategory.Cross).Select(i => (i.TriggerGroup, i.Group)).ToList();
             Assert.AreEqual(30, pairs.Distinct().Count());
@@ -68,12 +69,14 @@ namespace ProjectCR.Tests
         {
             ShopItemDefinition focus = all.First(i => i.Effect == ShopEffect.Focus);
             ShopItemDefinition ball = all.First(i => i.Effect == ShopEffect.ExtraBall);
+            ShopItemDefinition insurance = all.First(i => i.Effect == ShopEffect.Insurance);
 
             Assert.AreEqual(40, focus.PriceFor(120, 0), "120 × 30% = 36 → 5 단위 올림 40");
             Assert.AreEqual(55, focus.PriceFor(120, 1), "× 1.5 = 54 → 5 단위 올림");
             Assert.AreEqual(90, focus.PriceFor(300, 0));
-            Assert.AreEqual(45, ball.PriceFor(120, 0), "120 × 35% = 42 → 45");
-            Assert.AreEqual(45, ball.PriceFor(120, 3), "소모품은 산 수로 오르지 않는다.");
+            Assert.AreEqual(120, ball.PriceFor(120, 0), "특수 강화 추가 공 = 납부금의 100%");
+            Assert.AreEqual(15, insurance.PriceFor(120, 0), "120 × 10% = 12 → 15");
+            Assert.AreEqual(15, insurance.PriceFor(120, 3), "소모품은 산 수로 오르지 않는다.");
         }
 
         // ---------- 진입 ----------
@@ -182,7 +185,7 @@ namespace ProjectCR.Tests
         [Test]
         public void UpgradeDisplay_MixesAllCategories_UniformlyPerItem()
         {
-            // 집중 6 · 교차 30 · 납부 지원 1 = 37종에서 4개. 상품마다 4/37 확률이라 분류별 기대 진열 수는 0.65 · 3.24 · 0.11.
+            // 집중 6 · 교차 30 · 납부 지원 1 · 특수 2 = 39종에서 4개. 상품마다 4/39 확률.
             var counts = new Dictionary<ShopCategory, int>();
             var itemSeen = new HashSet<string>();
             const int runs = 3000;
@@ -200,18 +203,22 @@ namespace ProjectCR.Tests
                 }
             }
 
-            Assert.AreEqual(37, itemSeen.Count, "모든 강화 상품이 나올 수 있다");
-            Assert.AreEqual(runs * 4 * 6 / 37d, counts[ShopCategory.Focus], runs * 4 * 6 / 37d * 0.12, "집중");
-            Assert.AreEqual(runs * 4 * 30 / 37d, counts[ShopCategory.Cross], runs * 4 * 30 / 37d * 0.05, "교차");
-            Assert.AreEqual(runs * 4 * 1 / 37d, counts[ShopCategory.PaymentSupport], runs * 4 * 1 / 37d * 0.3, "납부 지원");
+            Assert.AreEqual(39, itemSeen.Count, "모든 강화 상품이 나올 수 있다");
+            Assert.AreEqual(runs * 4 * 6 / 39d, counts[ShopCategory.Focus], runs * 4 * 6 / 39d * 0.12, "집중");
+            Assert.AreEqual(runs * 4 * 30 / 39d, counts[ShopCategory.Cross], runs * 4 * 30 / 39d * 0.05, "교차");
+            Assert.AreEqual(runs * 4 * 1 / 39d, counts[ShopCategory.PaymentSupport], runs * 4 * 1 / 39d * 0.3, "납부 지원");
+            Assert.AreEqual(runs * 4 * 2 / 39d, counts[ShopCategory.Special], runs * 4 * 2 / 39d * 0.25, "특수 강화");
         }
 
         [Test]
         public void CardText_DefaultsMatchShopCards()
         {
             ShopItemDefinition Item(string id) => all.Single(i => i.Id == id);
-            Assert.AreEqual("이번 라운드\n공 1개 추가", Item("extra_ball").CardText);
-            Assert.AreEqual("해골이 나오면\n해당 공 재회전", Item("skull_shield").CardText);
+            Assert.AreEqual("매 라운드\n공 1개 추가", Item("extra_ball").CardText);
+            Assert.AreEqual("해골이 나오면\n해당 공 재회전(1회)", Item("skull_shield").CardText);
+            Assert.AreEqual("다음 회전에 안 나올\n베팅 하나 알림", Item("dealer_hint").CardText);
+            Assert.AreEqual("이번 라운드 마지막 회전\n지급 ×1.2", Item("double_up").CardText);
+            Assert.AreEqual("해골 방어", Item("skull_shield").DisplayName);
             Assert.AreEqual("남은 회전\n+1회", Item("spare_spin").CardText);
             Assert.AreEqual("일반 낙첨 시\n베팅금 50% 환급", Item("insurance").CardText);
             Assert.AreEqual("회전권", Item("spare_spin").DisplayName);
@@ -220,7 +227,7 @@ namespace ProjectCR.Tests
         [Test]
         public void Display_RefreshesNextRound()
         {
-            GameFlowController flow = Flow(Only("extra_ball", "skull_shield", "insurance", "spare_spin"));
+            GameFlowController flow = Flow(Only("dealer_hint", "double_up", "insurance", "spare_spin"));
             flow.EnterShop();
             flow.Shop.Buy(SlotOf(flow, flow.Shop.Offers[0].Item.Id), BetTarget.None);
             flow.CloseShop();
@@ -245,14 +252,14 @@ namespace ProjectCR.Tests
         public void Buy_UsesAvailableFunds_BalanceMinusPlacedBets()
         {
             GameFlowController flow = Flow(Only("extra_ball"));
-            flow.PlaceBet(Red, 80); // 보유 100, 가용 20, 추가 공 45
+            flow.PlaceBet(Red, 80); // 보유 100, 가용 20, 추가 공 120
             flow.EnterShop();
 
             Assert.AreEqual(20, flow.Shop.AvailableFunds);
             Assert.AreEqual(ShopError.InsufficientFunds, flow.Shop.Buy(0, BetTarget.None));
             Assert.AreEqual(100, flow.Wallet.Balance, "실패하면 돈이 그대로.");
-            Assert.AreEqual(2, flow.Shop.Offers[0].Stock, "재고도 그대로.");
-            Assert.AreEqual(0, flow.Inventory.CountOf(ShopEffect.ExtraBall));
+            Assert.AreEqual(1, flow.Shop.Offers[0].Stock, "재고도 그대로.");
+            Assert.AreEqual(0, flow.Upgrades.ExtraBalls);
         }
 
         [Test]
@@ -497,7 +504,7 @@ namespace ProjectCR.Tests
             GameFlowController restarted = Flow(Only("focus_color"), seed: 0);
             Assert.AreEqual(0, restarted.Upgrades.TotalStacks);
             Assert.AreEqual(0, restarted.Cross.TotalOwned);
-            Assert.AreEqual(0, restarted.Inventory.CountOf(ShopEffect.ExtraBall));
+            Assert.AreEqual(0, restarted.Upgrades.ExtraBalls);
             Assert.AreEqual(0, restarted.Shop.State.DisplayRound);
             Assert.AreEqual(2m, restarted.BuildSpinConfig().MultiplierFor(Red));
         }

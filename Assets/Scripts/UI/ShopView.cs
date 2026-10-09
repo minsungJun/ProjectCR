@@ -439,6 +439,10 @@ namespace ProjectCR
                     return "☠";
                 case ShopEffect.SpareSpin:
                     return "+1";
+                case ShopEffect.DealerHint:
+                    return "?";
+                case ShopEffect.DoubleUp:
+                    return "×1.2";
                 default:
                     return "½";
             }

@@ -18,6 +18,9 @@ namespace ProjectCR
         public TextMesh BalanceValue => balanceValue;
         public TextMesh DueValue => dueValue;
 
+        /// <summary>로봇 선반에서 음료를 하나 골라 둔 상태. 이때 [회전] 버튼이 [마시기]가 된다(RouletteGame이 넣는다).</summary>
+        public bool DrinkReady { get; set; }
+
         public void Configure(TextMesh balance, TextMesh due, TabletButton[] tabletButtons)
         {
             balanceValue = balance;
@@ -31,10 +34,11 @@ namespace ProjectCR
             {
                 if (button != null)
                 {
-                    button.SetInteractable(CanPress(flow, button.Action));
+                    bool drinking = button.Action == TabletAction.Spin && flow.Phase == GamePhase.DrinkSelection;
+                    button.SetInteractable(drinking ? DrinkReady : CanPress(flow, button.Action));
                     if (button.Action == TabletAction.Spin && button.Label != null)
                     {
-                        button.Label.text = SpinLabel(flow);
+                        button.Label.text = drinking ? "마시기" : SpinLabel(flow);
                     }
                 }
             }

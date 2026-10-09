@@ -30,8 +30,15 @@ namespace ProjectCR
         /// <summary>마우스가 가리키는 베팅 대상이 바뀔 때. 아무 데도 아니면 BetTarget.None.</summary>
         public event Action<BetTarget> HoverChanged;
 
+        /// <summary>마우스가 가리키는 로봇 선반 음료가 바뀔 때. 아무것도 아니면 null.</summary>
+        public event Action<ServedDrink> DrinkHoverChanged;
+
+        /// <summary>로봇 선반 음료를 왼쪽 클릭했다.</summary>
+        public event Action<ServedDrink> DrinkClicked;
+
         private BetTarget hover = BetTarget.None;
         private TabletButton hoveredButton;
+        private ServedDrink hoveredDrink;
 
         /// <summary>지금 마우스가 가리키는 베팅 대상(클릭하면 이 대상에 놓인다). 판 밖·HUD 위·트레이·태블릿이면 None.</summary>
         public BetTarget CurrentHover => hover;
@@ -54,11 +61,28 @@ namespace ProjectCR
             {
                 SetHover(BetTarget.None);
                 SetButtonHover(null);
+                SetDrinkHover(null);
                 return;
             }
 
             Ray ray = camera.ScreenPointToRay(screen);
             bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, trayRayDistance);
+
+            // 로봇 선반 음료(콜라이더).
+            if (hitSomething && hit.collider.TryGetComponent(out ServedDrink drink))
+            {
+                SetHover(BetTarget.None);
+                SetButtonHover(null);
+                SetDrinkHover(drink);
+                if (mouse.leftButton.wasPressedThisFrame)
+                {
+                    DrinkClicked?.Invoke(drink);
+                }
+
+                return;
+            }
+
+            SetDrinkHover(null);
 
             // 태블릿 버튼(콜라이더).
             if (hitSomething && hit.collider.TryGetComponent(out TabletButton button))
@@ -107,6 +131,17 @@ namespace ProjectCR
             {
                 TargetRemoveRequested?.Invoke(target);
             }
+        }
+
+        private void SetDrinkHover(ServedDrink drink)
+        {
+            if (hoveredDrink == drink)
+            {
+                return;
+            }
+
+            hoveredDrink = drink;
+            DrinkHoverChanged?.Invoke(drink);
         }
 
         private void SetButtonHover(TabletButton button)

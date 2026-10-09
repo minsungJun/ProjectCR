@@ -8,7 +8,7 @@ namespace ProjectCR
 {
     /// <summary>
     /// 룰렛 화면 UI: 왼쪽 위 결과 안내(당첨·낙첨·진행 문구), 오른쪽 위 옵션(시점 전환), 판 위 호버 툴팁, 게임 오버 창.
-    /// 음료 선택 창은 DrinkSelectionView, 서비스 창은 ShopView가 그린다. 보유 금액·납부금·남은 회전·회전/서비스/전체 회수 버튼은
+    /// 음료는 서빙 로봇(DrinkServerRobot) 선반에서 고르고(툴팁만 여기 ShowDrinkTooltip), 서비스 창은 ShopView가 그린다. 보유 금액·납부금·남은 회전·회전/서비스/전체 회수 버튼은
     /// 테이블 태블릿(TabletPanel)에 있다(2026-10-09 위아래 임시 HUD 띠 제거).
     /// 납부는 버튼 없이 라운드가 끝나면 자동으로 판정한다(RouletteGame). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
     ///
@@ -37,6 +37,7 @@ namespace ProjectCR
         private Label resultLabel;
         private VisualElement resultBalls;
         private VisualElement resultHistory;
+        private Label dealerHint;
 
         // 지금 결과 줄에 보이는 회전의 공들, 그리고 그 이전에 나온 공들(최근 것이 앞).
         private IReadOnlyList<BallResult> shownBalls;
@@ -62,6 +63,7 @@ namespace ProjectCR
             resultLabel = root.Q<Label>("result");
             resultBalls = root.Q("result-balls");
             resultHistory = root.Q("result-history");
+            dealerHint = root.Q<Label>("dealer-hint");
             gameOverLabel = root.Q<Label>("gameover-text");
             gameOverPanel = root.Q("gameover-panel");
             betTooltip = root.Q("bet-tooltip");
@@ -112,6 +114,39 @@ namespace ProjectCR
         public void Refresh(GameFlowController flow)
         {
             RefreshGameOver(flow);
+            RefreshDealerHint(flow);
+        }
+
+        /// <summary>딜러의 귀띔: "이번 회전에 두 번째 DOZEN(13~24)은 나오지 않습니다". 단서가 없으면 숨긴다.</summary>
+        private void RefreshDealerHint(GameFlowController flow)
+        {
+            if (dealerHint == null)
+            {
+                return;
+            }
+
+            bool show = flow.HasDealerHint && flow.Phase == GamePhase.Betting;
+            dealerHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            if (show)
+            {
+                dealerHint.text = $"딜러의 귀띔 · 이번 회전에 {HintName(flow.DealerHintTarget)}은(는) 나오지 않습니다";
+            }
+        }
+
+        private static string HintName(BetTarget target)
+        {
+            switch (target.Kind)
+            {
+                case BetKind.Straight:
+                    return $"{target.Number}";
+                case BetKind.Red:
+                case BetKind.Black:
+                case BetKind.Odd:
+                case BetKind.Even:
+                    return BetHoverInfo.KindNameOf(target);
+                default:
+                    return $"{BetHoverInfo.KindNameOf(target)}({BetHoverInfo.TargetsOf(target)})";
+            }
         }
 
         /// <summary>
@@ -152,6 +187,30 @@ namespace ProjectCR
             // 누적형 교차 강화 진행도(예: DOZEN 위에서 "COLUMN 강화까지 35 / 60").
             tooltipProgress.text = info.Progress;
             tooltipProgress.style.display = showPayout && info.Progress.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            betTooltip.style.display = DisplayStyle.Flex;
+        }
+
+        /// <summary>
+        /// 로봇 선반 음료 툴팁: 이름 · 변화(금색) / 효과 / 예시·확률 / 안내. 판 호버 툴팁과 같은 요소·위치 규칙을 쓴다.
+        /// </summary>
+        public void ShowDrinkTooltip(DrinkHoverText text, string hint)
+        {
+            if (betTooltip == null)
+            {
+                return;
+            }
+
+            tooltipKind.text = $"{text.Title} ·";
+            tooltipBase.style.display = DisplayStyle.None;
+            tooltipFinal.text = text.Accent;
+            tooltipFinal.style.display = DisplayStyle.Flex;
+            tooltipFinal.EnableInClassList("bet-tooltip__final--boosted", true);
+            tooltipTargets.text = text.Effect;
+            tooltipStake.text = text.Detail;
+            tooltipStake.RemoveFromClassList("bet-tooltip__stake--short");
+            tooltipStake.style.display = DisplayStyle.Flex;
+            tooltipProgress.text = hint ?? string.Empty;
+            tooltipProgress.style.display = string.IsNullOrEmpty(hint) ? DisplayStyle.None : DisplayStyle.Flex;
             betTooltip.style.display = DisplayStyle.Flex;
         }
 

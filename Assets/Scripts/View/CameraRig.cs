@@ -20,6 +20,9 @@ namespace ProjectCR
         [Tooltip("회전할 때 카메라 자리. 여기 도착한 뒤 회전이 시작된다.")]
         [SerializeField] private Transform roulettePose;
 
+        [Tooltip("음료 고를 때 카메라 자리(오른쪽 서빙 로봇을 보는 자리).")]
+        [SerializeField] private Transform drinkPose;
+
         [Tooltip("자리 사이를 옮겨 가는 시간(초).")]
         [Min(0.05f)]
         [SerializeField] private float moveDuration = 0.9f;
@@ -49,6 +52,8 @@ namespace ProjectCR
         public void MoveToBetting(float delay = 0f) => MoveTo(bettingPose, delay);
 
         public void MoveToRoulette() => MoveTo(roulettePose, 0f);
+
+        public void MoveToDrink() => MoveTo(drinkPose, 0f);
 
         private void Snap(Transform pose)
         {

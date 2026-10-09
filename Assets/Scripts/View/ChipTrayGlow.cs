@@ -87,6 +87,7 @@ namespace ProjectCR
             // 천천히 밝아졌다 어두워진다(시간 기준이라 프레임과 무관).
             float wave = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f / Mathf.Max(0.1f, pulsePeriod));
             float brightness = Mathf.Lerp(pulseMin, 1f, wave);
+            block ??= new MaterialPropertyBlock(); // 플레이 중 스크립트 다시 불러오기 뒤에도 안전하게
             meshRenderer.GetPropertyBlock(block);
             block.SetColor(ColorId, new Color(1f, 1f, 1f, brightness));
             meshRenderer.SetPropertyBlock(block);

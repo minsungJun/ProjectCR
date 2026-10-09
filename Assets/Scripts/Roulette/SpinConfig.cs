@@ -102,8 +102,11 @@ namespace ProjectCR
 
         public void SetGroupBonus(DrinkGroup group, decimal increase) => groupBonus[(int)group] = Math.Max(0m, increase);
 
+        /// <summary>이 회전 전체 지급 배율(더블 업 쿠폰 등). 기본 1.</summary>
+        public decimal PayoutScale { get; set; } = 1m;
+
         /// <summary>
-        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 음료 묶음 배율 × (1 + 상점 집중 + 이번 회전 교차).
+        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 음료 묶음 배율 × (1 + 상점 집중 + 이번 회전 교차) × 회전 배율(더블 업).
         /// UI 미리보기와 정산이 같이 쓴다. 기본 배수와 잔 수·증가량에서 매번 새로 계산하므로 이전 결과에 겹쳐 곱하지 않는다.
         /// </summary>
         public decimal MultiplierFor(BetTarget target)
@@ -114,7 +117,7 @@ namespace ProjectCR
             }
 
             DrinkGroup group = DrinkGroups.Of(target.Kind);
-            return PayoutFor(target) * GroupBoost(group) * (1m + GroupBonus(group));
+            return PayoutFor(target) * GroupBoost(group) * (1m + GroupBonus(group)) * PayoutScale;
         }
 
         public static SpinConfig Create(RouletteDefinition definition, GameBalance balance)

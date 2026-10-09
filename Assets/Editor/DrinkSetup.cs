@@ -141,23 +141,14 @@ namespace ProjectCR.Editor
             }
         }
 
-        /// <summary>열린 씬의 RouletteGame에 목록과 음료 선택 창을 연결한다. 창 컴포넌트는 HUD 오브젝트에 붙인다.</summary>
+        /// <summary>열린 씬의 RouletteGame에 음료 목록을 연결한다. 음료를 고르는 건 서빙 로봇이다(DrinkServeSetup).</summary>
         public static void WireScene(DrinkCatalog catalog)
         {
             var game = Object.FindFirstObjectByType<RouletteGame>()
                 ?? throw new InvalidOperationException("씬에 RouletteGame이 없다.");
-            var hud = Object.FindFirstObjectByType<RouletteHud>()
-                ?? throw new InvalidOperationException("씬에 RouletteHud가 없다.");
-
-            DrinkSelectionView view = hud.GetComponent<DrinkSelectionView>();
-            if (view == null)
-            {
-                view = hud.gameObject.AddComponent<DrinkSelectionView>();
-            }
 
             var so = new SerializedObject(game);
             so.FindProperty("drinkCatalog").objectReferenceValue = catalog;
-            so.FindProperty("drinkView").objectReferenceValue = view;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
     }

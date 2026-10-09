@@ -84,7 +84,15 @@ namespace ProjectCR
         // 상점 진열 난수용. 결과·보상 난수와 떨어뜨린다.
         private const int ShopSeedSalt = 0x5A0B5A0B;
 
+        // 딜러의 귀띔 단서 고르기용(결과 난수와 따로).
+        private const int HintSeedSalt = 0x4D1A7E57;
+
         private readonly Random rng;
+        private readonly Random hintRng;
+
+        // 딜러의 귀띔으로 미리 뽑아 둔 다음 회전 결과(해골 방어 적용 후)와 그때 쓴 해골 방어 수. 없으면 null.
+        private SpinResult preparedResult;
+        private int preparedShieldsUsed;
         private int lastSpinId;
 
         public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed, DrinkCatalog drinkCatalog = null,
@@ -94,6 +102,7 @@ namespace ProjectCR
             GameBalance = gameBalance;
             Seed = seed != 0 ? seed : NewSeed();
             rng = new Random(Seed);
+            hintRng = new Random(Seed ^ HintSeedSalt);
 
             Wallet = new Wallet(gameBalance.InitialMoney, gameBalance.MaxMoney);
             Bet = new BetManager(definition, gameBalance.MinBet);
@@ -162,6 +171,14 @@ namespace ProjectCR
 
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
 
+        /// <summary>
+        /// 딜러의 귀띔 단서: 다음 회전에 나오지 않는 베팅(바깥 베팅 하나, 모두 나오면 숫자 하나). 없으면 None.
+        /// 상점을 나갈 때 결과를 미리 뽑아 두고 그 결과에서 고르므로 거짓이 없다. 그 회전이 시작되면 지워진다.
+        /// </summary>
+        public BetTarget DealerHintTarget { get; private set; } = BetTarget.None;
+
+        public bool HasDealerHint => !DealerHintTarget.IsNone;
+
         // ---------- 디버그·검증용 (아이템 시스템 전까지 확장성 확인에 쓴다) ----------
 
         /// <summary>비어 있지 않으면 공 i의 결과를 ForcedNumbers[i]로 덮어쓴다. 음수는 무시.</summary>
@@ -215,19 +232,36 @@ namespace ProjectCR
                 return error;
             }
 
-            Round.TryConsumeSpin();
-
-            // 이 회전 설정을 확정한다(공 수, 지급 배율, 가중치, 다음 회전 교차 강화). 이후 상점·아이템은 이 회전에 영향이 없다.
+            // 이 회전 설정을 확정한다(공 수, 지급 배율, 가중치, 다음 회전 교차 강화, 마지막 회전 더블 업).
+            // 회전 수를 쓰기 전에 만든다(미리보기와 같은 "남은 회전" 기준). 이후 상점·아이템은 이 회전에 영향이 없다.
             SpinConfig config = BuildSpinConfig();
+            Round.TryConsumeSpin();
             Cross.TakePendingForSpin();
             bool insured = Inventory.TakeInsuranceForSpin();
+            if (config.PayoutScale != 1m)
+            {
+                Inventory.Use(ShopEffect.DoubleUp);
+            }
 
-            SpinResult result = SpinResolver.Resolve(config, rng);
-            result = ApplyResultOverrides(result);
+            SpinResult result;
+            int shieldsUsed;
+            if (preparedResult != null && preparedResult.Balls.Count == config.BallCount)
+            {
+                // 딜러의 귀띔: 상점을 나갈 때 미리 뽑아 둔 결과(해골 방어까지 적용)를 그대로 쓴다.
+                result = ApplyResultOverrides(preparedResult);
+                shieldsUsed = preparedShieldsUsed;
+            }
+            else
+            {
+                result = SpinResolver.Resolve(config, rng);
+                result = ApplyResultOverrides(result);
 
-            // 해골 방패(자동): 가진 방패로 해골 공만 같은 설정으로 다시 뽑는다.
-            result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out int shieldsUsed);
+                // 해골 방어(자동): 가진 횟수만큼 해골 공만 같은 설정으로 다시 뽑는다.
+                result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out shieldsUsed);
+            }
+
             Inventory.ConsumeShields(shieldsUsed);
+            ClearDealerHint();
 
             spin = new ActiveSpin(++lastSpinId, bets, config, result, insured, Inventory.InsuranceRatio, shieldsUsed);
             CurrentSpin = spin;
@@ -397,6 +431,7 @@ namespace ProjectCR
             if (Bet.HasBets || CanAffordMinimumBet)
             {
                 Phase = GamePhase.Betting;
+                PrepareDealerHint();
             }
             else
             {
@@ -418,9 +453,15 @@ namespace ProjectCR
             SpinConfig config = SpinConfig.Create(Definition, GameBalance);
             config.BallCount += ExtraBallCount;
 
-            // 추가 공 아이템(이번 라운드). 최대 공 수를 넘지 않는다(디버그로 더한 공은 그대로 둔다).
-            int withItems = config.BallCount + Inventory.RoundExtraBalls;
+            // 특수 강화 추가 공(이번 게임 동안). 최대 공 수를 넘지 않는다(디버그로 더한 공은 그대로 둔다).
+            int withItems = config.BallCount + Upgrades.ExtraBalls;
             config.BallCount = Math.Min(withItems, Math.Max(config.BallCount, GameBalance.MaxBallCount));
+
+            // 더블 업 쿠폰: 이번 라운드 마지막 회전(남은 회전 1)이면 회전 전체 지급 ×값. 미리보기와 정산이 같은 조건을 쓴다.
+            if (Inventory.DoubleUps > 0 && Round.SpinsRemaining == 1)
+            {
+                config.PayoutScale = Inventory.DoubleUpMultiplier;
+            }
             if (StraightPayoutOverride > 0)
             {
                 config.StraightPayout = StraightPayoutOverride;
@@ -450,6 +491,68 @@ namespace ProjectCR
             }
 
             return config;
+        }
+
+        /// <summary>
+        /// 딜러의 귀띔(상점을 나갈 때 자동 사용): 다음 회전 결과를 지금 설정으로 미리 뽑고(해골 방어까지 적용),
+        /// 그 결과의 어떤 공도 들어가지 않는 바깥 베팅 하나를 단서로 고른다. 그런 바깥 베팅이 없으면(공 여러 개가 다 덮을 때) 나오지 않는 숫자 하나.
+        /// 상점은 라운드 첫 회전 전에만 열리고 그 뒤로는 설정이 바뀌지 않으니 미리 뽑은 결과가 그대로 쓰인다.
+        /// </summary>
+        private void PrepareDealerHint()
+        {
+            if (Inventory.DealerHints <= 0 || preparedResult != null)
+            {
+                return;
+            }
+
+            Inventory.Use(ShopEffect.DealerHint);
+            SpinConfig config = BuildSpinConfig();
+            SpinResult result = SpinResolver.Resolve(config, rng);
+            preparedResult = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out preparedShieldsUsed);
+
+            var candidates = new List<BetTarget>();
+            for (BetKind kind = BetKind.Red; kind <= BetKind.Column3; kind++)
+            {
+                BetTarget target = BetTarget.Outside(kind);
+                if (!CoversAny(target, preparedResult))
+                {
+                    candidates.Add(target);
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                for (int n = 0; n <= 36; n++)
+                {
+                    BetTarget target = BetTarget.Straight(n);
+                    if (!CoversAny(target, preparedResult))
+                    {
+                        candidates.Add(target);
+                    }
+                }
+            }
+
+            DealerHintTarget = candidates.Count > 0 ? candidates[hintRng.Next(candidates.Count)] : BetTarget.None;
+        }
+
+        private static bool CoversAny(BetTarget target, SpinResult result)
+        {
+            foreach (BallResult ball in result.Balls)
+            {
+                if (target.Covers(ball))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ClearDealerHint()
+        {
+            preparedResult = null;
+            preparedShieldsUsed = 0;
+            DealerHintTarget = BetTarget.None;
         }
 
         /// <summary>결과 확정 후. 재추첨·결과 변환이 들어올 자리. 지금은 디버그 지정 번호만 처리한다.</summary>
@@ -483,6 +586,7 @@ namespace ProjectCR
             // 추가 공 효과 끝. 교차 강화는 누적 지급액(Gain) 미달분만 버리고 다음 회전 강화는 남긴다(다음 라운드 첫 회전).
             Inventory.OnRoundEnded();
             Cross.OnRoundEnded();
+            ClearDealerHint();
             Round.AdvanceRound();
             Bet.Unlock(Wallet.Balance);
             Bet.ClearBets();

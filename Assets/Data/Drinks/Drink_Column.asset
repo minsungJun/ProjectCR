@@ -17,5 +17,5 @@ MonoBehaviour:
   description: 
   icon: {fileID: 0}
   tint: {r: 0.9764706, g: 0.4117647, b: 0.17254902, a: 1}
-  model: {fileID: 0}
+  model: {fileID: 6137348413326772593, guid: 0a556281700bdeb49a8c912287e66995, type: 3}
   boostPerStack: 1.5
