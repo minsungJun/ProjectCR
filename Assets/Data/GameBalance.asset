@@ -27,5 +27,5 @@ MonoBehaviour:
   skullBalanceKeep: 0.5
   spinsPerRound: 5
   firstRoundDue: 120
-  dueGrowth: 2.5
+  dueGrowth: 4
   dueRoundingUnit: 5
