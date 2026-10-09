@@ -160,6 +160,7 @@ namespace ProjectCR
                 return;
             }
 
+            betTooltip.RemoveFromClassList(TooltipWrapClass);
             bool boosted = showPayout && info.IsBoosted;
             tooltipKind.text = showPayout ? $"{info.KindName} ·" : info.KindName;
             tooltipBase.text = $"×{info.BasePayout} →";
@@ -200,6 +201,7 @@ namespace ProjectCR
                 return;
             }
 
+            betTooltip.RemoveFromClassList(TooltipWrapClass);
             tooltipKind.text = $"{text.Title} ·";
             tooltipBase.style.display = DisplayStyle.None;
             tooltipFinal.text = text.Accent;
@@ -211,6 +213,34 @@ namespace ProjectCR
             tooltipStake.style.display = DisplayStyle.Flex;
             tooltipProgress.text = hint ?? string.Empty;
             tooltipProgress.style.display = string.IsNullOrEmpty(hint) ? DisplayStyle.None : DisplayStyle.Flex;
+            betTooltip.style.display = DisplayStyle.Flex;
+        }
+
+        private const string TooltipWrapClass = "bet-tooltip--wrap";
+
+        /// <summary>
+        /// 테이블 배지(보유 강화) 툴팁: 이름 · 종류(금색) / 효과 설명(긴 문장은 줄바꿈) / 지금 상태 / 적용 기간.
+        /// 판 호버 툴팁과 같은 요소·위치 규칙을 쓴다.
+        /// </summary>
+        public void ShowUpgradeTooltip(UpgradeHoverText text)
+        {
+            if (betTooltip == null)
+            {
+                return;
+            }
+
+            betTooltip.AddToClassList(TooltipWrapClass);
+            tooltipKind.text = $"{text.Title} ·";
+            tooltipBase.style.display = DisplayStyle.None;
+            tooltipFinal.text = text.Accent;
+            tooltipFinal.style.display = DisplayStyle.Flex;
+            tooltipFinal.EnableInClassList("bet-tooltip__final--boosted", true);
+            tooltipTargets.text = text.Effect;
+            tooltipStake.text = text.Detail;
+            tooltipStake.RemoveFromClassList("bet-tooltip__stake--short");
+            tooltipStake.style.display = string.IsNullOrEmpty(text.Detail) ? DisplayStyle.None : DisplayStyle.Flex;
+            tooltipProgress.text = text.Duration;
+            tooltipProgress.style.display = string.IsNullOrEmpty(text.Duration) ? DisplayStyle.None : DisplayStyle.Flex;
             betTooltip.style.display = DisplayStyle.Flex;
         }
 

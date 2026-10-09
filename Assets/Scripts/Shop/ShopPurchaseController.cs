@@ -14,6 +14,9 @@ namespace ProjectCR
         InvalidTarget,
         InsufficientFunds,
         MaxBalls,
+
+        /// <summary>강화 칸이 다 찼는데 버릴 칸을 고르지 않았다(또는 빈칸을 골랐다).</summary>
+        SlotsFull,
     }
 
     public static class ShopErrorMessages
@@ -38,6 +41,8 @@ namespace ProjectCR
                     return "잔액 부족";
                 case ShopError.MaxBalls:
                     return "공 수가 이미 최대";
+                case ShopError.SlotsFull:
+                    return "강화 칸이 가득 찼습니다. 버릴 강화를 고르세요";
                 default:
                     return string.Empty;
             }
@@ -51,6 +56,9 @@ namespace ProjectCR
     /// 상태·상품·재고·제한·대상·가격·가용 금액 검증 → 돈 차감 → 재고 감소 → 효과 적용/아이템 지급.
     /// 소모품도 자동 사용이라 따로 쓰는 단계가 없다(추가 공·회전권은 사는 즉시, 방패·보험은 필요할 때 저절로).
     /// 검증에서 실패하면 돈·재고·효과 모두 그대로다. 집중 강화는 대상이 정해져야 검증을 통과한다(돈을 먼저 빼지 않는다).
+    ///
+    /// 강화(지속 효과 상품)는 강화 칸(<see cref="GameFlowController.OwnedUpgrades"/>)에 들어간다. 칸이 다 찼으면
+    /// 버릴 칸을 함께 넘겨야 산다: 버린 강화의 효과를 빼고, 그 칸에 새 강화를 넣는다(<see cref="NeedsDiscard"/>).
     /// </summary>
     public sealed class ShopController
     {
@@ -118,13 +126,26 @@ namespace ProjectCR
             return PriceOf(offer) > AvailableFunds ? ShopError.InsufficientFunds : ShopError.None;
         }
 
-        /// <summary>산다. 성공하면 None. 실패하면 아무것도 바뀌지 않는다.</summary>
-        public ShopError Buy(int slot, BetTarget target)
+        /// <summary>이 진열 칸을 사려면 강화 칸 하나를 버려야 한다(강화이고 칸이 다 찼다).</summary>
+        public bool NeedsDiscard(int slot) =>
+            slot >= 0 && slot < State.Offers.Count && State.Offers[slot].Item.IsPermanent && flow.OwnedUpgrades.IsFull;
+
+        /// <summary>
+        /// 산다. 성공하면 None. 실패하면 아무것도 바뀌지 않는다.
+        /// discardSlot: 강화 칸이 다 찼을 때 버릴 칸 번호(<see cref="NeedsDiscard"/>). 아니면 무시한다.
+        /// </summary>
+        public ShopError Buy(int slot, BetTarget target, int discardSlot = -1)
         {
             ShopError error = Check(slot, target);
             if (error != ShopError.None)
             {
                 return error;
+            }
+
+            bool replace = NeedsDiscard(slot);
+            if (replace && !flow.OwnedUpgrades.IsOccupied(discardSlot))
+            {
+                return ShopError.SlotsFull;
             }
 
             ShopOffer offer = State.Offers[slot];
@@ -136,6 +157,19 @@ namespace ProjectCR
 
             State.RecordPurchase(offer);
             ShopItemDefinition item = offer.Item;
+            if (item.IsPermanent)
+            {
+                if (replace)
+                {
+                    Discard(discardSlot);
+                    flow.OwnedUpgrades.Set(discardSlot, item, item.NeedsTarget ? target : BetTarget.None);
+                }
+                else
+                {
+                    flow.OwnedUpgrades.Add(item, item.NeedsTarget ? target : BetTarget.None);
+                }
+            }
+
             switch (item.Effect)
             {
                 case ShopEffect.Focus:
@@ -163,6 +197,32 @@ namespace ProjectCR
             }
 
             return ShopError.None;
+        }
+
+        /// <summary>강화 칸 하나를 비우고 그 강화의 효과를 뺀다. 버린 상품은 다음 진열부터 다시 나올 수 있다.</summary>
+        private void Discard(int index)
+        {
+            OwnedUpgrade removed = flow.OwnedUpgrades.Clear(index);
+            ShopItemDefinition item = removed.Item;
+            State.Release(item);
+            switch (item.Effect)
+            {
+                case ShopEffect.Focus:
+                    flow.Upgrades.RemoveFocus(item.Group, removed.Target, item.Value);
+                    break;
+                case ShopEffect.Cross:
+                    flow.Cross.Remove(item.TriggerGroup, item.Group, item.Value);
+                    break;
+                case ShopEffect.PaymentSupport:
+                    flow.Upgrades.RemovePaymentRefund(item.Value);
+                    break;
+                case ShopEffect.ExtraBall:
+                    flow.Upgrades.RemoveExtraBall();
+                    break;
+                case ShopEffect.SkullShield:
+                    flow.Inventory.ConsumeShields(1);
+                    break;
+            }
         }
 
         /// <summary>

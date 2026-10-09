@@ -23,7 +23,8 @@ namespace ProjectCR
     /// <summary>
     /// 이번 게임의 상점 상태: 라운드 진열·재고, 상품별 누적 구매 수(가격 성장용).
     /// 진열은 라운드마다 한 번만 만든다. 상점을 닫았다 다시 열어도 같은 진열·재고다.
-    /// 지속 효과 상품(집중·교차 강화, 납부 지원금)은 한 번 사면 이후 진열에 다시 나오지 않는다(<see cref="IsRetired"/>).
+    /// 지속 효과 상품(집중·교차 강화, 납부 지원금, 특수 강화)은 한 번 사면 이후 진열에 다시 나오지 않는다(<see cref="IsRetired"/>).
+    /// 강화 칸이 차서 버린 상품은 다시 나온다(<see cref="Release"/>). 다 써서 사라진 해골 방어는 다시 나오지 않는다.
     /// 진열 추첨은 결과·보상과 다른 난수를 써서 회전 결과 순서를 바꾸지 않는다.
     /// </summary>
     public sealed class ShopRunState
@@ -32,6 +33,7 @@ namespace ProjectCR
         private readonly Random rng;
         private readonly List<ShopOffer> offers = new List<ShopOffer>();
         private readonly Dictionary<ShopItemDefinition, int> bought = new Dictionary<ShopItemDefinition, int>();
+        private readonly HashSet<ShopItemDefinition> retired = new HashSet<ShopItemDefinition>();
 
         public ShopRunState(ShopCatalog catalog, int seed)
         {
@@ -54,14 +56,24 @@ namespace ProjectCR
         /// <summary>이번 게임에서 이 상품을 산 수(라운드와 무관).</summary>
         public int BoughtTotal(ShopItemDefinition item) => item != null && bought.TryGetValue(item, out int count) ? count : 0;
 
-        /// <summary>지속 효과 상품을 이미 샀다. 다음 진열부터 빠진다(산 라운드에는 "구매 완료"로 남는다).</summary>
-        public bool IsRetired(ShopItemDefinition item) => item != null && item.IsPermanent && BoughtTotal(item) > 0;
+        /// <summary>지속 효과 상품을 이미 샀다(버리지 않았다). 다음 진열부터 빠진다(산 라운드에는 "구매 완료"로 남는다).</summary>
+        public bool IsRetired(ShopItemDefinition item) => item != null && retired.Contains(item);
+
+        /// <summary>강화 칸에서 버린 상품: 다음 진열부터 다시 나올 수 있다. 가격 성장(산 수)은 그대로.</summary>
+        internal void Release(ShopItemDefinition item)
+        {
+            retired.Remove(item);
+        }
 
         internal void RecordPurchase(ShopOffer offer)
         {
             offer.Stock--;
             offer.BoughtThisRound++;
             bought[offer.Item] = BoughtTotal(offer.Item) + 1;
+            if (offer.Item.IsPermanent)
+            {
+                retired.Add(offer.Item);
+            }
         }
 
         /// <summary>그 라운드 진열이 아직 없으면 만든다. 이미 있으면 그대로(다시 뽑지 않는다).</summary>

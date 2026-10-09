@@ -14,6 +14,7 @@ namespace ProjectCR
     /// 구매 검증과 돈 처리는 GameFlowController(ShopController)가 하고, 여기서는 그리기와 입력 전달만 한다.
     /// 창 전체에 blocks-input이 붙어 열려 있는 동안 3D 테이블 입력이 막힌다.
     /// 숫자 집중 대상은 판에서 고른다: 창을 잠시 접고(<see cref="SetPicking"/>) RouletteGame이 판 클릭을 대상으로 넘겨준다.
+    /// 강화 칸이 다 찼을 때 강화를 사면 카드 대신 보유 강화 목록을 보여 주고, 하나를 고르면 그걸 버리고 산다(취소하면 그대로).
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class ShopView : MonoBehaviour
@@ -21,7 +22,8 @@ namespace ProjectCR
         private const string ActiveTabClass = "shop-tab--active";
 
         public event Action Closed;
-        public event Action<int, BetTarget> BuyRequested;
+        /// <summary>진열 칸, 집중 대상, 버릴 강화 칸(버리지 않으면 -1).</summary>
+        public event Action<int, BetTarget, int> BuyRequested;
         public event Action<int> PickTargetRequested;
 
         // 진열 칸별로 고른 집중 강화 대상. 라운드가 바뀌면(진열이 바뀌면) 비운다.
@@ -38,6 +40,10 @@ namespace ProjectCR
         private bool showUpgrades;
         private int targetsRound;
         private GameFlowController lastFlow;
+
+        // 강화 칸이 다 차서 버릴 강화를 고르는 중인 진열 칸(-1이면 아님)과 그 칸의 집중 대상.
+        private int discardFor = -1;
+        private BetTarget discardTarget;
 
         public bool IsOpen { get; private set; }
 
@@ -62,6 +68,7 @@ namespace ProjectCR
         public void Show(GameFlowController flow)
         {
             IsOpen = true;
+            discardFor = -1;
             panel.style.display = DisplayStyle.Flex;
             ShowNotice(string.Empty);
             Refresh(flow);
@@ -70,6 +77,7 @@ namespace ProjectCR
         public void Hide()
         {
             IsOpen = false;
+            discardFor = -1;
             if (panel != null)
             {
                 panel.style.display = DisplayStyle.None;
@@ -111,6 +119,7 @@ namespace ProjectCR
             {
                 chosenTargets.Clear();
                 targetsRound = flow.Round.Round;
+                discardFor = -1;
             }
 
             Sprite moneyIcon = flow.Shop.State.Catalog != null ? flow.Shop.State.Catalog.MoneyIcon : null;
@@ -123,12 +132,21 @@ namespace ProjectCR
             upgradeTab.EnableInClassList(ActiveTabClass, showUpgrades);
 
             scroll.Clear();
-            BuildTab(flow, moneyIcon);
+            if (discardFor >= 0 && flow.Shop.NeedsDiscard(discardFor))
+            {
+                BuildDiscard(flow);
+            }
+            else
+            {
+                discardFor = -1;
+                BuildTab(flow, moneyIcon);
+            }
         }
 
         private void SwitchTab(bool upgrades)
         {
             showUpgrades = upgrades;
+            discardFor = -1;
             ShowNotice(string.Empty);
             if (lastFlow != null)
             {
@@ -165,7 +183,7 @@ namespace ProjectCR
 
             if (showUpgrades)
             {
-                scroll.Add(MakeLabel("보유 강화", "shop-section"));
+                scroll.Add(MakeLabel($"보유 강화 · 칸 {flow.OwnedUpgrades.Count}/{flow.OwnedUpgrades.Capacity}", "shop-section"));
                 scroll.Add(MakeLabel(UpgradeSummary(flow), "shop-summary"));
             }
         }
@@ -207,9 +225,10 @@ namespace ProjectCR
             priceRow.Add(MakeLabel($"{price:N0}", "shop-price"));
             card.Add(priceRow);
 
-            var buy = new Button(() => BuyRequested?.Invoke(slot, target))
+            bool replace = check == ShopError.None && flow.Shop.NeedsDiscard(slot);
+            var buy = new Button(() => RequestBuy(flow, slot, target))
             {
-                text = done ? "구매 완료" : ButtonText(check),
+                text = done ? "구매 완료" : replace ? "교체 구매" : ButtonText(check),
             };
             buy.AddToClassList("shop-buy");
             buy.SetEnabled(check == ShopError.None);
@@ -221,6 +240,88 @@ namespace ProjectCR
             }
 
             return card;
+        }
+
+        /// <summary>구매 버튼: 강화 칸이 다 찼으면 버릴 강화부터 고르게 하고, 아니면 바로 산다.</summary>
+        private void RequestBuy(GameFlowController flow, int slot, BetTarget target)
+        {
+            if (flow.Shop.NeedsDiscard(slot))
+            {
+                discardFor = slot;
+                discardTarget = target;
+                ShowNotice(string.Empty);
+                Refresh(flow);
+                return;
+            }
+
+            BuyRequested?.Invoke(slot, target, -1);
+        }
+
+        /// <summary>버릴 강화 고르기: 보유 강화 카드마다 [버리고 교체], 아래에 [취소].</summary>
+        private void BuildDiscard(GameFlowController flow)
+        {
+            UpgradeSlots owned = flow.OwnedUpgrades;
+            ShopItemDefinition incoming = flow.Shop.Offers[discardFor].Item;
+            scroll.Add(MakeLabel($"강화 칸이 가득 찼습니다 ({owned.Count}/{owned.Capacity})", "shop-section"));
+            scroll.Add(MakeLabel($"'{incoming.DisplayName}' 대신 버릴 강화를 고르세요. 버린 강화의 효과는 사라지고, 나중에 상점에 다시 나올 수 있습니다.", "shop-summary"));
+
+            var cards = new VisualElement();
+            cards.AddToClassList("shop-cards");
+            for (int i = 0; i < owned.Capacity; i++)
+            {
+                if (!owned.IsOccupied(i))
+                {
+                    continue;
+                }
+
+                OwnedUpgrade upgrade = owned.Slots[i];
+                ShopItemDefinition item = upgrade.Item;
+                var card = new VisualElement();
+                card.AddToClassList("shop-card");
+
+                var body = new VisualElement();
+                body.AddToClassList("shop-card__body");
+                body.Add(BuildIcon(item));
+                body.Add(MakeLabel(item.DisplayName, "shop-name"));
+                body.Add(MakeElement("shop-dash"));
+                body.Add(MakeLabel(item.CardTextFor(flow.Round.CurrentDue), "shop-desc"));
+                if (!upgrade.Target.IsNone)
+                {
+                    body.Add(MakeLabel($"대상 {DrinkOffer.TargetLabel(upgrade.Target)}", "shop-state"));
+                }
+
+                card.Add(body);
+                card.Add(MakeElement("shop-sep"));
+
+                int index = i;
+                int slot = discardFor;
+                BetTarget target = discardTarget;
+                var discard = new Button(() =>
+                {
+                    discardFor = -1;
+                    BuyRequested?.Invoke(slot, target, index);
+                })
+                {
+                    text = "버리고 교체",
+                };
+                discard.AddToClassList("shop-buy");
+                card.Add(discard);
+                cards.Add(card);
+            }
+
+            scroll.Add(cards);
+
+            var cancel = new Button(() =>
+            {
+                discardFor = -1;
+                Refresh(flow);
+            })
+            {
+                text = "취소",
+            };
+            cancel.AddToClassList("shop-target");
+            cancel.AddToClassList("shop-discard-cancel");
+            scroll.Add(cancel);
         }
 
         /// <summary>구매 버튼 글자. 살 수 없으면 이유를 짧게 쓴다.</summary>
@@ -419,33 +520,8 @@ namespace ProjectCR
 
             icon.AddToClassList("shop-icon--placeholder");
             icon.style.backgroundColor = item.Tint;
-            icon.Add(MakeLabel(IconText(item), "shop-icon__label"));
+            icon.Add(MakeLabel(item.PlaceholderSymbol, "shop-icon__label"));
             return icon;
-        }
-
-        private static string IconText(ShopItemDefinition item)
-        {
-            switch (item.Effect)
-            {
-                case ShopEffect.Focus:
-                    return "▲";
-                case ShopEffect.Cross:
-                    return "→";
-                case ShopEffect.PaymentSupport:
-                    return "₩";
-                case ShopEffect.ExtraBall:
-                    return "●+";
-                case ShopEffect.SkullShield:
-                    return "☠";
-                case ShopEffect.SpareSpin:
-                    return "+1";
-                case ShopEffect.DealerHint:
-                    return "?";
-                case ShopEffect.DoubleUp:
-                    return "×1.2";
-                default:
-                    return "½";
-            }
         }
 
         private static string Percent(decimal value) => (value * 100m).ToString("0.#", CultureInfo.InvariantCulture) + "%";

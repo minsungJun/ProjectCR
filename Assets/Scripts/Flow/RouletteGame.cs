@@ -39,6 +39,9 @@ namespace ProjectCR
         [Tooltip("3D 테이블 표시(놓인 칩, 트레이, 잔액 표시).")]
         [SerializeField] private TableChipView tableView;
 
+        [Tooltip("보유 강화 배지(테이블 원 위). 없으면 배지 없이 돈다.")]
+        [SerializeField] private UpgradeBadgeView upgradeBadges;
+
         [Tooltip("연출 카메라 자리 이동(베팅판 ↔ 룰렛). 없으면 카메라를 움직이지 않는다.")]
         [SerializeField] private CameraRig cameraRig;
 
@@ -108,6 +111,7 @@ namespace ProjectCR
                 tableInput.TabletPressed += OnTabletPressed;
                 tableInput.DrinkHoverChanged += OnDrinkHover;
                 tableInput.DrinkClicked += OnDrinkClicked;
+                tableInput.BadgeHoverChanged += OnBadgeHover;
             }
 
             ApplyView();
@@ -146,6 +150,7 @@ namespace ProjectCR
 
             drinkHovered = -1;
             drinkSelected = -1;
+            badgeHovered = -1;
 
             if (shopView != null)
             {
@@ -261,13 +266,19 @@ namespace ProjectCR
             }
         }
 
-        private void OnShopBuy(int slot, BetTarget target)
+        private void OnShopBuy(int slot, BetTarget target, int discardSlot)
         {
-            ShopError error = flow.Shop.Buy(slot, target);
-            shopView.ShowNotice(error == ShopError.None ? $"{flow.Shop.Offers[slot].Item.DisplayName} 구매" : error.ToKorean());
+            // 버릴 강화 이름은 사기 전에 읽어 둔다(사면 그 칸에 새 강화가 들어간다).
+            string discarded = flow.Shop.NeedsDiscard(slot) && flow.OwnedUpgrades.IsOccupied(discardSlot)
+                ? flow.OwnedUpgrades.Slots[discardSlot].Item.DisplayName
+                : null;
+            ShopError error = flow.Shop.Buy(slot, target, discardSlot);
+            string bought = flow.Shop.Offers[slot].Item.DisplayName;
+            shopView.ShowNotice(error != ShopError.None ? error.ToKorean()
+                : discarded != null ? $"'{discarded}' 버리고 '{bought}' 구매" : $"{bought} 구매");
             if (error == ShopError.None)
             {
-                Debug.Log($"[RouletteGame] 상점 구매: {flow.Shop.Offers[slot].Item.Id} {target} → 보유 {flow.Wallet.Balance:N0}");
+                Debug.Log($"[RouletteGame] 상점 구매: {flow.Shop.Offers[slot].Item.Id} {target} (버림 {discarded ?? "-"}) → 보유 {flow.Wallet.Balance:N0}");
             }
 
             shopView.Refresh(flow);
@@ -318,6 +329,7 @@ namespace ProjectCR
         private void LateUpdate()
         {
             UpdateBetGuide();
+            UpdateBadgeTooltip();
 
             // 음료 툴팁은 커서를 따라간다.
             if (drinkHovered >= 0 && flow != null && tableInput != null)
@@ -384,6 +396,57 @@ namespace ProjectCR
             hud.MoveBetTooltip(tableInput.PointerScreen);
         }
 
+        // ---------- 강화 배지 호버 툴팁 ----------
+
+        // 마우스가 올라간 배지의 강화 칸 번호(-1이면 없음)와 그 툴팁 문구.
+        private int badgeHovered = -1;
+        private UpgradeHoverText badgeText;
+        private bool badgeTextDirty = true;
+
+        private void OnBadgeHover(UpgradeBadge badge)
+        {
+            int previous = badgeHovered;
+            badgeHovered = badge != null ? badge.SlotIndex : -1;
+            badgeTextDirty = true;
+            if (upgradeBadges != null)
+            {
+                upgradeBadges.SetHovered(badgeHovered);
+            }
+
+            if (badgeHovered < 0 && previous >= 0)
+            {
+                hud.HideBetTooltip();
+            }
+        }
+
+        /// <summary>
+        /// 배지 툴팁은 매 프레임 다시 건다: 판 호버 안내가 같은 툴팁을 숨겨도(판 → 배지로 옮길 때) 바로 되살아난다.
+        /// 문구는 배지가 바뀌었거나 RefreshViews(구매·정산 등)가 있었을 때만 다시 만든다.
+        /// </summary>
+        private void UpdateBadgeTooltip()
+        {
+            if (badgeHovered < 0 || flow == null || tableInput == null)
+            {
+                return;
+            }
+
+            if (!flow.OwnedUpgrades.IsOccupied(badgeHovered))
+            {
+                // 보던 배지가 사라졌다(해골 방어 사용 등).
+                OnBadgeHover(null);
+                return;
+            }
+
+            if (badgeTextDirty)
+            {
+                badgeText = UpgradeHoverText.For(flow.OwnedUpgrades.Slots[badgeHovered], flow);
+                badgeTextDirty = false;
+            }
+
+            hud.ShowUpgradeTooltip(badgeText);
+            hud.MoveBetTooltip(tableInput.PointerScreen);
+        }
+
         private void HideBetGuide()
         {
             if (!guideShown)
@@ -426,6 +489,13 @@ namespace ProjectCR
             {
                 tableView.Refresh(flow);
             }
+
+            if (upgradeBadges != null)
+            {
+                upgradeBadges.Refresh(flow);
+            }
+
+            badgeTextDirty = true;
         }
 
         private void OnSpinClicked()
@@ -693,6 +763,12 @@ namespace ProjectCR
             if (firstPersonCamera != null)
             {
                 firstPersonCamera.enabled = firstPersonView;
+            }
+
+            // 1인칭은 둘러보기 전용: 테이블·트레이·태블릿·음료를 누를 수 없다.
+            if (tableInput != null)
+            {
+                tableInput.Interactable = !firstPersonView;
             }
         }
 

@@ -115,6 +115,31 @@ namespace ProjectCR
             gainCaps[t, g] = Math.Max(0, gainCapPerSpin);
         }
 
+        /// <summary>
+        /// 상품 하나를 버린다(강화 칸이 차서 교체할 때). 남은 게 없으면 그 상품의 누적 진행도도 지운다.
+        /// 이미 발동해서 다음 회전에 걸린 강화(pending)는 그대로 둔다(얻은 보상이라서).
+        /// </summary>
+        internal void Remove(DrinkGroup trigger, DrinkGroup target, decimal value)
+        {
+            int t = (int)trigger;
+            int g = (int)target;
+            if (counts[t, g] <= 0)
+            {
+                return;
+            }
+
+            counts[t, g]--;
+            if (counts[t, g] == 0)
+            {
+                owned[t, g] = 0m;
+                progress[t, g] = 0m;
+            }
+            else
+            {
+                owned[t, g] = Math.Max(0m, owned[t, g] - value);
+            }
+        }
+
         /// <summary>회전 시작: 다음 회전 강화를 이 회전에 넘기고 비운다. 돌려준 값이 이 회전 설정에 들어간다.</summary>
         internal decimal[] TakePendingForSpin()
         {

@@ -6,8 +6,9 @@ namespace ProjectCR
 {
     /// <summary>
     /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기, 오른쪽 클릭(끌지 않고 떼기) = 그 자리 베팅 빼기,
-    /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수. 마우스가 HUD 위에 있으면 무시한다.
+    /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수, 강화 배지 = 호버만(툴팁). 마우스가 HUD 위에 있으면 무시한다.
     /// 입력을 이벤트로 넘기기만 하고, 베팅 가능 여부는 GameFlowController가 판단한다.
+    /// <see cref="Interactable"/>이 false면(1인칭으로 둘러보는 중) 아무것도 가리키지 않고 클릭도 보내지 않는다.
     /// </summary>
     public class TableBetInput : MonoBehaviour
     {
@@ -36,6 +37,9 @@ namespace ProjectCR
         /// <summary>로봇 선반 음료를 왼쪽 클릭했다.</summary>
         public event Action<ServedDrink> DrinkClicked;
 
+        /// <summary>마우스가 가리키는 강화 배지가 바뀔 때. 아무것도 아니면 null.</summary>
+        public event Action<UpgradeBadge> BadgeHoverChanged;
+
         // 오른쪽 버튼을 이만큼(px) 넘게 끌면 클릭이 아니라 1인칭 시점 돌리기(FirstPersonLook)다.
         private const float RightDragThreshold = 6f;
 
@@ -44,12 +48,29 @@ namespace ProjectCR
         private bool rightDragged;
         private TabletButton hoveredButton;
         private ServedDrink hoveredDrink;
+        private UpgradeBadge hoveredBadge;
 
         /// <summary>지금 마우스가 가리키는 베팅 대상(클릭하면 이 대상에 놓인다). 판 밖·HUD 위·트레이·태블릿이면 None.</summary>
         public BetTarget CurrentHover => hover;
 
         /// <summary>마지막으로 읽은 마우스 화면 좌표(Input System, 왼쪽 아래 원점).</summary>
         public Vector2 PointerScreen { get; private set; }
+
+        /// <summary>false면 판·트레이·태블릿·음료를 가리키지도 누르지도 못한다. 끄는 순간 호버도 지운다.</summary>
+        public bool Interactable
+        {
+            get => interactable;
+            set
+            {
+                interactable = value;
+                if (!value)
+                {
+                    ClearHover();
+                }
+            }
+        }
+
+        private bool interactable = true;
 
         private void Update()
         {
@@ -63,16 +84,25 @@ namespace ProjectCR
             Vector2 screen = mouse.position.ReadValue();
             PointerScreen = screen;
             bool rightClicked = ReadRightClick(mouse, screen);
-            if (hud != null && hud.IsPointerOverUi(screen))
+            if (!interactable || (hud != null && hud.IsPointerOverUi(screen)))
+            {
+                ClearHover();
+                return;
+            }
+
+            Ray ray = camera.ScreenPointToRay(screen);
+            bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, trayRayDistance);
+
+            // 강화 배지(콜라이더): 가리키기만 한다(누르는 동작 없음).
+            UpgradeBadge badge = hitSomething && hit.collider.TryGetComponent(out UpgradeBadge found) ? found : null;
+            SetBadgeHover(badge);
+            if (badge != null)
             {
                 SetHover(BetTarget.None);
                 SetButtonHover(null);
                 SetDrinkHover(null);
                 return;
             }
-
-            Ray ray = camera.ScreenPointToRay(screen);
-            bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, trayRayDistance);
 
             // 로봇 선반 음료(콜라이더).
             if (hitSomething && hit.collider.TryGetComponent(out ServedDrink drink))
@@ -154,6 +184,25 @@ namespace ProjectCR
             }
 
             return mouse.rightButton.wasReleasedThisFrame && !rightDragged;
+        }
+
+        private void ClearHover()
+        {
+            SetHover(BetTarget.None);
+            SetButtonHover(null);
+            SetDrinkHover(null);
+            SetBadgeHover(null);
+        }
+
+        private void SetBadgeHover(UpgradeBadge badge)
+        {
+            if (hoveredBadge == badge)
+            {
+                return;
+            }
+
+            hoveredBadge = badge;
+            BadgeHoverChanged?.Invoke(badge);
         }
 
         private void SetDrinkHover(ServedDrink drink)

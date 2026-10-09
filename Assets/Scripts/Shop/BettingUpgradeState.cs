@@ -27,11 +27,26 @@ namespace ProjectCR
 
         public void AddExtraBall() => ExtraBalls++;
 
+        /// <summary>추가 공 하나를 버린다(강화 칸이 차서 교체할 때).</summary>
+        public void RemoveExtraBall() => ExtraBalls = System.Math.Max(0, ExtraBalls - 1);
+
         /// <summary>납부 지원금 한 개(상점 구매, 테스트). 환급 비율을 더한다.</summary>
         public void AddPaymentRefund(decimal ratio)
         {
             PaymentRefund += ratio;
             PaymentRefundStacks++;
+        }
+
+        /// <summary>납부 지원금 한 개를 버린다(강화 칸이 차서 교체할 때).</summary>
+        public void RemovePaymentRefund(decimal ratio)
+        {
+            if (PaymentRefundStacks <= 0)
+            {
+                return;
+            }
+
+            PaymentRefundStacks--;
+            PaymentRefund = PaymentRefundStacks == 0 ? 0m : System.Math.Max(0m, PaymentRefund - ratio);
         }
 
         /// <summary>그 묶음 집중 강화를 산 수(대상 무관).</summary>
@@ -57,6 +72,20 @@ namespace ProjectCR
             payoutIncrease[(int)group] += value;
             stacks[(int)group]++;
             Probabilities.AddStack(target, value);
+        }
+
+        /// <summary>집중 강화 한 개를 버린다(강화 칸이 차서 교체할 때). AddFocus의 반대: 지급 증가와 대상 확률 효과를 함께 뺀다.</summary>
+        public void RemoveFocus(DrinkGroup group, BetTarget target, decimal value)
+        {
+            int g = (int)group;
+            if (stacks[g] <= 0)
+            {
+                return;
+            }
+
+            stacks[g]--;
+            payoutIncrease[g] = stacks[g] == 0 ? 0m : System.Math.Max(0m, payoutIncrease[g] - value);
+            Probabilities.RemoveStack(target);
         }
     }
 }

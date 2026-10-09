@@ -15332,6 +15332,7 @@ MonoBehaviour:
   shopView: {fileID: 2083983758}
   tableInput: {fileID: 217825617}
   tableView: {fileID: 942192220}
+  upgradeBadges: {fileID: 1730794021}
   cameraRig: {fileID: 1345680696}
   presentationCamera: {fileID: 1345680692}
   firstPersonCamera: {fileID: 1575811433}
@@ -36813,6 +36814,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 528882881}
   m_Mesh: {fileID: 6924786703230035191, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &529979681 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 6683685261781518389, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &531862679
 GameObject:
   m_ObjectHideFlags: 0
@@ -57652,6 +57658,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 824626063}
   m_Mesh: {fileID: -4882958416235823818, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &826066948 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -5224768725218637380, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &826184453
 GameObject:
   m_ObjectHideFlags: 0
@@ -69823,6 +69834,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 987934897}
   m_Mesh: {fileID: -8169579835315287620, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &989010560 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 194306164336097699, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &989235261
 GameObject:
   m_ObjectHideFlags: 0
@@ -92601,7 +92617,7 @@ Transform:
   m_GameObject: {fileID: 1345680691}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.80780184, z: -0.5894542, w: 0}
-  m_LocalPosition: {x: -1.16, y: 2.1, z: 0.52}
+  m_LocalPosition: {x: -1.16, y: 2.107, z: 0.498}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -96292,6 +96308,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1411285643}
   m_Mesh: {fileID: -9047344571226722589, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &1412072090 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 2294747710785915114, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1412203660
 GameObject:
   m_ObjectHideFlags: 0
@@ -108825,6 +108846,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1572370877}
   m_Mesh: {fileID: -4799366349876499127, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &1573366865 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -3023899293841122481, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1573943866
 GameObject:
   m_ObjectHideFlags: 0
@@ -109814,6 +109840,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1589275513}
   m_Mesh: {fileID: 4228136723796244055, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!23 &1589696087 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 5019544678683906851, guid: 83776b5b8f2619e499569b7ea99a0037, type: 3}
+  m_PrefabInstance: {fileID: 1903165495}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1592546409
 GameObject:
   m_ObjectHideFlags: 0
@@ -118472,6 +118503,61 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1727856093}
   m_Mesh: {fileID: -9025019070433171083, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
+--- !u!1 &1730794020
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1730794022}
+  - component: {fileID: 1730794021}
+  m_Layer: 0
+  m_Name: UpgradeBadges
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1730794021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730794020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c490b4d56cc85242b181c41dcd26ec4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.UpgradeBadgeView
+  slotRings:
+  - {fileID: 529979681}
+  - {fileID: 1412072090}
+  - {fileID: 1589696087}
+  - {fileID: 989010560}
+  - {fileID: 1573366865}
+  - {fileID: 826066948}
+  badgePrefab: {fileID: 6012373349017765119, guid: f3e409ee48a24ff498f8d370dc42e983, type: 3}
+  symbolFont: {fileID: 0}
+  hoverLift: 0.006
+  animTime: 0.18
+--- !u!4 &1730794022
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730794020}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1734937420
 GameObject:
   m_ObjectHideFlags: 0
@@ -123918,7 +124004,7 @@ Transform:
   m_GameObject: {fileID: 1812593560}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.80780184, z: -0.5894542, w: 0}
-  m_LocalPosition: {x: -1.16, y: 2.1, z: 0.52}
+  m_LocalPosition: {x: -1.16, y: 2.107, z: 0.498}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -150831,3 +150917,4 @@ SceneRoots:
   - {fileID: 111567282}
   - {fileID: 1185195987}
   - {fileID: 1908342481}
+  - {fileID: 1730794022}

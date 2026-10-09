@@ -222,6 +222,35 @@ namespace ProjectCR
         private string GainGoalText(long due) =>
             due > 0 ? $"{GainThreshold(due):N0}" : $"납부금의 {(GainThresholdRatio * 100m).ToString("0.#")}%";
 
+        /// <summary>아이콘이 없을 때 색 원 위에 쓰는 기호(상점 카드, 테이블 배지).</summary>
+        public string PlaceholderSymbol
+        {
+            get
+            {
+                switch (effect)
+                {
+                    case ShopEffect.Focus:
+                        return "▲";
+                    case ShopEffect.Cross:
+                        return "→";
+                    case ShopEffect.PaymentSupport:
+                        return "₩";
+                    case ShopEffect.ExtraBall:
+                        return "●+";
+                    case ShopEffect.SkullShield:
+                        return "☠";
+                    case ShopEffect.SpareSpin:
+                        return "+1";
+                    case ShopEffect.DealerHint:
+                        return "?";
+                    case ShopEffect.DoubleUp:
+                        return "×1.2";
+                    default:
+                        return "½";
+                }
+            }
+        }
+
         /// <summary>적용 기간 문구.</summary>
         public string Duration
         {

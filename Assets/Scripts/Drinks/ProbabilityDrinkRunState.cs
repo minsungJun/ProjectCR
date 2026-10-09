@@ -44,6 +44,26 @@ namespace ProjectCR
             effects.AddRange(next);
         }
 
+        /// <summary>대상에서 한 잔을 뺀다. 0잔이 되면 목록에서 지운다(집중 강화를 버릴 때).</summary>
+        public void RemoveStack(BetTarget target)
+        {
+            int index = IndexOf(target);
+            if (index < 0)
+            {
+                return;
+            }
+
+            ProbabilityEffect effect = effects[index];
+            if (effect.Stacks <= 1)
+            {
+                effects.RemoveAt(index);
+            }
+            else
+            {
+                effects[index] = new ProbabilityEffect(target, effect.BoostPerStack, effect.Stacks - 1);
+            }
+        }
+
         /// <summary>
         /// 대상에 한 잔을 더했을 때의 효과 목록. <b>지금 상태는 바꾸지 않는다</b>(카드 미리보기용).
         /// </summary>

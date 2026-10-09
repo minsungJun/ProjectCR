@@ -443,6 +443,13 @@
     opacity: 0.6;
 }
 
+.shop-discard-cancel {
+    align-self: center;
+    min-width: 160px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
 .shop-icon {
     width: 132px;
     height: 132px;
@@ -701,6 +708,12 @@
     margin-top: 3px;
     font-size: 15px;
     color: rgb(240, 192, 80);
+}
+
+.bet-tooltip--wrap .bet-tooltip__targets,
+.bet-tooltip--wrap .bet-tooltip__stake {
+    max-width: 440px;
+    white-space: normal;
 }
 
 .bet-tooltip__stake--short {

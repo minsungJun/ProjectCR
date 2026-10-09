@@ -51,6 +51,10 @@ namespace ProjectCR
         [Min(1)]
         [SerializeField] private int maxBallCount = 3;
 
+        [Tooltip("동시에 가질 수 있는 강화(지속 효과 상품) 수. 테이블의 배지 자리 수와 맞춘다. 다 차면 살 때 하나를 버린다.")]
+        [Min(1)]
+        [SerializeField] private int maxOwnedUpgrades = 6;
+
         [Header("해골")]
         [Tooltip("해골에 걸리면 베팅금을 뺀 뒤 남은 보유 금액에 곱해 남기는 비율. 0.5면 절반(소수점 반올림). 회전당 한 번.")]
         [Range(0f, 1f)]
@@ -99,6 +103,7 @@ namespace ProjectCR
         }
         public int BallCount => ballCount;
         public int MaxBallCount => Math.Max(ballCount, maxBallCount);
+        public int MaxOwnedUpgrades => Math.Max(1, maxOwnedUpgrades);
         public int SpinsPerRound => spinsPerRound;
         public float SkullBalanceKeep => skullBalanceKeep;
 

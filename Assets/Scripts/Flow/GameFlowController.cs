@@ -113,6 +113,7 @@ namespace ProjectCR
             Inventory = new InventoryState();
             Upgrades = new BettingUpgradeState();
             Cross = new CrossBetEffectState();
+            OwnedUpgrades = new UpgradeSlots(gameBalance.MaxOwnedUpgrades);
             Shop = new ShopController(this, shopCatalog, Seed ^ ShopSeedSalt);
             Phase = GamePhase.Betting;
         }
@@ -147,6 +148,9 @@ namespace ProjectCR
 
         /// <summary>상점 교차 강화(보유 + 다음 회전 강화).</summary>
         public CrossBetEffectState Cross { get; }
+
+        /// <summary>보유 강화 칸(최대 GameBalance.MaxOwnedUpgrades). 테이블 배지와 1:1.</summary>
+        public UpgradeSlots OwnedUpgrades { get; }
 
         public GamePhase Phase { get; private set; }
 
@@ -295,6 +299,16 @@ namespace ProjectCR
             }
 
             settlement.ApplyShieldsUsed(spin.ShieldsUsed);
+
+            // 해골 방어를 다 썼으면 강화 칸에서 뺀다(배지가 사라진다). 결과를 미리 보여 주지 않게 시작이 아니라 정산 때 뺀다.
+            if (spin.ShieldsUsed > 0 && Inventory.Shields == 0)
+            {
+                int shieldSlot = OwnedUpgrades.IndexOf(ShopEffect.SkullShield);
+                if (shieldSlot >= 0)
+                {
+                    OwnedUpgrades.Clear(shieldSlot);
+                }
+            }
 
             // 보험: 해골이 아닌 일반 낙첨(지급 0)이면 베팅금 일부 환급. 해골 낙첨·당첨에는 없다.
             if (spin.Insured && settlement.Outcome == SpinOutcome.Lose)
