@@ -19,9 +19,9 @@ namespace ProjectCR.Editor
     /// </summary>
     public static class DrinkServeSetup
     {
-        private const string CocktailModelPath = "Assets/Art/cocktail.fbx";
+        private const string CocktailModelPath = "Assets/Art/Models/cocktail.fbx";
         private const string CocktailFolder = "Assets/Prefabs/Cocktail";
-        private const string RobotModelPath = "Assets/Art/Robot.fbx";
+        private const string RobotModelPath = "Assets/Art/Models/Robot.fbx";
         private const string RobotPrefabPath = "Assets/Prefabs/ServingRobot.prefab";
         private const string OutlineMaterialPath = "Assets/Materials/Drink_Outline.mat";
         private const string DrinkFolder = "Assets/Data/Drinks";
@@ -30,7 +30,7 @@ namespace ProjectCR.Editor
         private const string RobotObjectName = "ServingRobot";
         private const string EntryName = "RobotEntryPoint";
         private const string ServeName = "RobotServePoint";
-        private const string CameraName = "CameraPosition_Drink";
+        private const string CameraName = "CameraPostion_Robot";
 
         private static readonly (string Glass, DrinkGroup Group)[] Cocktails =
         {
@@ -214,6 +214,7 @@ namespace ProjectCR.Editor
 
                 var robot = root.AddComponent<DrinkServerRobot>();
                 robot.Configure(pads, wheels.ToArray(), null, null, OutlineMaterial());
+                AddFace(robot);
                 GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, RobotPrefabPath);
                 Debug.Log($"[DrinkServeSetup] {RobotPrefabPath} (패드 {pads.Length}, 바퀴·허브 {wheels.Count})");
                 return prefab;
@@ -222,6 +223,97 @@ namespace ProjectCR.Editor
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>이미 만든 ServingRobot 프리팹에 얼굴 글자를 붙인다(프리팹을 다시 만들지 않아 씬 연결이 그대로다). 다시 돌려도 하나만.</summary>
+        [MenuItem("Tools/ProjectCR/Drinks/Add Robot Face")]
+        public static void AddRobotFace()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(RobotPrefabPath);
+            try
+            {
+                AddFace(root.GetComponent<DrinkServerRobot>()
+                    ?? throw new InvalidOperationException("ServingRobot에 DrinkServerRobot이 없다."));
+                PrefabUtility.SaveAsPrefabAsset(root, RobotPrefabPath);
+                Debug.Log("[DrinkServeSetup] 로봇 얼굴 추가");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// 앞 화면(CRP_Inset_Display_Glass) 위에 호박색 얼굴 글자(TextMesh)를 화면 면 방향에 맞춰 띄운다.
+        /// 크기는 화면 폭의 70%, 높이의 75% 안. 원래 표정 막대(CRP_Amber_Expression_Bar)는 실행 때 숨긴다.
+        /// </summary>
+        private static void AddFace(DrinkServerRobot robot)
+        {
+            Transform root = robot.transform;
+            Transform old = root.Find("RobotFace");
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            Transform display = FindDeep(root, "CRP_Inset_Display_Glass")
+                ?? throw new InvalidOperationException("로봇에 CRP_Inset_Display_Glass가 없다.");
+            Transform bar = FindDeep(root, "CRP_Amber_Expression_Bar");
+            Bounds bounds = display.GetComponent<Renderer>().bounds;
+
+            // 화면 면 방향: 로봇 앞(+Z)을 향한 정점 법선 평균.
+            Vector3 normal = Vector3.zero;
+            foreach (Vector3 n in display.GetComponent<MeshFilter>().sharedMesh.normals)
+            {
+                Vector3 world = display.TransformDirection(n).normalized;
+                if (Vector3.Dot(world, root.forward) > 0.3f)
+                {
+                    normal += world;
+                }
+            }
+
+            normal = normal.sqrMagnitude > 0f ? normal.normalized : root.forward;
+
+            // 화면 가운데에서 앞으로 나온 면 위(표정 막대가 있으면 그 자리).
+            Vector3 center = bar != null ? bar.GetComponent<Renderer>().bounds.center : bounds.center;
+            var go = new GameObject("RobotFace");
+            go.transform.SetParent(root, false);
+            go.transform.position = center + normal * 0.004f;
+            go.transform.rotation = Quaternion.LookRotation(-normal, Vector3.ProjectOnPlane(Vector3.up, normal));
+
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var text = go.AddComponent<TextMesh>();
+            text.text = "OwO";
+            text.font = font;
+            text.fontSize = 64;
+            text.fontStyle = FontStyle.Bold;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.color = new Color(1f, 0.74f, 0.28f, 1f);
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+
+            // 가장 넓은 얼굴(OwO) 기준으로 화면 폭 70%, 높이 75% 안에 맞춘다.
+            const float probe = 0.002f;
+            text.characterSize = probe;
+            Bounds rendered = go.GetComponent<MeshRenderer>().bounds;
+            float byWidth = rendered.size.x > 1e-5f ? probe * bounds.size.x * 0.7f / rendered.size.x : 0.004f;
+            float byHeight = rendered.size.y > 1e-5f ? probe * bounds.size.y * 0.75f / rendered.size.y : 0.004f;
+            text.characterSize = Mathf.Min(byWidth, byHeight);
+
+            robot.ConfigureFace(text, bar != null ? bar.GetComponent<Renderer>() : null);
+        }
+
+        private static Transform FindDeep(Transform parent, string name)
+        {
+            foreach (Transform t in parent.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name)
+                {
+                    return t;
+                }
+            }
+
+            return null;
         }
 
         private static Material OutlineMaterial()

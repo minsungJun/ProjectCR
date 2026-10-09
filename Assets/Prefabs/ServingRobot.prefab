@@ -31,6 +31,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4787624375200768292}
+  - {fileID: 1705736359106504568}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5726239206780455819
@@ -89,6 +90,118 @@ MonoBehaviour:
     m_RotationOrder: 4
   outlineMaterial: {fileID: 2100000, guid: ae196f3056d207740bbd567bb6319622, type: 2}
   outlineColor: {r: 1, g: 0.84, b: 0.42, a: 1}
+  face: {fileID: 8971084354603495520}
+  expressionBar: {fileID: 8591098140675294683}
+  faces:
+  - OwO
+  - UwU
+  - '>A<'
+  - O_O
+  - '>^<'
+--- !u!1 &7299483589079874361
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1705736359106504568}
+  - component: {fileID: 7422393670284702621}
+  - component: {fileID: 8971084354603495520}
+  m_Layer: 0
+  m_Name: RobotFace
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1705736359106504568
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7299483589079874361}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.0000054744314, y: 0.9986997, z: -0.050980017, w: -0.00010724425}
+  m_LocalPosition: {x: 0.0000008546056, y: 1.0944072, z: 0.17672844}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7227664833889623563}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!23 &7422393670284702621
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7299483589079874361}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10100, guid: 0000000000000000e000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!102 &8971084354603495520
+TextMesh:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7299483589079874361}
+  m_Text: OwO
+  m_OffsetZ: 0
+  m_CharacterSize: 0.0081416415
+  m_LineSpacing: 1
+  m_Anchor: 4
+  m_Alignment: 1
+  m_TabSize: 4
+  m_FontSize: 64
+  m_FontStyle: 1
+  m_RichText: 1
+  m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Color:
+    serializedVersion: 2
+    rgba: 4282891775
 --- !u!1001 &5042824858567345871
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -213,5 +326,10 @@ Transform:
 --- !u!23 &7752563467533252878 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 3345353307061747649, guid: 3c453f5f4961ed04fa5ffede7a0081da, type: 3}
+  m_PrefabInstance: {fileID: 5042824858567345871}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &8591098140675294683 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -5565885912751881452, guid: 3c453f5f4961ed04fa5ffede7a0081da, type: 3}
   m_PrefabInstance: {fileID: 5042824858567345871}
   m_PrefabAsset: {fileID: 0}

@@ -41,12 +41,58 @@ namespace ProjectCR
 
         [SerializeField] private Color outlineColor = new Color(1f, 0.84f, 0.42f, 1f);
 
+        [Header("얼굴")]
+        [Tooltip("앞 화면의 얼굴 글자. 서빙할 때마다 faces 중 직전과 다른 하나로 바뀐다.")]
+        [SerializeField] private TextMesh face;
+
+        [Tooltip("모델의 원래 표정 막대. 얼굴 글자가 있으면 숨긴다.")]
+        [SerializeField] private Renderer expressionBar;
+
+        [SerializeField] private string[] faces = { "OwO", "UwU", ">A<", "O_O", ">^<" };
+
+        private int lastFace = -1;
+
         private readonly List<ServedDrink> drinks = new List<ServedDrink>();
         private int hovered = -1;
         private int selected = -1;
 
         public bool IsMoving { get; private set; }
         public bool IsServing { get; private set; }
+
+        /// <summary>지금 화면의 얼굴.</summary>
+        public string CurrentFace => face != null ? face.text : string.Empty;
+
+        public void ConfigureFace(TextMesh text, Renderer bar)
+        {
+            face = text;
+            expressionBar = bar;
+        }
+
+        private void Awake()
+        {
+            if (face != null && expressionBar != null)
+            {
+                expressionBar.enabled = false;
+            }
+        }
+
+        /// <summary>얼굴을 직전과 다른 것으로 바꾼다(서빙할 때마다).</summary>
+        public void PickFace()
+        {
+            if (face == null || faces == null || faces.Length == 0)
+            {
+                return;
+            }
+
+            int index = Random.Range(0, faces.Length);
+            if (faces.Length > 1 && index == lastFace)
+            {
+                index = (index + 1 + Random.Range(0, faces.Length - 1)) % faces.Length;
+            }
+
+            lastFace = index;
+            face.text = faces[index];
+        }
 
         public void Configure(Renderer[] padRenderers, Transform[] wheelTransforms, Transform entry, Transform serve, Material outline)
         {
@@ -80,6 +126,8 @@ namespace ProjectCR
             {
                 drinks.Add(PlaceDrink(i, offers[i]));
             }
+
+            PickFace();
 
             yield return MoveTo(servePoint);
             IsServing = true;

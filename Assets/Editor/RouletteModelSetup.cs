@@ -22,7 +22,7 @@ namespace ProjectCR.Editor
     /// </summary>
     public static class RouletteModelSetup
     {
-        private const string ModelPath = "Assets/Art/roulette_table_G.fbx";
+        private const string ModelPath = "Assets/Art/Models/roulette_table_G.fbx";
         private const string DefinitionPath = "Assets/Data/RouletteDefinition_Skull38.asset";
         private const string MotionPath = "Assets/Data/SpinMotionSettings_CRR.asset";
         private const string RoulettePrefabPath = "Assets/Prefabs/RouletteRoot_CRR.prefab";

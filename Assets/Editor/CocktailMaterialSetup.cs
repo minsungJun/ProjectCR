@@ -18,7 +18,7 @@ namespace ProjectCR.Editor
     /// </summary>
     public static class CocktailMaterialSetup
     {
-        private const string ModelPath = "Assets/Art/cocktail.fbx";
+        private const string ModelPath = "Assets/Art/Models/cocktail.fbx";
         private const string MaterialFolder = "Assets/Materials/Cocktail";
 
         /// <summary>부위 하나의 재질 설정.</summary>
