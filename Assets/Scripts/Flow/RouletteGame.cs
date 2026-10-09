@@ -45,8 +45,9 @@ namespace ProjectCR
         [Tooltip("기울어진 연출 시점.")]
         [SerializeField] private Camera presentationCamera;
 
-        [Tooltip("위에서 내려다보는 정사영 시점. 번호 일치를 눈으로 확인할 때 쓴다.")]
-        [SerializeField] private Camera topDownCamera;
+        [Tooltip("앉은 자리에서 보는 1인칭 원근 시점(FirstPersonView). 시점 전환 버튼으로 연출 시점과 바꾼다. 고개 돌리기는 FirstPersonLook.")]
+        [FormerlySerializedAs("topDownCamera")]
+        [SerializeField] private Camera firstPersonCamera;
 
         [Header("디버그")]
         [Tooltip("0이면 매번 다른 시드. 0이 아니면 같은 시드에서 같은 결과 순서가 나온다. 실제 시드는 콘솔에 찍힌다.")]
@@ -77,7 +78,7 @@ namespace ProjectCR
 
         private GameFlowController flow;
         private bool verifying;
-        private bool topDownView;
+        private bool firstPersonView;
 
         /// <summary>검증 스크립트가 상태를 읽을 때 쓴다.</summary>
         public GameFlowController Flow => flow;
@@ -678,7 +679,7 @@ namespace ProjectCR
 
         private void ToggleView()
         {
-            topDownView = !topDownView;
+            firstPersonView = !firstPersonView;
             ApplyView();
         }
 
@@ -686,12 +687,12 @@ namespace ProjectCR
         {
             if (presentationCamera != null)
             {
-                presentationCamera.enabled = !topDownView;
+                presentationCamera.enabled = !firstPersonView;
             }
 
-            if (topDownCamera != null)
+            if (firstPersonCamera != null)
             {
-                topDownCamera.enabled = topDownView;
+                firstPersonCamera.enabled = firstPersonView;
             }
         }
 

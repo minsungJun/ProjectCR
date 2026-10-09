@@ -29,6 +29,15 @@
     align-items: flex-end;
 }
 
+.options-row {
+    flex-direction: row;
+}
+
+.view-toggle {
+    min-width: 88px;
+    margin-right: 8px;
+}
+
 .options-button {
     min-width: 88px;
 }

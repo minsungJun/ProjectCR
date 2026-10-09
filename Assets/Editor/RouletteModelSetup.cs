@@ -288,19 +288,20 @@ namespace ProjectCR.Editor
             SerializedProperty cameras = inputSo.FindProperty("cameras");
             cameras.arraySize = 2;
             cameras.GetArrayElementAtIndex(0).objectReferenceValue = main;
-            cameras.GetArrayElementAtIndex(1).objectReferenceValue = GameObject.Find("TopDownCamera").GetComponent<Camera>();
+            Camera firstPerson = GameObject.Find("FirstPersonView").GetComponent<Camera>();
+            cameras.GetArrayElementAtIndex(1).objectReferenceValue = firstPerson;
             inputSo.ApplyModifiedPropertiesWithoutUndo();
 
             Set(so, "tableInput", input);
             Set(so, "tableView", roulette.GetComponentInChildren<TableChipView>(true));
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            // 탑다운: 화면 아래가 +Z(앞)가 되게 Y를 180° 돌린다.
-            Camera top = GameObject.Find("TopDownCamera").GetComponent<Camera>();
-            top.transform.position = new Vector3(-0.32f, 2f, 0.04f);
-            top.transform.rotation = Quaternion.Euler(90f, 180f, 0f);
-            top.orthographicSize = 0.56f;
-            top.nearClipPlane = 0.05f;
+            // 1인칭: 자리는 씬에 둔 그대로 쓰고, 원근과 고개 돌리기(오른쪽 끌기)만 맞춘다.
+            firstPerson.orthographic = false;
+            firstPerson.nearClipPlane = 0.05f;
+            var look = new SerializedObject(GetOrAdd<FirstPersonLook>(firstPerson.gameObject));
+            Set(look, "hud", Object.FindFirstObjectByType<RouletteHud>());
+            look.ApplyModifiedPropertiesWithoutUndo();
 
             // 빛은 카메라 쪽 위에서 비춘다. 휠 뒤에서 카메라 쪽으로 비추면 광택 칸이 하얗게 번쩍인다.
             GameObject sun = GameObject.Find("Directional Light");

@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 namespace ProjectCR
 {
     /// <summary>
-    /// 룰렛 화면 UI: 왼쪽 위 결과 안내(당첨·낙첨·진행 문구), 오른쪽 위 옵션(시점 전환), 판 위 호버 툴팁, 게임 오버 창.
+    /// 룰렛 화면 UI: 왼쪽 위 결과 안내(당첨·낙첨·진행 문구), 오른쪽 위 시점 전환·옵션 버튼, 판 위 호버 툴팁, 게임 오버 창.
     /// 음료는 서빙 로봇(DrinkServerRobot) 선반에서 고르고(툴팁만 여기 ShowDrinkTooltip), 서비스 창은 ShopView가 그린다. 보유 금액·납부금·남은 회전·회전/서비스/전체 회수 버튼은
     /// 테이블 태블릿(TabletPanel)에 있다(2026-10-09 위아래 임시 HUD 띠 제거).
     /// 납부는 버튼 없이 라운드가 끝나면 자동으로 판정한다(RouletteGame). 상태를 읽어 그리고, 버튼 입력을 이벤트로 넘기기만 한다.
@@ -76,7 +76,7 @@ namespace ProjectCR
 
             root.Q<Button>("restart").clicked += () => RestartClicked?.Invoke();
 
-            // 옵션: 누르면 메뉴를 열고 닫는다. 메뉴 항목을 누르면 실행하고 닫는다.
+            // 옵션: 누르면 메뉴를 열고 닫는다(지금은 항목이 없어 열리지 않는다). 시점 전환은 옵션 왼쪽 버튼.
             optionsMenu = root.Q("options-menu");
             root.Q<Button>("options").clicked += () => SetOptionsOpen(!optionsMenu.ClassListContains(OptionsOpenClass));
             root.Q<Button>("view-toggle").clicked += () =>
@@ -88,7 +88,7 @@ namespace ProjectCR
 
         private const string OptionsOpenClass = "options-menu--open";
 
-        private void SetOptionsOpen(bool open) => optionsMenu.EnableInClassList(OptionsOpenClass, open);
+        private void SetOptionsOpen(bool open) => optionsMenu.EnableInClassList(OptionsOpenClass, open && optionsMenu.childCount > 0);
 
         /// <summary>화면 좌표(Input System, 왼쪽 아래 원점)가 입력을 막는 HUD 요소 위인가.</summary>
         public bool IsPointerOverUi(Vector2 screenPosition)

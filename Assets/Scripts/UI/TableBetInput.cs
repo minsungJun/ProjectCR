@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace ProjectCR
 {
     /// <summary>
-    /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기, 오른쪽 클릭 = 그 자리 베팅 빼기,
+    /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기, 오른쪽 클릭(끌지 않고 떼기) = 그 자리 베팅 빼기,
     /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수. 마우스가 HUD 위에 있으면 무시한다.
     /// 입력을 이벤트로 넘기기만 하고, 베팅 가능 여부는 GameFlowController가 판단한다.
     /// </summary>
@@ -36,7 +36,12 @@ namespace ProjectCR
         /// <summary>로봇 선반 음료를 왼쪽 클릭했다.</summary>
         public event Action<ServedDrink> DrinkClicked;
 
+        // 오른쪽 버튼을 이만큼(px) 넘게 끌면 클릭이 아니라 1인칭 시점 돌리기(FirstPersonLook)다.
+        private const float RightDragThreshold = 6f;
+
         private BetTarget hover = BetTarget.None;
+        private Vector2 rightPressScreen;
+        private bool rightDragged;
         private TabletButton hoveredButton;
         private ServedDrink hoveredDrink;
 
@@ -57,6 +62,7 @@ namespace ProjectCR
 
             Vector2 screen = mouse.position.ReadValue();
             PointerScreen = screen;
+            bool rightClicked = ReadRightClick(mouse, screen);
             if (hud != null && hud.IsPointerOverUi(screen))
             {
                 SetHover(BetTarget.None);
@@ -127,10 +133,27 @@ namespace ProjectCR
             {
                 TargetClicked?.Invoke(target);
             }
-            else if (mouse.rightButton.wasPressedThisFrame)
+            else if (rightClicked)
             {
                 TargetRemoveRequested?.Invoke(target);
             }
+        }
+
+        /// <summary>오른쪽 버튼을 끌지 않고 뗀 프레임이면 true. 누르는 순간이 아니라 뗄 때 판정한다(끌기는 시점 돌리기).</summary>
+        private bool ReadRightClick(Mouse mouse, Vector2 screen)
+        {
+            if (mouse.rightButton.wasPressedThisFrame)
+            {
+                rightPressScreen = screen;
+                rightDragged = false;
+            }
+
+            if (mouse.rightButton.isPressed && (screen - rightPressScreen).sqrMagnitude > RightDragThreshold * RightDragThreshold)
+            {
+                rightDragged = true;
+            }
+
+            return mouse.rightButton.wasReleasedThisFrame && !rightDragged;
         }
 
         private void SetDrinkHover(ServedDrink drink)

@@ -1,12 +1,13 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="RouletteHud.uss" />
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
-        <!-- 오른쪽 위 옵션: 누르면 작은 메뉴(시점 전환)가 열린다. -->
+        <!-- 오른쪽 위: [시점 전환] [옵션]. 옵션은 누르면 작은 메뉴가 열린다(항목이 없으면 열리지 않음). -->
         <ui:VisualElement class="options blocks-input">
-            <ui:Button name="options" class="btn btn--small options-button" text="옵션" />
-            <ui:VisualElement name="options-menu" class="options-menu">
-                <ui:Button name="view-toggle" class="btn btn--small options-item" text="시점 전환" />
+            <ui:VisualElement class="options-row">
+                <ui:Button name="view-toggle" class="btn btn--small view-toggle" text="시점 전환" />
+                <ui:Button name="options" class="btn btn--small options-button" text="옵션" />
             </ui:VisualElement>
+            <ui:VisualElement name="options-menu" class="options-menu" />
         </ui:VisualElement>
 
         <!-- 회전 결과(나온 숫자 · 손익)와 그 아래 이전에 나온 숫자 5개. 게임 시작 때만 안내 문구. -->

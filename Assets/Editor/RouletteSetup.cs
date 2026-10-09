@@ -239,14 +239,14 @@ namespace ProjectCR.Editor
             mainCamera.fieldOfView = 42f;
             ConfigureBackground(mainCamera);
 
-            // 탑다운 정사영 카메라: 번호 일치를 눈으로 볼 때 쓴다. 기본은 꺼 둔다.
-            Camera topDown = FindOrCreateCamera("TopDownCamera", false);
-            topDown.transform.position = new Vector3(1.07f, 5f, -0.13f);
-            topDown.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            topDown.orthographic = true;
-            topDown.orthographicSize = 1.85f;
-            topDown.enabled = false;
-            ConfigureBackground(topDown);
+            // 1인칭 원근 카메라: 시점 전환 버튼으로 켠다. 기본은 꺼 둔다.
+            Camera firstPerson = FindOrCreateCamera("FirstPersonView", false);
+            firstPerson.transform.position = new Vector3(-0.704f, 1.328f, 1.125f);
+            firstPerson.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            firstPerson.orthographic = false;
+            firstPerson.fieldOfView = 60f;
+            firstPerson.enabled = false;
+            ConfigureBackground(firstPerson);
 
             GameObject light = GameObject.Find("Directional Light");
             if (light != null)
@@ -275,7 +275,7 @@ namespace ProjectCR.Editor
             SetReference(so, "presenter", rouletteRoot.GetComponent<RoulettePresenter>());
             SetReference(so, "hud", hud);
             SetReference(so, "presentationCamera", mainCamera);
-            SetReference(so, "topDownCamera", topDown);
+            SetReference(so, "firstPersonCamera", firstPerson);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.MarkSceneDirty(scene);
