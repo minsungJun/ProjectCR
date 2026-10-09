@@ -480,3 +480,17 @@ u ≥ 1이면 커브 값과 상관없이 정확히 끝 각도를 쓴다. 착지�
 - 해골 방패 재추첨 연출(지금은 최종 결과만), 상점 아이콘 그림, 교차 강화 발동 조건(소액 베팅) 조정, 납부 지원금 차익 조정
 - 음료 그림(지금은 강조색 병), 밸런스 조정(위 시뮬레이션 기준)
 - 아트 모델, TMP 라벨, 효과음(`RoulettePresenter.CurrentStage`)
+
+## 카지노 조명(2026-10-09, Docs/ClaudeCode_CasinoLighting_Plan.md 실행)
+
+- 도구: `Assets/Editor/CasinoLightingSetup.cs`, 메뉴 `Tools/ProjectCR/Art/Casino Lighting/` Apply · Validate · Capture Preview · Rebuild Preview Scene.
+  다시 돌려도 파일이 바뀌지 않는다(재질·프리팹·씬·프로필 31개 파일 해시 동일 확인).
+- 재질 `Materials/CasinoLighting/CRL_*.mat` 6종(URP Lit, Metallic): Antique_Brass #BC914E 0.9/0.75, Brass_Recess #49351C 0.8/0.55, Emerald_Enamel #12523B 0.2/0.85,
+  Fluted_Opal_Glass #F3DFC0 투명 0.65, Faceted_Crystal #FFF3DE 투명 0.20(Premultiply, Front, 알파 클립 끔), Warm_Light_Core #FFE1AA + 발광 #FFD39A +2 stops(BakedEmissive, 베이크는 안 함).
+  키워드·큐·ZWrite는 Inspector와 같은 함수(BaseShaderGUI.SetMaterialKeywords + LitGUI)로 맞춘다. URP 17.3의 Premultiply는 키워드 없이 블렌드(One, OneMinusSrcAlpha)다.
+- lighting.fbx: 재질 이름 remap 6개, 카메라·라이트·애니메이션 임포트 끔(원래 없음). 다시 임포트해도 연결 유지.
+- 프리팹 `Prefabs/CasinoLighting/ColumnSconce`(180×520×130mm, 피벗 = 기둥 접촉면 하단 중앙, 정면 -Z), `CeilingChandelier`(900×650×900mm, 피벗 = 천장 캡 중앙).
+  Light 1개씩(Point, 그림자 끔, 색 약 2700K 명시): 벽등 앞 25cm·range 2·세기 1.0, 샹들리에 최하단 5cm 아래·range 4·세기 3. 유리 전용 렌더러만 그림자 끔.
+- 게임 씬 Roulette의 기존 lighting 인스턴스(위치·개수 그대로)에 조명 루트마다 Light 1개와 유리 그림자 끔을 더했다. 게임 카메라 후처리·Volume은 건드리지 않았다(원래 후처리 꺼짐, Volume 없음).
+- 확인용 씬 `Scenes/CasinoLightingPreview.unity`: 어두운 방, 기둥 벽등(바닥 1.45m), 높이 3m 천장 샹들리에(최하단 2.35m), 반사 프로브 1회 캡처, 전용 Bloom(`Settings/CasinoLightingVolumeProfile`, 1/0.2/0.5).
+  캡처(실제 URP 렌더): `Temp/CasinoLightingCaptures/*.png`.

@@ -3,7 +3,37 @@ guid: bd71c63e3b4772b408c0c4d107243d62
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Antique_Brass
+    second: {fileID: 2100000, guid: e2e1081b12312564c9b3d3eb6a107e43, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Brass_Recess
+    second: {fileID: 2100000, guid: 160c82057317ce442a238d58fedf062a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Emerald_Enamel
+    second: {fileID: 2100000, guid: 5d03ce3234e745b4a9cdab17fac23a4a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Faceted_Crystal
+    second: {fileID: 2100000, guid: 7ce4e4ab4dbbfe049af226ab2d5580d9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Fluted_Opal_Glass
+    second: {fileID: 2100000, guid: 13089b7d7c59cff419d571bad4a19e41, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRL_Warm_Light_Core
+    second: {fileID: 2100000, guid: 028cabe02cb8f0e47a3acb3894742c79, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -41,8 +71,8 @@ ModelImporter:
     importPhysicalCameras: 1
     importVisibility: 1
     importBlendShapes: 1
-    importCameras: 1
-    importLights: 1
+    importCameras: 0
+    importLights: 0
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
@@ -79,7 +109,7 @@ ModelImporter:
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
   referencedClips: []
-  importAnimation: 1
+  importAnimation: 0
   humanDescription:
     serializedVersion: 3
     human: []
