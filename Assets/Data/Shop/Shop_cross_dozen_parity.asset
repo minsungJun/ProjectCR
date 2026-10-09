@@ -13,14 +13,18 @@ MonoBehaviour:
   m_Name: Shop_cross_dozen_parity
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: cross_dozen_parity
-  displayName: "DOZEN \u2192 \uD640\uC9DD"
+  displayName: "\uB354\uC98C \u2192 \uD640\uC9DD"
   description: 
+  cardText: 
   icon: {fileID: 0}
   tint: {r: 0.08627451, g: 0.65882355, b: 0.29411766, a: 1}
   category: 1
   effect: 1
   group: 2
   triggerGroup: 1
+  crossTrigger: 0
+  gainThresholdRatio: 0.5
+  gainTriggerCapPerSpin: 0
   value: 0.25
   priceRatio: 0.2
   priceGrowth: 1.3

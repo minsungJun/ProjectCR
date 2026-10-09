@@ -15,6 +15,7 @@ namespace ProjectCR
         private readonly int[] payouts = new int[Enum.GetValues(typeof(PayoutClass)).Length];
         private readonly System.Collections.Generic.Dictionary<BetTarget, decimal> targetBoosts = new System.Collections.Generic.Dictionary<BetTarget, decimal>();
         private readonly decimal[] groupBonus = new decimal[DrinkGroups.Count];
+        private readonly decimal[] groupBoosts = { 1m, 1m, 1m, 1m, 1m, 1m };
 
         private SpinConfig(RouletteDefinition definition, int ballCount, double[] weights, double skullChance)
         {
@@ -95,6 +96,11 @@ namespace ProjectCR
 
         public void SetTargetBoost(BetTarget target, decimal multiplier) => targetBoosts[target] = Math.Max(0m, multiplier);
 
+        /// <summary>묶음 전체 지급 음료 배율(숫자 음료). 기본 1.</summary>
+        public decimal GroupBoost(DrinkGroup group) => groupBoosts[(int)group];
+
+        public void SetGroupBoost(DrinkGroup group, decimal multiplier) => groupBoosts[(int)group] = Math.Max(0m, multiplier);
+
         /// <summary>상점 강화 증가량(집중 + 이번 회전 교차)의 합. 0.1 = +10%. 지급에 (1 + 증가량)으로 곱한다.</summary>
         public decimal GroupBonus(DrinkGroup group) => groupBonus[(int)group];
 
@@ -104,7 +110,7 @@ namespace ProjectCR
         public decimal PayoutScale { get; set; } = 1m;
 
         /// <summary>
-        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 음료 대상 배율 × (1 + 상점 집중 + 이번 회전 교차) × 회전 배율(더블 업).
+        /// 이 베팅이 맞았을 때의 최종 배수 = 기본 배수 × 음료 대상 배율 × 음료 묶음 배율(숫자) × (1 + 상점 집중 + 이번 회전 교차) × 회전 배율(더블 업).
         /// UI 미리보기와 정산이 같이 쓴다. 기본 배수와 잔 수·증가량에서 매번 새로 계산하므로 이전 결과에 겹쳐 곱하지 않는다.
         /// </summary>
         public decimal MultiplierFor(BetTarget target)
@@ -115,7 +121,7 @@ namespace ProjectCR
             }
 
             DrinkGroup group = DrinkGroups.Of(target.Kind);
-            return PayoutFor(target) * TargetBoost(target) * (1m + GroupBonus(group)) * PayoutScale;
+            return PayoutFor(target) * TargetBoost(target) * GroupBoost(group) * (1m + GroupBonus(group)) * PayoutScale;
         }
 
         public static SpinConfig Create(RouletteDefinition definition, GameBalance balance)

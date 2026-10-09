@@ -33,7 +33,7 @@ namespace ProjectCR
         [Tooltip("이 음료의 3D 모델(프리팹). 아직 게임 화면에서는 쓰지 않는다.")]
         [SerializeField] private GameObject model;
 
-        [Tooltip("숫자가 아닌 묶음의 한 잔 가중치 증가. 고른 대상 수로 나눠 붙는다. 대상 하나 110% 기준: 색상·홀짝·구간 0.37, 컬럼·더즌 0.26.")]
+        [Tooltip("숫자가 아닌 묶음의 한 잔 가중치 증가. 고른 대상 수로 나눠 붙는다. 대상 하나 110% 기준: 색깔·홀짝·하이로우 0.37, 컬럼·더즌 0.26.")]
         [Min(0f)]
         [SerializeField] private float boostPerStack = 0.37f;
 
@@ -101,7 +101,7 @@ namespace ProjectCR
             return drink;
         }
 
-        /// <summary>기본 6종(대상 하나 1잔 ≈ 110% 기준): 색상·홀짝·구간 +37%, 컬럼·더즌 +26%, 숫자 +17%.</summary>
+        /// <summary>기본 6종(대상 하나 1잔 ≈ 110% 기준): 색깔·홀짝·하이로우 +37%, 컬럼·더즌 +26%, 숫자 +17%.</summary>
         public static ProbabilityDrinkDefinition[] CreateDefaults()
         {
             return new[]
@@ -116,7 +116,7 @@ namespace ProjectCR
         }
     }
 
-    /// <summary>음료 색(칵테일 모델의 음료 머티리얼 색). 묶음별: 컬럼 코랄 오렌지, 더즌 엠버, 홀짝 에메랄드, 색상 루비, 높고 낮음 스카이블루, 숫자 바이올렛.</summary>
+    /// <summary>음료 색(칵테일 모델의 음료 머티리얼 색). 묶음별: 컬럼 코랄 오렌지, 더즌 엠버, 홀짝 에메랄드, 색깔 루비, 하이로우 스카이블루, 숫자 바이올렛.</summary>
     public static class DrinkColors
     {
         public static readonly Color CoralOrange = new Color32(0xF9, 0x69, 0x2C, 0xFF);

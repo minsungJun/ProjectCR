@@ -97,7 +97,7 @@ namespace ProjectCR.Tests
             flow.Probabilities.SetStacks(Low, 0.1m, 10);
             flow.Probabilities.SetStacks(Dozen2, 0.15m, 10);
 
-            Assert.AreEqual(1d, Weight(0), Eps, "0은 색상·홀짝·구간·더즌에 들지 않는다.");
+            Assert.AreEqual(1d, Weight(0), Eps, "0은 색깔·홀짝·하이로우·더즌에 들지 않는다.");
             Assert.AreEqual(0d, flow.BuildSpinConfig().Weights[definition.IndexOfSkull()], "해골은 가중치 목록에 없다.");
 
             flow.Probabilities.SetStacks(BetTarget.Straight(0), 0.3m, 1);

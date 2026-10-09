@@ -43,9 +43,9 @@ namespace ProjectCR.Tests
                 (BetTarget.Inside(BetKind.SixLine, 1, 2, 3, 4, 5, 6), "식스라인", 6, "1 · 2 · 3 · 4 · 5 · 6"),
                 (BetTarget.Inside(BetKind.Street, 0, 1, 2), "트리오", 12, "0 · 1 · 2"),
                 (BetTarget.Inside(BetKind.Corner, 0, 1, 2, 3), "퍼스트 포", 9, "0 · 1 · 2 · 3"),
-                (BetTarget.Outside(BetKind.Column1), "첫 번째 COLUMN", 3, "1, 4, 7 … 34"),
-                (BetTarget.Outside(BetKind.Dozen1), "첫 번째 DOZEN", 3, "1~12"),
-                (BetTarget.Outside(BetKind.Dozen3), "세 번째 DOZEN", 3, "25~36"),
+                (BetTarget.Outside(BetKind.Column1), "첫 번째 컬럼", 3, "1, 4, 7 … 34"),
+                (BetTarget.Outside(BetKind.Dozen1), "첫 번째 더즌", 3, "1~12"),
+                (BetTarget.Outside(BetKind.Dozen3), "세 번째 더즌", 3, "25~36"),
                 (BetTarget.Outside(BetKind.Odd), "홀수", 2, "1, 3, 5 … 35"),
                 (BetTarget.Outside(BetKind.Red), "빨강", 2, "빨간 숫자 18개"),
                 (BetTarget.Outside(BetKind.High), "HIGH", 2, "19~36"),
@@ -63,20 +63,18 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void DrinkBoost_AppliesOnlyToThatExactBet()
+        public void DrinkBoost_NumberIsWholeGroup_OthersExactTarget()
         {
             GameFlowController flow = Flow();
-            flow.Drinks.SetStacks(BetTarget.Straight(1), 1);
+            flow.Drinks.SetGroupStacks(DrinkGroup.Number, 1);
             flow.SetChipValue(10);
 
-            BetHoverInfo one = Info(flow, BetTarget.Straight(1));
-            Assert.AreEqual(54m, one.Multiplier, "1번 ×36 × 음료 1.5");
-            Assert.AreEqual(540, one.ExpectedPayout, "칩 10 → 540");
-            Assert.IsTrue(one.IsBoosted);
-
-            Assert.AreEqual(36m, Info(flow, BetTarget.Straight(2)).Multiplier, "다른 숫자는 그대로");
-            Assert.IsFalse(Info(flow, Corner1245).IsBoosted, "1이 들어간 코너에도 붙지 않는다");
-            Assert.AreEqual(2m, Info(flow, BetTarget.Outside(BetKind.Red)).Multiplier, "숫자 음료는 색상 베팅에 붙지 않는다");
+            BetHoverInfo corner = Info(flow, Corner1245);
+            Assert.AreEqual(13.5m, corner.Multiplier, "코너 ×9 × 숫자 음료 1.5");
+            Assert.AreEqual(135, corner.ExpectedPayout, "칩 10 → 135");
+            Assert.IsTrue(corner.IsBoosted);
+            Assert.AreEqual(54m, Info(flow, BetTarget.Straight(0)).Multiplier, "0도 숫자 베팅");
+            Assert.AreEqual(2m, Info(flow, BetTarget.Outside(BetKind.Red)).Multiplier, "숫자 음료는 색깔 베팅에 붙지 않는다");
 
             flow.Drinks.SetStacks(BetTarget.Outside(BetKind.Dozen1), 1);
             BetHoverInfo dozen = Info(flow, BetTarget.Outside(BetKind.Dozen1));
@@ -116,7 +114,7 @@ namespace ProjectCR.Tests
         public void Preview_EqualsActualSettlement_WithFocus()
         {
             GameFlowController flow = Flow();
-            flow.Drinks.SetStacks(Corner1245, 1);
+            flow.Drinks.SetGroupStacks(DrinkGroup.Number, 1);
             flow.Upgrades.AddFocus(DrinkGroup.Number, BetTarget.Straight(1), 0.1m);
             flow.SetChipValue(10);
 

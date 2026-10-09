@@ -77,9 +77,9 @@ namespace ProjectCR
                 case DrinkGroup.Parity:
                     return "홀짝";
                 case DrinkGroup.Color:
-                    return "색상";
+                    return "색깔";
                 case DrinkGroup.Range:
-                    return "높고 낮음";
+                    return "하이로우";
                 default:
                     return "숫자";
             }

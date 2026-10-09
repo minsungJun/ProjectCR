@@ -68,7 +68,7 @@ namespace ProjectCR
                 case ShopEffect.Cross:
                 {
                     decimal pending = flow.Cross.Pending(item.Group);
-                    string waiting = pending > 0m ? $" · 다음 회전 {ShopItemDefinition.GroupCode(item.Group)} +{Percent(pending)} 대기" : string.Empty;
+                    string waiting = pending > 0m ? $" · 다음 회전 {ShopItemDefinition.GroupCode(item.Group)} 베팅 당첨금 +{Percent(pending)} 대기" : string.Empty;
                     if (item.CrossTrigger == CrossTriggerMode.Gain)
                     {
                         decimal progress = flow.Cross.ProgressOf(item.TriggerGroup, item.Group);

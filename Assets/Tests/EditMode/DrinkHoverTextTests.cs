@@ -45,9 +45,9 @@ namespace ProjectCR.Tests
             StringAssert.EndsWith("짝수는 그대로입니다.", even.Effect, "받침 없는 말 뒤에는 '는'");
 
             DrinkHoverText number = DrinkHoverText.For(DrinkOffer.ForPayout(catalog.Drinks.First(d => d.Group == DrinkGroup.Number), BetTarget.Straight(7)), flow);
-            Assert.AreEqual("7번 ×1 → ×1.5", number.Accent);
-            StringAssert.StartsWith("7번 한 칸 베팅의 당첨금 배율", number.Effect);
-            StringAssert.Contains("7이 들어간 스플릿·코너", number.Effect);
+            Assert.AreEqual("숫자 전체 ×1 → ×1.5", number.Accent, "숫자 지급 음료는 대상 없이 묶음 전체");
+            StringAssert.StartsWith("숫자 베팅 전체(", number.Effect);
+            StringAssert.Contains("0 포함", number.Effect);
             StringAssert.Contains("10을 걸어 맞히면 360 → 540", number.Detail);
         }
 
@@ -64,7 +64,19 @@ namespace ProjectCR.Tests
             typeof(ProbabilityDrinkDefinition).GetField("description", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(probability, "{group}({bets}) 중 고른 대상 가중치 {boost}");
             DrinkHoverText chance = DrinkHoverText.For(DrinkOffer.ForProbability(probability), flow);
-            Assert.AreEqual("색상(빨강·검정) 중 고른 대상 가중치 +37%", chance.Effect);
+            Assert.AreEqual("색깔(빨강·검정) 중 고른 대상 가중치 +37%", chance.Effect);
+        }
+
+        [Test]
+        public void NumberChanceDrink_ShowsItsFixedNumber()
+        {
+            ProbabilityDrinkDefinition drink = catalog.ProbabilityDrinks.First(d => d.Group == DrinkGroup.Number);
+            DrinkHoverText text = DrinkHoverText.For(DrinkOffer.ForProbability(drink, BetTarget.Straight(7)), flow);
+
+            Assert.AreEqual("확률 강화", text.Kind);
+            StringAssert.StartsWith("7번 2.63% → ", text.Accent);
+            StringAssert.StartsWith("7번에 공이 떨어질 확률을 올립니다", text.Effect);
+            StringAssert.Contains("7번 1잔째", text.Detail);
         }
 
         [Test]

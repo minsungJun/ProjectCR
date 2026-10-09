@@ -211,7 +211,7 @@ namespace ProjectCR.Tests
         private string FocusReturnTable()
         {
             var text = new StringBuilder();
-            text.AppendLine("[빨강 기대 환수율 + 상점 집중] 행 = 색상 집중 개수(+10%씩), 열 = 음료 없음 / 지급 1잔 / 지급 1잔 + 빨강 확률 3잔");
+            text.AppendLine("[빨강 기대 환수율 + 상점 집중] 행 = 색깔 집중 개수(+10%씩), 열 = 음료 없음 / 지급 1잔 / 지급 1잔 + 빨강 확률 3잔");
             for (int s = 0; s <= 5; s += s < 1 ? 1 : 2)
             {
                 text.Append($"s={s}".PadRight(6));

@@ -11,7 +11,7 @@ namespace ProjectCR
         /// <summary>칩 트레이의 모든 칸 테두리가 천천히 깜빡인다.</summary>
         ChipTray,
 
-        /// <summary>숫자 하나·바깥 베팅(빨강/검정, 홀짝, 높낮이, 더즌, 컬럼)의 베팅 점. 선·교차점은 빼고.</summary>
+        /// <summary>숫자 하나·바깥 베팅(색깔, 홀짝, 하이로우, 더즌, 컬럼)의 베팅 점. 선·교차점은 빼고.</summary>
         NumberAndOutsideSpots,
 
         /// <summary>숫자 사이의 선과 교차점(스플릿·스트리트·코너·식스 라인)의 베팅 점.</summary>

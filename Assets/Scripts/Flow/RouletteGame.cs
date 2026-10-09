@@ -83,7 +83,7 @@ namespace ProjectCR
         [FormerlySerializedAs("payoutMultiplierOverride")]
         [SerializeField] private int straightPayoutOverride;
 
-        [Tooltip("새 게임을 이 음료 잔 수로 시작한다(밸런스 시험용). 순서: 1열, 1–12, 홀수, 빨강, 1–18, 0번(묶음 대표 대상).")]
+        [Tooltip("새 게임을 이 음료 잔 수로 시작한다(밸런스 시험용). 순서: 1열, 1–12, 홀수, 빨강, 1–18(묶음 대표 대상), 숫자 전체.")]
         [SerializeField] private int[] debugStartDrinkStacks = new int[0];
 
         [Tooltip("연출 배속.")]
@@ -204,7 +204,14 @@ namespace ProjectCR
             flow = new GameFlowController(definition, balance, randomSeed, drinkCatalog, shopCatalog);
             for (int i = 0; i < debugStartDrinkStacks.Length && i < DrinkGroups.Count; i++)
             {
-                flow.Drinks.SetStacks(((DrinkGroup)i).Representative(), debugStartDrinkStacks[i]);
+                if ((DrinkGroup)i == DrinkGroup.Number)
+                {
+                    flow.Drinks.SetGroupStacks(DrinkGroup.Number, debugStartDrinkStacks[i]);
+                }
+                else
+                {
+                    flow.Drinks.SetStacks(((DrinkGroup)i).Representative(), debugStartDrinkStacks[i]);
+                }
             }
 
             ApplyDebugOptions();
@@ -959,7 +966,7 @@ namespace ProjectCR
         private void OnDrinkConfirmed(int offerIndex, IReadOnlyList<BetTarget> targets = null)
         {
             IReadOnlyList<DrinkOffer> current = flow.Rewards.CurrentOffer;
-            if (targets == null && current != null && offerIndex >= 0 && offerIndex < current.Count && current[offerIndex].IsProbability)
+            if (targets == null && current != null && offerIndex >= 0 && offerIndex < current.Count && current[offerIndex].NeedsTargetChoice)
             {
                 if (drinkServer != null && DrinkPicker != null)
                 {
@@ -1001,7 +1008,9 @@ namespace ProjectCR
             }
             else
             {
-                Debug.Log($"[RouletteGame] 음료 {drink.DisplayName}({DrinkOffer.TargetLabel(drink.Target)}) {flow.Drinks.StacksOf(drink.Target)}잔 → ×{flow.Drinks.MultiplierOf(drink.Target)}");
+                Debug.Log(drink.IsWholeGroup
+                    ? $"[RouletteGame] 음료 {drink.DisplayName}({drink.Group} 전체) {flow.Drinks.GroupStacksOf(drink.Group)}잔 → ×{flow.Drinks.GroupMultiplierOf(drink.Group)}"
+                    : $"[RouletteGame] 음료 {drink.DisplayName}({DrinkOffer.TargetLabel(drink.Target)}) {flow.Drinks.StacksOf(drink.Target)}잔 → ×{flow.Drinks.MultiplierOf(drink.Target)}");
             }
             RefreshViews();
 

@@ -13,14 +13,18 @@ MonoBehaviour:
   m_Name: Shop_cross_column_number
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: cross_column_number
-  displayName: "COLUMN \u2192 \uC22B\uC790"
+  displayName: "\uCEEC\uB7FC \u2192 \uC22B\uC790"
   description: 
+  cardText: 
   icon: {fileID: 0}
   tint: {r: 0.4862745, g: 0.08627451, b: 0.63529414, a: 1}
   category: 1
   effect: 1
   group: 5
   triggerGroup: 0
+  crossTrigger: 0
+  gainThresholdRatio: 0.5
+  gainTriggerCapPerSpin: 0
   value: 0.25
   priceRatio: 0.2
   priceGrowth: 1.3

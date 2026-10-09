@@ -192,15 +192,19 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void NumberDrink_BoostsOnlyThatNumbersStraightBet()
+        public void NumberDrink_BoostsEveryNumberBet_IncludingZero()
         {
-            flow.Drinks.AddStack(BetTarget.Straight(17));
+            flow.Drinks.AddGroupStack(DrinkGroup.Number);
             BetTarget split = BetTarget.Inside(BetKind.Split, 17, 20);
 
-            // 17 한 칸 ×36 × 1.5, 17이 들어간 스플릿은 ×18 그대로.
+            // 숫자 한 칸 ×36 × 1.5, 스플릿 ×18 × 1.5.
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 17), new ConfirmedBet(17, 2), new ConfirmedBet(split, 2));
-            CollectionAssert.AreEqual(new long[] { 108, 36 }, s.Bets.Select(b => b.Amount));
-            Assert.AreEqual(36m, flow.BuildSpinConfig().MultiplierFor(BetTarget.Straight(20)));
+            CollectionAssert.AreEqual(new long[] { 108, 54 }, s.Bets.Select(b => b.Amount));
+
+            SpinConfig config = flow.BuildSpinConfig();
+            Assert.AreEqual(54m, config.MultiplierFor(BetTarget.Straight(0)), "0도 숫자 베팅");
+            Assert.AreEqual(54m, config.MultiplierFor(BetTarget.Straight(20)));
+            Assert.AreEqual(2m, config.MultiplierFor(Red), "바깥 베팅에는 붙지 않는다");
         }
 
         [Test]

@@ -13,8 +13,9 @@ namespace ProjectCR
 
     /// <summary>
     /// 보상 후보 카드 하나(음료와 한 잔 계수).
-    /// 지급 강화는 후보를 만들 때 대상 하나(1열, 빨강, 7번 …)가 정해지고 그 대상 배율만 오른다.
-    /// 확률 강화의 대상은 후보에 없고, 마실 때 플레이어가 고른다(<see cref="GameFlowController.ConfirmDrink"/>).
+    /// 지급 강화는 후보를 만들 때 대상 하나(1열, 빨강 …)가 정해지고 그 대상 배율만 오른다. 숫자 지급 음료만 대상 없이 숫자 묶음 전체.
+    /// 확률 강화는 마실 때 플레이어가 대상을 고른다(<see cref="GameFlowController.ConfirmDrink"/>).
+    /// 숫자 확률 음료만 후보를 만들 때 숫자 하나가 정해진다(마신 숫자가 다시 잘 나온다, <see cref="DrinkRewardController"/>).
     /// 후보는 한 번 만들면 고를 때까지 그대로다(대상도 다시 뽑지 않는다).
     /// </summary>
     public sealed class DrinkOffer
@@ -36,7 +37,10 @@ namespace ProjectCR
         /// <summary>확률 강화 음료. 지급 강화면 null.</summary>
         public ProbabilityDrinkDefinition Probability { get; }
 
-        /// <summary>지급 강화가 배율을 올릴 대상(후보를 만들 때 정해짐). 확률 강화면 None(마실 때 고른다).</summary>
+        /// <summary>
+        /// 후보를 만들 때 정해진 대상. 지급 강화는 배율을 올릴 대상(숫자는 None = 묶음 전체),
+        /// 확률 강화는 숫자만 정해진 숫자 하나이고 나머지는 None(마실 때 고른다).
+        /// </summary>
         public BetTarget Target { get; }
 
         /// <summary>지급 강화: 한 잔 배율(1.5). 확률 강화: 한 잔 가중치 증가 전체(0.26, 고른 대상 수로 나눈다).</summary>
@@ -49,10 +53,16 @@ namespace ProjectCR
         public Color Tint => IsProbability ? Probability.Tint : Payout.Tint;
         public Sprite Icon => IsProbability ? Probability.Icon : Payout.Icon;
 
-        /// <summary>지급 음료 후보. target은 그 묶음의 대상 하나여야 한다(아니면 묶음 대표 대상으로 바꾼다).</summary>
+        /// <summary>
+        /// 지급 음료 후보. 숫자 음료는 대상 없이 묶음 전체(target 무시). 나머지는 target이 그 묶음의 대상 하나여야 한다(아니면 묶음 대표 대상).
+        /// </summary>
         public static DrinkOffer ForPayout(DrinkDefinition drink, BetTarget target)
         {
-            if (target.IsNone || DrinkGroups.Of(target.Kind) != drink.Group || !drink.Group.Targets().Contains(target))
+            if (drink.Group == DrinkGroup.Number)
+            {
+                target = BetTarget.None;
+            }
+            else if (target.IsNone || !drink.Group.Targets().Contains(target))
             {
                 target = drink.Group.Representative();
             }
@@ -60,8 +70,22 @@ namespace ProjectCR
             return new DrinkOffer(DrinkEffectKind.Payout, drink, null, target, drink.BoostPerStack);
         }
 
-        public static DrinkOffer ForProbability(ProbabilityDrinkDefinition drink) =>
-            new DrinkOffer(DrinkEffectKind.Probability, null, drink, BetTarget.None, drink.Boost);
+        /// <summary>확률 음료 후보. 숫자 음료는 target(숫자 하나)이 정해져 있고, 나머지는 None(마실 때 고른다).</summary>
+        public static DrinkOffer ForProbability(ProbabilityDrinkDefinition drink, BetTarget target = default)
+        {
+            if (drink.Group != DrinkGroup.Number || !drink.Group.Targets().Contains(target))
+            {
+                target = drink.Group == DrinkGroup.Number ? BetTarget.Straight(0) : BetTarget.None;
+            }
+
+            return new DrinkOffer(DrinkEffectKind.Probability, null, drink, target, drink.Boost);
+        }
+
+        /// <summary>마실 때 대상을 골라야 하는가(숫자가 아닌 확률 음료).</summary>
+        public bool NeedsTargetChoice => IsProbability && Target.IsNone;
+
+        /// <summary>지급 강화가 묶음 전체에 붙는가(숫자 지급 음료).</summary>
+        public bool IsWholeGroup => !IsProbability && Target.IsNone;
 
         /// <summary>확률 강화에서 고를 수 있는 대상. 지급 강화면 빈 목록.</summary>
         public System.Collections.Generic.List<BetTarget> TargetOptions() =>

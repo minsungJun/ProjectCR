@@ -5,8 +5,9 @@ namespace ProjectCR
     /// <summary>
     /// 이번 게임에서 마신 지급 음료(대상별 잔 수). GameFlowController가 가지고 있어서 새 게임이면 새로 만들어진다.
     ///
-    /// 지급 음료는 후보에 정해진 <b>대상 하나</b>(1열, 빨강, 7번 …)의 배율만 올린다. 같은 묶음의 다른 대상은 그대로다.
-    /// 대상은 베팅과 정확히 같아야 한다: 7번 음료는 7번 한 칸 베팅에만 붙고, 7이 들어간 스플릿·코너에는 붙지 않는다.
+    /// 지급 음료는 후보에 정해진 <b>대상 하나</b>(1열, 빨강, 홀수 …)의 배율만 올린다. 같은 묶음의 다른 대상은 그대로다.
+    /// 대상은 베팅과 정확히 같아야 한다(빨강 음료는 빨강 베팅에만).
+    /// 숫자 음료만 대상이 없고 <b>숫자 묶음 전체</b>(0을 포함한 숫자 하나·스플릿·스트리트·코너·식스 라인)의 배율을 올린다(<see cref="AddGroupStack"/>).
     ///
     /// 배율은 저장하지 않고 매번 boost^잔수로 다시 계산한다. 이전 결과에 또 곱하는 일이 없다.
     /// 잔 수에는 상한이 없다. 배율은 <see cref="MultiplierCap"/>에서 멈춘다 —
@@ -22,6 +23,7 @@ namespace ProjectCR
         // 처음 마신 순서를 지킨다(표시용).
         private readonly List<BetTarget> targets = new List<BetTarget>();
         private readonly Dictionary<BetTarget, int> stacks = new Dictionary<BetTarget, int>();
+        private readonly int[] groupStacks = new int[DrinkGroups.Count];
 
         /// <summary>catalog가 없으면 모든 대상이 ×1이다.</summary>
         public DrinkRunState(DrinkCatalog catalog)
@@ -40,6 +42,11 @@ namespace ProjectCR
             {
                 int total = 0;
                 foreach (int count in stacks.Values)
+                {
+                    total += count;
+                }
+
+                foreach (int count in groupStacks)
                 {
                     total += count;
                 }
@@ -79,6 +86,27 @@ namespace ProjectCR
 
             stacks[target] = count;
         }
+
+        /// <summary>묶음 전체 음료(숫자)의 잔 수.</summary>
+        public int GroupStacksOf(DrinkGroup group) => groupStacks[(int)group];
+
+        /// <summary>묶음 전체에 한 잔(숫자 음료).</summary>
+        public void AddGroupStack(DrinkGroup group)
+        {
+            if (groupStacks[(int)group] < int.MaxValue)
+            {
+                groupStacks[(int)group]++;
+            }
+        }
+
+        /// <summary>디버그·테스트: 묶음 전체 잔 수를 직접 정한다.</summary>
+        public void SetGroupStacks(DrinkGroup group, int count) => groupStacks[(int)group] = count < 0 ? 0 : count;
+
+        /// <summary>지금 잔 수 기준 묶음 전체 배율.</summary>
+        public decimal GroupMultiplierOf(DrinkGroup group) => GroupMultiplierAt(group, GroupStacksOf(group));
+
+        /// <summary>묶음 전체 잔 수가 count일 때의 배율.</summary>
+        public decimal GroupMultiplierAt(DrinkGroup group, int count) => Power(catalog != null ? catalog.BoostOf(group) : 1m, count);
 
         /// <summary>지금 잔 수 기준 대상 배율.</summary>
         public decimal MultiplierOf(BetTarget target) => MultiplierAt(target, StacksOf(target));

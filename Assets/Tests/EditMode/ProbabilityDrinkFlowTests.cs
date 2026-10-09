@@ -181,17 +181,67 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void ConfirmProbabilityDrink_OneTarget_GetsWholeBoost()
+        public void NumberChanceDrink_UsesItsOfferedNumber_WithoutChoosing()
         {
             var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
             int number = Index(flow, DrinkGroup.Number);
-            BetTarget seven = BetTarget.Straight(7);
+            DrinkOffer offered = flow.Rewards.CurrentOffer[number];
+            Assert.IsTrue(offered.Target.IsStraight, "숫자 확률 음료는 후보에 숫자 하나가 정해져 있다");
+            Assert.IsFalse(offered.NeedsTargetChoice);
 
-            DrinkOffer drink = flow.ConfirmDrink(number, new[] { seven });
-            Assert.IsNotNull(drink);
+            DrinkOffer drink = flow.ConfirmDrink(number, new[] { BetTarget.Straight(offered.Target.Number == 7 ? 8 : 7) });
+            Assert.AreSame(offered, drink, "고른 대상을 넘겨도 정해진 숫자를 쓴다");
+            Assert.AreEqual(offered.Target, flow.Probabilities.Effects.Single().Target);
             Assert.AreEqual(0.17m, flow.Probabilities.Effects.Single().Total);
-            Assert.AreEqual(1, flow.Probabilities.TotalStacks);
+            CollectionAssert.AreEqual(new[] { offered.Target }, flow.DrunkNumbers());
             Assert.AreEqual(0, flow.Drinks.TotalStacks, "지급 배율 음료는 늘지 않는다.");
+        }
+
+        private static Dictionary<int, int> Draws(IReadOnlyList<BetTarget> drunk, int times)
+        {
+            var random = new System.Random(1234);
+            var counts = new Dictionary<int, int>();
+            for (int i = 0; i < times; i++)
+            {
+                int n = DrinkRewardController.DrawNumber(drunk, random).Number;
+                counts[n] = counts.TryGetValue(n, out int c) ? c + 1 : 1;
+            }
+
+            return counts;
+        }
+
+        [Test]
+        public void NumberDraw_NothingDrunk_AnyOf37()
+        {
+            Dictionary<int, int> counts = Draws(new BetTarget[0], 37_000);
+            Assert.AreEqual(37, counts.Count, "0~36 모두 나온다");
+            Assert.That(counts.Values.Min(), Is.GreaterThan(800));
+            Assert.That(counts.Values.Max(), Is.LessThan(1200));
+        }
+
+        [Test]
+        public void NumberDraw_OneDrunk_HalfTheTime()
+        {
+            Dictionary<int, int> counts = Draws(new[] { BetTarget.Straight(7) }, 20_000);
+            Assert.AreEqual(0.5, counts[7] / 20_000d, 0.02, "마신 7이 50%");
+            Assert.AreEqual(37, counts.Count, "나머지 50%는 다른 숫자");
+        }
+
+        [Test]
+        public void NumberDraw_TwoDrunk_ThirdEach()
+        {
+            Dictionary<int, int> counts = Draws(new[] { BetTarget.Straight(7), BetTarget.Straight(12) }, 30_000);
+            Assert.AreEqual(1d / 3d, counts[7] / 30_000d, 0.02);
+            Assert.AreEqual(1d / 3d, counts[12] / 30_000d, 0.02);
+            int fresh = counts.Where(p => p.Key != 7 && p.Key != 12).Sum(p => p.Value);
+            Assert.AreEqual(1d / 3d, fresh / 30_000d, 0.02, "새 숫자 1/3");
+        }
+
+        [Test]
+        public void NumberDraw_AllDrunk_PicksOnlyThose()
+        {
+            var all = Enumerable.Range(0, 37).Select(BetTarget.Straight).ToList();
+            Assert.AreEqual(37, Draws(all, 2_000).Count);
         }
 
         /// <summary>기본 계수는 "대상 하나만 골라 1잔 마시면 그 대상 베팅의 기대 환수율 ≈ 110%" 기준이다.</summary>

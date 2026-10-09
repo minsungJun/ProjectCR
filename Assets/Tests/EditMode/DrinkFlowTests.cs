@@ -256,6 +256,12 @@ namespace ProjectCR.Tests
                 foreach (DrinkOffer offer in new DrinkRewardController(catalog, seed).CreateOffer())
                 {
                     Assert.IsFalse(offer.IsProbability);
+                    if (offer.Group == DrinkGroup.Number)
+                    {
+                        Assert.IsTrue(offer.IsWholeGroup, "숫자 지급 음료는 대상 없이 숫자 전체");
+                        continue;
+                    }
+
                     CollectionAssert.Contains(offer.Group.Targets(), offer.Target, "대상은 그 음료 묶음의 대상 하나");
                     seen.Add(offer.Target);
                 }

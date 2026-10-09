@@ -310,8 +310,8 @@ namespace ProjectCR
                     return $"고른 대상이 나올 확률 +{percent}\n{group.ToKorean()} 베팅 당첨금 +{percent}";
                 case ShopEffect.Cross:
                     return crossTrigger == CrossTriggerMode.Gain
-                        ? $"이번 라운드 {GroupCode(triggerGroup)} 누적 지급 {GainGoalText(due)}마다\n다음 회전 {GroupCode(group)} +{percent}"
-                        : $"{GroupCode(triggerGroup)} 당첨 시\n다음 회전 {GroupCode(group)} +{percent}";
+                        ? $"이번 라운드 {GroupCode(triggerGroup)} 누적 지급 {GainGoalText(due)}마다\n다음 회전 {GroupCode(group)} 베팅 당첨금 +{percent}"
+                        : $"{GroupCode(triggerGroup)} 당첨 시\n다음 회전 {GroupCode(group)} 베팅 당첨금 +{percent}";
                 case ShopEffect.PaymentSupport:
                     return $"납부할 때마다\n납부금 {percent} 환급";
                 case ShopEffect.ExtraBall:
@@ -339,8 +339,8 @@ namespace ProjectCR
                            + $"② {group.ToKorean()} 베팅 전체({group.BetsKorean()})의 당첨금 +{percent}. 고른 대상에 걸지 않아도 ②는 붙습니다";
                 case ShopEffect.Cross:
                     return crossTrigger == CrossTriggerMode.Gain
-                        ? $"이번 라운드 {GroupCode(triggerGroup)} 베팅 지급액(원금 포함) 누적이 {GainGoalText(due)}에 닿을 때마다 다음 회전 {GroupCode(group)} 지급액 +{percent}. 초과분은 이월, 라운드가 바뀌면 미달분은 사라집니다"
-                        : $"{GroupCode(triggerGroup)} 베팅이 당첨되면 다음 회전 {GroupCode(group)} 지급액 +{percent} (회전당 1번)";
+                        ? $"이번 라운드 {GroupCode(triggerGroup)} 베팅 지급액(원금 포함) 누적이 {GainGoalText(due)}에 닿을 때마다 다음 회전 한 번 {GroupCode(group)} 베팅({group.BetsKorean()})의 당첨금 +{percent}. 초과분은 이월, 라운드가 바뀌면 미달분은 사라집니다"
+                        : $"{GroupCode(triggerGroup)} 베팅({triggerGroup.BetsKorean()})이 당첨되면 다음 회전 한 번 {GroupCode(group)} 베팅({group.BetsKorean()})의 당첨금 +{percent} (회전당 1번)";
                 case ShopEffect.PaymentSupport:
                     return $"라운드가 끝나 납부할 때마다 낸 납부금의 {percent}를 돌려받습니다(납부금은 그대로). 여러 개면 더해집니다";
                 case ShopEffect.ExtraBall:
@@ -378,25 +378,8 @@ namespace ProjectCR
             }
         }
 
-        /// <summary>교차 강화 이름에 쓰는 묶음 표기(COLUMN, DOZEN, 홀짝, 색상, 높낮이, 숫자).</summary>
-        public static string GroupCode(DrinkGroup group)
-        {
-            switch (group)
-            {
-                case DrinkGroup.Column:
-                    return "COLUMN";
-                case DrinkGroup.Dozen:
-                    return "DOZEN";
-                case DrinkGroup.Parity:
-                    return "홀짝";
-                case DrinkGroup.Color:
-                    return "색상";
-                case DrinkGroup.Range:
-                    return "높낮이";
-                default:
-                    return "숫자";
-            }
-        }
+        /// <summary>교차 강화 이름에 쓰는 묶음 표기. 게임 전체 용어와 같다(컬럼, 더즌, 홀짝, 색깔, 하이로우, 숫자).</summary>
+        public static string GroupCode(DrinkGroup group) => group.ToKorean();
 
         /// <summary>코드로 만든다(테스트, 기본 에셋 생성).</summary>
         public static ShopItemDefinition Create(string id, string displayName, ShopCategory category, ShopEffect effect, float value,
@@ -449,7 +432,7 @@ namespace ProjectCR
                         $"{GroupCode(trigger)} → {GroupCode(target)}",
                         ShopCategory.Cross, ShopEffect.Cross, 0.25f, 0.2f, 1.3f, 1, 1, target, trigger);
 
-                    // DOZEN → COLUMN만 누적 지급액 발동(납부금의 50%마다). 나머지는 당첨 발동.
+                    // 더즌 → 컬럼만 누적 지급액 발동(납부금의 50%마다). 나머지는 당첨 발동.
                     if (trigger == DrinkGroup.Dozen && target == DrinkGroup.Column)
                     {
                         cross.crossTrigger = CrossTriggerMode.Gain;
@@ -473,23 +456,6 @@ namespace ProjectCR
             return items;
         }
 
-        private static string FocusName(DrinkGroup group)
-        {
-            switch (group)
-            {
-                case DrinkGroup.Column:
-                    return "컬럼";
-                case DrinkGroup.Dozen:
-                    return "더즌";
-                case DrinkGroup.Parity:
-                    return "홀짝";
-                case DrinkGroup.Color:
-                    return "색상";
-                case DrinkGroup.Range:
-                    return "높낮이";
-                default:
-                    return "숫자";
-            }
-        }
+        private static string FocusName(DrinkGroup group) => group.ToKorean();
     }
 }

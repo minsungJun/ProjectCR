@@ -81,7 +81,7 @@ namespace ProjectCR.Tests
             Assert.IsTrue(all.Where(i => i.Effect == ShopEffect.Cross && i.Id != ItemId).All(i => i.CrossTrigger == CrossTriggerMode.Win),
                 "나머지 교차 강화는 당첨 발동 그대로");
 
-            Assert.AreEqual("이번 라운드 DOZEN 누적 지급 60마다\n다음 회전 COLUMN +25%", Item(ItemId).CardTextFor(120));
+            Assert.AreEqual("이번 라운드 더즌 누적 지급 60마다\n다음 회전 컬럼 베팅 당첨금 +25%", Item(ItemId).CardTextFor(120));
             StringAssert.Contains("납부금의 50%", Item(ItemId).CardTextFor(0));
         }
 
@@ -232,7 +232,7 @@ namespace ProjectCR.Tests
         public void Boost_AppliesToNextSpinOnly()
         {
             GameFlowController flow = WithItem();
-            Spin(flow, new[] { 1 }, (Dozen1, 20)); // 60 → 다음 회전 COLUMN +25%
+            Spin(flow, new[] { 1 }, (Dozen1, 20)); // 60 → 다음 회전 컬럼 +25%
 
             SettlementResult boosted = Spin(flow, new[] { 1 }, (Column1, 10));
             Assert.AreEqual(37, boosted.TotalPayout, "10 × 3 × 1.25 = 37.5 버림");
@@ -298,7 +298,7 @@ namespace ProjectCR.Tests
             }
 
             Assert.AreEqual(30m, Progress(flow));
-            Assert.AreEqual("COLUMN 강화까지 30 / 60", BetHoverInfo.CrossProgressOf(Dozen1, flow.Cross, flow.Round.CurrentDue));
+            Assert.AreEqual("컬럼 강화까지 30 / 60", BetHoverInfo.CrossProgressOf(Dozen1, flow.Cross, flow.Round.CurrentDue));
             Assert.AreEqual(string.Empty, BetHoverInfo.CrossProgressOf(Column1, flow.Cross, flow.Round.CurrentDue), "발동 묶음 위에서만");
         }
 

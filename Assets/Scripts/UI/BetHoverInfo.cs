@@ -29,7 +29,7 @@ namespace ProjectCR
 
         public BetTarget Target { get; }
 
-        /// <summary>단독 · 스플릿 · 스트리트(트리오) · 코너(퍼스트 포) · 식스라인 · n번째 COLUMN/DOZEN · 홀수 · 짝수 · 빨강 · 검정 · LOW · HIGH.</summary>
+        /// <summary>단독 · 스플릿 · 스트리트(트리오) · 코너(퍼스트 포) · 식스라인 · n번째 컬럼/더즌 · 홀수 · 짝수 · 빨강 · 검정 · LOW · HIGH.</summary>
         public string KindName { get; }
 
         /// <summary>대상 숫자. 안쪽은 전부 나열, 바깥은 범위나 이름.</summary>
@@ -54,7 +54,7 @@ namespace ProjectCR
         /// <summary>지금 이 칩을 한 개 더 놓을 돈이 있는가.</summary>
         public bool Affordable { get; }
 
-        /// <summary>이 베팅 묶음이 발동 조건인 누적형 교차 강화 진행도("COLUMN 강화까지 35 / 60"). 없으면 빈 문자열.</summary>
+        /// <summary>이 베팅 묶음이 발동 조건인 누적형 교차 강화 진행도("컬럼 강화까지 35 / 60"). 없으면 빈 문자열.</summary>
         public string Progress { get; }
 
         public static BetHoverInfo Create(BetTarget target, SpinConfig config, long chipValue, long maxMoney, bool affordable,
@@ -68,7 +68,7 @@ namespace ProjectCR
 
         /// <summary>
         /// 대상 베팅의 묶음을 발동 조건으로 하는 누적형(Gain) 교차 강화의 이번 라운드 진행도. 읽기만 한다.
-        /// 예: DOZEN 베팅 → "COLUMN 강화까지 35 / 60". 여러 개면 " · "로 잇는다.
+        /// 예: 더즌 베팅 → "컬럼 강화까지 35 / 60". 여러 개면 " · "로 잇는다.
         /// </summary>
         public static string CrossProgressOf(BetTarget target, CrossBetEffectState cross, long roundDue)
         {
@@ -108,17 +108,17 @@ namespace ProjectCR
                 case BetKind.SixLine:
                     return "식스라인";
                 case BetKind.Column1:
-                    return "첫 번째 COLUMN";
+                    return "첫 번째 컬럼";
                 case BetKind.Column2:
-                    return "두 번째 COLUMN";
+                    return "두 번째 컬럼";
                 case BetKind.Column3:
-                    return "세 번째 COLUMN";
+                    return "세 번째 컬럼";
                 case BetKind.Dozen1:
-                    return "첫 번째 DOZEN";
+                    return "첫 번째 더즌";
                 case BetKind.Dozen2:
-                    return "두 번째 DOZEN";
+                    return "두 번째 더즌";
                 case BetKind.Dozen3:
-                    return "세 번째 DOZEN";
+                    return "세 번째 더즌";
                 case BetKind.Odd:
                     return "홀수";
                 case BetKind.Even:

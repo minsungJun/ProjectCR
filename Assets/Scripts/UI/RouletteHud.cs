@@ -122,7 +122,7 @@ namespace ProjectCR
             RefreshDealerHint(flow);
         }
 
-        /// <summary>딜러의 귀띔: "이번 회전에 두 번째 DOZEN(13~24)은 나오지 않습니다". 단서가 없으면 숨긴다.</summary>
+        /// <summary>딜러의 귀띔: "이번 회전에 두 번째 더즌(13~24)은 나오지 않습니다". 단서가 없으면 숨긴다.</summary>
         private void RefreshDealerHint(GameFlowController flow)
         {
             if (dealerHint == null)
@@ -191,7 +191,7 @@ namespace ProjectCR
             tooltipStake.EnableInClassList("bet-tooltip__stake--short", !info.Affordable);
             tooltipStake.style.display = showPayout ? DisplayStyle.Flex : DisplayStyle.None;
 
-            // 누적형 교차 강화 진행도(예: DOZEN 위에서 "COLUMN 강화까지 35 / 60").
+            // 누적형 교차 강화 진행도(예: 더즌 위에서 "컬럼 강화까지 35 / 60").
             tooltipProgress.text = info.Progress;
             tooltipProgress.style.display = showPayout && info.Progress.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             betTooltip.style.display = DisplayStyle.Flex;

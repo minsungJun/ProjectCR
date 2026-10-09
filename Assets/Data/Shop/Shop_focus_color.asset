@@ -13,14 +13,18 @@ MonoBehaviour:
   m_Name: Shop_focus_color
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: focus_color
-  displayName: "\uC0C9\uC0C1 \uC9D1\uC911"
+  displayName: "\uC0C9\uAE54 \uC9D1\uC911"
   description: 
+  cardText: 
   icon: {fileID: 0}
   tint: {r: 0.76862746, g: 0.0627451, b: 0.15294118, a: 1}
   category: 0
   effect: 0
   group: 3
   triggerGroup: 0
+  crossTrigger: 0
+  gainThresholdRatio: 0.5
+  gainTriggerCapPerSpin: 0
   value: 0.1
   priceRatio: 0.3
   priceGrowth: 1.5

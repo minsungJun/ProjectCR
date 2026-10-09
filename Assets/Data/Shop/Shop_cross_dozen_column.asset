@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shop_cross_dozen_column
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopItemDefinition
   id: cross_dozen_column
-  displayName: "DOZEN \u2192 COLUMN"
+  displayName: "\uB354\uC98C \u2192 \uCEEC\uB7FC"
   description: 
   cardText: 
   icon: {fileID: 0}

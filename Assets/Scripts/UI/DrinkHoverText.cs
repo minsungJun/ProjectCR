@@ -53,17 +53,32 @@ namespace ProjectCR
             if (!offer.IsProbability)
             {
                 DrinkGroup group = offer.Group;
+                decimal boost = offer.Payout.BoostPerStack;
+                if (offer.IsWholeGroup)
+                {
+                    // 숫자 음료: 0을 포함한 숫자 베팅 전체.
+                    int groupStacks = flow.Drinks.GroupStacksOf(group);
+                    decimal groupNow = flow.Drinks.GroupMultiplierOf(group);
+                    decimal groupAfter = flow.Drinks.GroupMultiplierAt(group, groupStacks + 1);
+                    int straight = config.PayoutFor(BetTarget.Straight(7));
+                    return new DrinkHoverText(
+                        offer.DisplayName,
+                        "지급 강화",
+                        $"{group.ToKorean()} 전체 ×{NumberText.Multiplier(groupNow)} → ×{NumberText.Multiplier(groupAfter)}",
+                        Custom(offer.Payout.CustomDescription, group, NumberText.Multiplier(boost), group.BetsKorean(), $"{group.ToKorean()} 전체")
+                        ?? $"{group.ToKorean()} 베팅 전체({group.BetsKorean()}, 0 포함)의 당첨금 배율에 ×{NumberText.Multiplier(boost)}를 곱합니다.",
+                        $"예: 숫자 하나에 {ExampleStake}을 걸어 맞히면 {Payout(straight, groupNow)} → {Payout(straight, groupAfter)}",
+                        $"이번 게임 내내 유지 · {groupStacks + 1}잔째, 마실 때마다 배율이 곱해져 쌓입니다");
+                }
+
                 BetTarget target = offer.Target;
                 string label = DrinkOffer.TargetLabel(target);
                 int stacks = flow.Drinks.StacksOf(target);
                 decimal now = flow.Drinks.MultiplierOf(target);
                 decimal after = flow.Drinks.MultiplierAt(target, stacks + 1);
-                decimal boost = offer.Payout.BoostPerStack;
                 int basePayout = config.PayoutFor(target);
-                string others = group == DrinkGroup.Number
-                    ? $"{target.Number}{Particle(target.Number.ToString(CultureInfo.InvariantCulture), "이", "가")} 들어간 스플릿·코너 등과 다른 숫자는 그대로입니다."
-                    : OthersUnchanged(group, target);
-                string betName = group == DrinkGroup.Number ? $"{label} 한 칸" : label;
+                string others = OthersUnchanged(group, target);
+                string betName = label;
                 return new DrinkHoverText(
                     offer.DisplayName,
                     "지급 강화",
@@ -75,8 +90,25 @@ namespace ProjectCR
             }
 
             DrinkGroup chanceGroup = offer.Group;
+            if (!offer.NeedsTargetChoice)
+            {
+                // 숫자 확률 음료: 후보에 정해진 숫자 하나.
+                BetTarget number = offer.Target;
+                string numberLabel = DrinkOffer.TargetLabel(number);
+                int drunk = flow.Probabilities.StacksOf(number);
+                (double numberNow, double numberAfter) = flow.PreviewProbabilityDrink(new[] { number }, offer.Boost);
+                return new DrinkHoverText(
+                    offer.DisplayName,
+                    "확률 강화",
+                    $"{numberLabel} {NumberText.Percent(numberNow)} → {NumberText.Percent(numberAfter)}",
+                    Custom(offer.Probability.CustomDescription, chanceGroup, "+" + Percent(offer.Boost), Choices(chanceGroup), numberLabel)
+                    ?? $"{numberLabel}에 공이 떨어질 확률을 올립니다. 당첨금 배율은 그대로입니다.",
+                    $"추첨 가중치 +{Percent(offer.Boost)} · {numberLabel} {drunk + 1}잔째",
+                    "이번 게임 내내 유지 · 마신 숫자는 다음 숫자 음료에 다시 나올 확률이 높습니다");
+            }
+
             string choices = Choices(chanceGroup);
-            BetTarget example = chanceGroup == DrinkGroup.Number ? BetTarget.Straight(7) : offer.TargetOptions()[0];
+            BetTarget example = offer.TargetOptions()[0];
             (double chanceNow, double chanceAfter) = flow.PreviewProbabilityDrink(new[] { example }, offer.Boost);
             return new DrinkHoverText(
                 offer.DisplayName,

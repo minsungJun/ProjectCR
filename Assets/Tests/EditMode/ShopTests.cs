@@ -61,7 +61,7 @@ namespace ProjectCR.Tests
             var pairs = all.Where(i => i.Category == ShopCategory.Cross).Select(i => (i.TriggerGroup, i.Group)).ToList();
             Assert.AreEqual(30, pairs.Distinct().Count());
             Assert.IsTrue(pairs.All(p => p.TriggerGroup != p.Group));
-            Assert.IsTrue(all.Any(i => i.DisplayName == "COLUMN → DOZEN"));
+            Assert.IsTrue(all.Any(i => i.DisplayName == "컬럼 → 더즌"));
         }
 
         [Test]
@@ -305,7 +305,7 @@ namespace ProjectCR.Tests
             Assert.AreEqual(ShopError.None, flow.Shop.Buy(0, Red));
             SpinConfig config = flow.BuildSpinConfig();
 
-            Assert.AreEqual(2.2m, config.MultiplierFor(Red), "색상 지급 +10%");
+            Assert.AreEqual(2.2m, config.MultiplierFor(Red), "색깔 지급 +10%");
             Assert.AreEqual(2.2m, config.MultiplierFor(Black), "지급 강화는 묶음 전체");
             Assert.AreEqual(3m, config.MultiplierFor(BetTarget.Outside(BetKind.Dozen1)), "다른 묶음은 그대로");
             Assert.AreEqual(1.1d, config.Weights[definition.IndexOfNumber(32)], 1e-12, "빨강 칸 가중치 +10%");
@@ -373,7 +373,7 @@ namespace ProjectCR.Tests
         public void Cross_NeedsActualBet_NotJustResultNumber()
         {
             GameFlowController flow = WithCross("cross_color_column");
-            Spin(flow, BetTarget.Straight(32), 10, 32); // 32는 빨강이지만 색상 베팅이 아니다.
+            Spin(flow, BetTarget.Straight(32), 10, 32); // 32는 빨강이지만 색깔 베팅이 아니다.
             Assert.AreEqual(0m, flow.Cross.Pending(DrinkGroup.Column));
         }
 
