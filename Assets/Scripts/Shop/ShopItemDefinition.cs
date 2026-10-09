@@ -38,7 +38,7 @@ namespace ProjectCR
         /// <summary>이번 라운드 남은 회전 +1.</summary>
         SpareSpin,
 
-        /// <summary>다음 회전이 일반 낙첨이면 베팅금 일부 환급.</summary>
+        /// <summary>돈을 잃은 회전이면 1장 써서 잃은 금액 일부 환급(해골 제외).</summary>
         Insurance,
 
         /// <summary>딜러의 귀띔: 상점을 나간 뒤 첫 회전에 나오지 않을 바깥 베팅 하나를 알려 준다(결과를 미리 뽑아 둔다).</summary>
@@ -271,7 +271,7 @@ namespace ProjectCR
                     case ShopEffect.SkullShield:
                         return "게임 전체 1회 · 해골이 나오면 자동";
                     case ShopEffect.Insurance:
-                        return "자동 사용 · 다음 회전부터 회전마다 1장씩";
+                        return "자동 사용 · 돈을 잃은 회전에만 1장씩";
                     case ShopEffect.DealerHint:
                         return "자동 사용 · 상점을 나간 뒤 첫 회전";
                     case ShopEffect.DoubleUp:
@@ -307,7 +307,7 @@ namespace ProjectCR
             switch (effect)
             {
                 case ShopEffect.Focus:
-                    return $"고른 대상 확률 +{percent}\n{group.ToKorean()} 지급액 +{percent}";
+                    return $"고른 대상이 나올 확률 +{percent}\n{group.ToKorean()} 베팅 당첨금 +{percent}";
                 case ShopEffect.Cross:
                     return crossTrigger == CrossTriggerMode.Gain
                         ? $"이번 라운드 {GroupCode(triggerGroup)} 누적 지급 {GainGoalText(due)}마다\n다음 회전 {GroupCode(group)} +{percent}"
@@ -325,7 +325,7 @@ namespace ProjectCR
                 case ShopEffect.DoubleUp:
                     return $"이번 라운드 마지막 회전\n지급 ×{Value.ToString("0.##")}";
                 default:
-                    return $"일반 낙첨 시\n베팅금 {percent} 환급";
+                    return $"돈을 잃은 회전에\n잃은 금액 {percent} 환급";
             }
         }
 
@@ -335,7 +335,8 @@ namespace ProjectCR
             switch (effect)
             {
                 case ShopEffect.Focus:
-                    return $"고른 {group.ToKorean()} 대상 추첨 가중치 +{percent}, {group.BetsKorean()} 베팅 지급액 +{percent}";
+                    return $"두 가지를 올립니다. ① 고른 대상(예: {ExampleTarget(group)}) 숫자에 공이 떨어질 추첨 가중치 +{percent} "
+                           + $"② {group.ToKorean()} 베팅 전체({group.BetsKorean()})의 당첨금 +{percent}. 고른 대상에 걸지 않아도 ②는 붙습니다";
                 case ShopEffect.Cross:
                     return crossTrigger == CrossTriggerMode.Gain
                         ? $"이번 라운드 {GroupCode(triggerGroup)} 베팅 지급액(원금 포함) 누적이 {GainGoalText(due)}에 닿을 때마다 다음 회전 {GroupCode(group)} 지급액 +{percent}. 초과분은 이월, 라운드가 바뀌면 미달분은 사라집니다"
@@ -353,7 +354,27 @@ namespace ProjectCR
                 case ShopEffect.DoubleUp:
                     return $"이번 라운드 마지막 회전의 지급액 ×{Value.ToString("0.##")}. 라운드가 끝나면 사라집니다";
                 default:
-                    return $"다음 회전이 모두 일반 낙첨이면 베팅금의 {percent} 환급 (해골 낙첨은 제외)";
+                    return $"회전에서 돈을 잃으면(받은 돈이 건 돈보다 적으면) 1장을 써서 잃은 금액의 {percent}를 돌려받습니다. 본전·이득인 회전에는 쓰지 않습니다 (해골 낙첨은 제외)";
+            }
+        }
+
+        /// <summary>집중 강화 설명의 대상 예시.</summary>
+        private static string ExampleTarget(DrinkGroup group)
+        {
+            switch (group)
+            {
+                case DrinkGroup.Column:
+                    return "2열";
+                case DrinkGroup.Dozen:
+                    return "13–24";
+                case DrinkGroup.Parity:
+                    return "홀수";
+                case DrinkGroup.Color:
+                    return "빨강";
+                case DrinkGroup.Range:
+                    return "1–18";
+                default:
+                    return "7번";
             }
         }
 

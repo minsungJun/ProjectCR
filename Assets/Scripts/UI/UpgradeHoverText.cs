@@ -34,15 +34,15 @@ namespace ProjectCR
         {
             ShopItemDefinition item = owned.Item;
             long due = flow.Round.CurrentDue;
-            return new UpgradeHoverText(item.DisplayName, KindOf(owned), item.DescriptionFor(due), DetailOf(owned, flow), item.Duration);
+            return new UpgradeHoverText(item.DisplayName, KindOf(owned, flow.Definition), item.DescriptionFor(due), DetailOf(owned, flow), item.Duration);
         }
 
-        private static string KindOf(OwnedUpgrade owned)
+        private static string KindOf(OwnedUpgrade owned, RouletteDefinition definition)
         {
             switch (owned.Item.Category)
             {
                 case ShopCategory.Focus:
-                    return owned.Target.IsNone ? "집중 강화" : $"집중 강화 · {DrinkOffer.TargetLabel(owned.Target)}";
+                    return owned.Target.IsNone ? "집중 강화" : $"집중 강화 · 대상 {DrinkOffer.TargetWithNumbers(owned.Target, definition)}";
                 case ShopCategory.Cross:
                     return "교차 강화";
                 case ShopCategory.PaymentSupport:
@@ -59,7 +59,7 @@ namespace ProjectCR
             {
                 case ShopEffect.Focus:
                 {
-                    string payout = $"{item.Group.ToKorean()} 지급 +{Percent(flow.Upgrades.PayoutIncrease(item.Group))}";
+                    string payout = $"{item.Group.ToKorean()} 베팅 당첨금 +{Percent(flow.Upgrades.PayoutIncrease(item.Group))}";
                     return owned.Target.IsNone
                         ? payout
                         : $"{payout} · {DrinkOffer.TargetLabel(owned.Target)} 등장 확률 {NumberText.Percent(flow.BuildSpinConfig().ProbabilityOf(owned.Target))}";

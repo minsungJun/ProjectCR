@@ -3,7 +3,8 @@ using UnityEngine;
 namespace ProjectCR
 {
     /// <summary>
-    /// 음료 한 종류(정적 데이터). 마실 때마다 묶음 하나의 지급 배율에 boostPerStack을 한 번 더 곱한다.
+    /// 지급 음료 한 종류(정적 데이터). 후보에 나올 때 묶음 안의 대상 하나(1열, 빨강, 7번 …)가 정해지고,
+    /// 마시면 <b>그 대상</b>의 지급 배율에만 boostPerStack을 한 번 더 곱한다.
     /// 지금 몇 잔 마셨는지는 여기 두지 않는다(<see cref="DrinkRunState"/>).
     /// </summary>
     [CreateAssetMenu(fileName = "Drink", menuName = "ProjectCR/Drink")]
@@ -13,7 +14,8 @@ namespace ProjectCR
 
         [SerializeField] private string displayName = "음료";
 
-        [Tooltip("카드에 보이는 효과 설명. 비우면 묶음에서 만든다.")]
+        [Tooltip("툴팁의 효과 설명 줄. 비우면 자동 문장(\"1열 베팅의 당첨금 배율에 ×1.5를 곱합니다. 2열·3열은 그대로입니다.\").\n" +
+                 "{target} = 이번에 정해진 대상(1열, 빨강, 7번 …), {group} = 묶음 이름(컬럼), {bets} = 묶음의 대상(1열·2열·3열), {boost} = 잔당 배율(1.5)로 바뀐다.")]
         [TextArea(2, 4)]
         [SerializeField] private string description;
 
@@ -36,9 +38,8 @@ namespace ProjectCR
         public Color Tint => tint;
         public GameObject Model => model;
 
-        public string Description => string.IsNullOrWhiteSpace(description)
-            ? $"{group.BetsKorean()} 베팅 지급 ×{NumberText.Multiplier(BoostPerStack)}"
-            : description;
+        /// <summary>인스펙터에 적은 설명(자리 표시 바꿈 전). 비었으면 null.</summary>
+        public string CustomDescription => string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 
         /// <summary>계산은 decimal로 한다. float 1.5는 decimal 1.5로 정확히 바뀐다.</summary>
         public decimal BoostPerStack => (decimal)Mathf.Max(1f, boostPerStack);

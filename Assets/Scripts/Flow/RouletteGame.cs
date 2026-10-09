@@ -83,7 +83,7 @@ namespace ProjectCR
         [FormerlySerializedAs("payoutMultiplierOverride")]
         [SerializeField] private int straightPayoutOverride;
 
-        [Tooltip("새 게임을 이 음료 잔 수로 시작한다(밸런스 시험용). 순서: 컬럼, 더즌, 홀짝, 색상, 높고 낮음, 숫자.")]
+        [Tooltip("새 게임을 이 음료 잔 수로 시작한다(밸런스 시험용). 순서: 1열, 1–12, 홀수, 빨강, 1–18, 0번(묶음 대표 대상).")]
         [SerializeField] private int[] debugStartDrinkStacks = new int[0];
 
         [Tooltip("연출 배속.")]
@@ -106,6 +106,8 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
+            hud.DrinkPicker.Confirmed += OnDrinkTargetsConfirmed;
+            hud.DrinkPicker.Cancelled += OnDrinkTargetsCancelled;
             GamePause.Changed += OnPauseChanged;
             if (pauseMenu != null)
             {
@@ -184,6 +186,7 @@ namespace ProjectCR
             drinkHovered = -1;
             drinkSelected = -1;
             badgeHovered = -1;
+            CloseDrinkPicker();
 
             if (shopView != null)
             {
@@ -196,7 +199,7 @@ namespace ProjectCR
             flow = new GameFlowController(definition, balance, randomSeed, drinkCatalog, shopCatalog);
             for (int i = 0; i < debugStartDrinkStacks.Length && i < DrinkGroups.Count; i++)
             {
-                flow.Drinks.SetStacks((DrinkGroup)i, debugStartDrinkStacks[i]);
+                flow.Drinks.SetStacks(((DrinkGroup)i).Representative(), debugStartDrinkStacks[i]);
             }
 
             ApplyDebugOptions();
@@ -249,6 +252,8 @@ namespace ProjectCR
 
             if (pickingSlot >= 0)
             {
+                // 대상 고르기 클릭이 길게 누르기로 이어져 칩이 놓이지 않게 한다.
+                tableInput.CancelHold();
                 FinishPick(target);
                 return;
             }
@@ -257,6 +262,11 @@ namespace ProjectCR
             if (error == BetError.None && sfx != null)
             {
                 sfx.PlayBetChip();
+            }
+            else if (error != BetError.None && tableInput != null)
+            {
+                // 길게 눌러 계속 놓다가 막히면(돈 부족 등) 멈춘다. 안내는 한 번만 뜬다.
+                tableInput.CancelHold();
             }
 
             ApplyBetAction(error);
@@ -666,6 +676,12 @@ namespace ProjectCR
         /// </summary>
         private IEnumerator ResolvePayment()
         {
+            // 시작 안내가 남아 있으면(회전 없이 라운드가 끝난 경우) 납부 연출 전에 닫는다.
+            if (tutorial != null)
+            {
+                tutorial.HideNotice();
+            }
+
             int round = flow.Round.Round;
             long due = flow.Round.CurrentDue;
             yield return new WaitForSeconds(cameraRig != null ? cameraRig.ReturnDelay : 1.5f);
@@ -763,7 +779,10 @@ namespace ProjectCR
             ShowDrinkTooltip();
         }
 
-        /// <summary>한 번 누르면 고르고(외곽선 고정), 고른 잔을 한 번 더 누르면 마신다. 태블릿 [마시기]도 같다.</summary>
+        /// <summary>
+        /// 한 번 누르면 고르고(외곽선 고정), 고른 잔을 한 번 더 누르면 마신다. 태블릿 [마시기]도 같다.
+        /// 확률 음료는 마시기 전에 대상 고르기 창을 연다.
+        /// </summary>
         private void OnDrinkClicked(ServedDrink drink)
         {
             if (drink == null || !CanPickDrink || InputLocked)
@@ -802,14 +821,78 @@ namespace ProjectCR
                 return;
             }
 
-            string hint = drinkSelected == drinkHovered ? "한 번 더 누르면 마십니다 · 태블릿 [마시기]" : "누르면 고릅니다";
+            string hint = drinkSelected != drinkHovered ? "누르면 고릅니다"
+                : offer[drinkHovered].IsProbability ? "한 번 더 누르면 대상을 고릅니다 · 태블릿 [마시기]"
+                : "한 번 더 누르면 마십니다 · 태블릿 [마시기]";
             hud.ShowDrinkTooltip(DrinkHoverText.For(offer[drinkHovered], flow), hint);
             hud.MoveBetTooltip(tableInput.PointerScreen);
         }
 
-        private void OnDrinkConfirmed(int offerIndex)
+        // 대상 고르기 창이 열린 확률 음료(후보 번호). -1이면 없음.
+        private int pickingDrink = -1;
+
+        private DrinkTargetPicker DrinkPicker => hud != null ? hud.DrinkPicker : null;
+
+        /// <summary>확률 음료 대상 고르기 창을 연다. 열려 있는 동안 3D 입력은 막힌다.</summary>
+        private void OpenDrinkPicker(int offerIndex)
         {
-            DrinkOffer drink = flow.ConfirmDrink(offerIndex);
+            IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
+            if (DrinkPicker == null || offer == null || offerIndex < 0 || offerIndex >= offer.Count)
+            {
+                return;
+            }
+
+            pickingDrink = offerIndex;
+            hud.HideBetTooltip();
+            DrinkPicker.Open(offer[offerIndex], flow);
+            ApplyInputLock();
+        }
+
+        private void CloseDrinkPicker()
+        {
+            pickingDrink = -1;
+            if (DrinkPicker != null)
+            {
+                DrinkPicker.Close();
+            }
+
+            ApplyInputLock();
+        }
+
+        private void OnDrinkTargetsConfirmed(IReadOnlyList<BetTarget> targets)
+        {
+            int index = pickingDrink;
+            CloseDrinkPicker();
+            if (index >= 0)
+            {
+                OnDrinkConfirmed(index, targets);
+            }
+        }
+
+        private void OnDrinkTargetsCancelled()
+        {
+            CloseDrinkPicker();
+            RefreshViews();
+        }
+
+        /// <summary>
+        /// 음료를 마신다. 확률 음료인데 대상이 없으면 고르기 창을 연다(로봇이 없을 때는 첫 대상으로 바로 마신다).
+        /// </summary>
+        private void OnDrinkConfirmed(int offerIndex, IReadOnlyList<BetTarget> targets = null)
+        {
+            IReadOnlyList<DrinkOffer> current = flow.Rewards.CurrentOffer;
+            if (targets == null && current != null && offerIndex >= 0 && offerIndex < current.Count && current[offerIndex].IsProbability)
+            {
+                if (drinkServer != null && DrinkPicker != null)
+                {
+                    OpenDrinkPicker(offerIndex);
+                    return;
+                }
+
+                targets = new[] { current[offerIndex].TargetOptions()[0] };
+            }
+
+            DrinkOffer drink = flow.ConfirmDrink(offerIndex, targets);
             if (drink == null)
             {
                 // 이미 확정했거나 상태가 바뀌었다.
@@ -829,14 +912,18 @@ namespace ProjectCR
 
             if (drink.IsProbability)
             {
-                int stacks = flow.Probabilities.StacksOf(drink.Target);
-                double chance = flow.BuildSpinConfig().ProbabilityOf(drink.Target);
-                Debug.Log($"[RouletteGame] 확률 음료 {drink.DisplayName}: {drink.Target} {stacks}잔(+{drink.Boost}/잔) → 등장 {chance:P2}");
+                SpinConfig config = flow.BuildSpinConfig();
+                var parts = new List<string>();
+                foreach (BetTarget target in flow.LastDrinkTargets)
+                {
+                    parts.Add($"{DrinkOffer.TargetLabel(target)} {config.ProbabilityOf(target):P2}");
+                }
+
+                Debug.Log($"[RouletteGame] 확률 음료 {drink.DisplayName}: +{drink.Boost} ÷ {flow.LastDrinkTargets.Count} → {string.Join(", ", parts)}");
             }
             else
             {
-                DrinkGroup group = drink.Group;
-                Debug.Log($"[RouletteGame] 음료 {drink.DisplayName}({group}) {flow.Drinks.StacksOf(group)}잔 → ×{flow.Drinks.MultiplierOf(group)}");
+                Debug.Log($"[RouletteGame] 음료 {drink.DisplayName}({DrinkOffer.TargetLabel(drink.Target)}) {flow.Drinks.StacksOf(drink.Target)}잔 → ×{flow.Drinks.MultiplierOf(drink.Target)}");
             }
             RefreshViews();
 
@@ -923,7 +1010,7 @@ namespace ProjectCR
         /// 막는 것: 칩·베팅·회전·전체 회수·서비스·음료·시점 전환.
         /// </summary>
         private bool InputLocked => tutorialActive || openingActive || (tutorial != null && tutorial.IsRunning) || GamePause.IsPaused
-                                    || (resultView != null && resultView.IsShown);
+                                    || (resultView != null && resultView.IsShown) || pickingDrink >= 0;
 
         /// <summary>일시정지가 바뀌면 3D 입력을 맞추고, 켜질 때는 판·음료 안내를 지운다.</summary>
         private void OnPauseChanged(bool paused)

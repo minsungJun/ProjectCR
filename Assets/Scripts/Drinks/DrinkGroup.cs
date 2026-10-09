@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProjectCR
 {
@@ -102,6 +103,49 @@ namespace ProjectCR
                 default:
                     return "숫자·스플릿·스트리트·코너·식스 라인";
             }
+        }
+
+        /// <summary>
+        /// 이 묶음에서 음료 대상이 될 수 있는 베팅(숫자 묶음은 0~36 숫자 한 칸씩). 해골은 없다.
+        /// 지급 음료는 후보를 만들 때 이 중 하나를 뽑고, 확률 음료는 마실 때 플레이어가 이 중에서 고른다.
+        /// </summary>
+        public static List<BetTarget> Targets(this DrinkGroup group)
+        {
+            var options = new List<BetTarget>();
+            switch (group)
+            {
+                case DrinkGroup.Color:
+                    options.Add(BetTarget.Outside(BetKind.Red));
+                    options.Add(BetTarget.Outside(BetKind.Black));
+                    break;
+                case DrinkGroup.Parity:
+                    options.Add(BetTarget.Outside(BetKind.Odd));
+                    options.Add(BetTarget.Outside(BetKind.Even));
+                    break;
+                case DrinkGroup.Range:
+                    options.Add(BetTarget.Outside(BetKind.Low));
+                    options.Add(BetTarget.Outside(BetKind.High));
+                    break;
+                case DrinkGroup.Column:
+                    options.Add(BetTarget.Outside(BetKind.Column1));
+                    options.Add(BetTarget.Outside(BetKind.Column2));
+                    options.Add(BetTarget.Outside(BetKind.Column3));
+                    break;
+                case DrinkGroup.Dozen:
+                    options.Add(BetTarget.Outside(BetKind.Dozen1));
+                    options.Add(BetTarget.Outside(BetKind.Dozen2));
+                    options.Add(BetTarget.Outside(BetKind.Dozen3));
+                    break;
+                default:
+                    for (int number = 0; number <= 36; number++)
+                    {
+                        options.Add(BetTarget.Straight(number));
+                    }
+
+                    break;
+            }
+
+            return options;
         }
 
         /// <summary>이 묶음의 대표 베팅. 카드에 "기본 → 강화" 배율을 보여 줄 때 쓴다.</summary>

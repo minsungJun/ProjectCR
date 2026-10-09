@@ -63,24 +63,26 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void DrinkBoost_AppliesOnlyToTheBetsOwnGroup()
+        public void DrinkBoost_AppliesOnlyToThatExactBet()
         {
             GameFlowController flow = Flow();
-            flow.Drinks.SetStacks(DrinkGroup.Number, 1);
+            flow.Drinks.SetStacks(BetTarget.Straight(1), 1);
             flow.SetChipValue(10);
 
-            BetHoverInfo corner = Info(flow, Corner1245);
-            Assert.AreEqual(13.5m, corner.Multiplier, "코너 ×9 × 숫자 음료 1.5");
-            Assert.AreEqual(135, corner.ExpectedPayout, "칩 10 → 135");
-            Assert.IsTrue(corner.IsBoosted);
+            BetHoverInfo one = Info(flow, BetTarget.Straight(1));
+            Assert.AreEqual(54m, one.Multiplier, "1번 ×36 × 음료 1.5");
+            Assert.AreEqual(540, one.ExpectedPayout, "칩 10 → 540");
+            Assert.IsTrue(one.IsBoosted);
 
+            Assert.AreEqual(36m, Info(flow, BetTarget.Straight(2)).Multiplier, "다른 숫자는 그대로");
+            Assert.IsFalse(Info(flow, Corner1245).IsBoosted, "1이 들어간 코너에도 붙지 않는다");
             Assert.AreEqual(2m, Info(flow, BetTarget.Outside(BetKind.Red)).Multiplier, "숫자 음료는 색상 베팅에 붙지 않는다");
 
-            flow.Drinks.SetStacks(DrinkGroup.Dozen, 1);
+            flow.Drinks.SetStacks(BetTarget.Outside(BetKind.Dozen1), 1);
             BetHoverInfo dozen = Info(flow, BetTarget.Outside(BetKind.Dozen1));
             Assert.AreEqual(4.5m, dozen.Multiplier);
             Assert.AreEqual(45, dozen.ExpectedPayout);
-            Assert.AreEqual(13.5m, Info(flow, Corner1245).Multiplier, "DOZEN 음료가 숫자 베팅에 겹치지 않는다");
+            Assert.AreEqual(3m, Info(flow, BetTarget.Outside(BetKind.Dozen2)).Multiplier, "1–12 음료는 13–24에 붙지 않는다");
         }
 
         [Test]
@@ -114,7 +116,7 @@ namespace ProjectCR.Tests
         public void Preview_EqualsActualSettlement_WithFocus()
         {
             GameFlowController flow = Flow();
-            flow.Drinks.SetStacks(DrinkGroup.Number, 1);
+            flow.Drinks.SetStacks(Corner1245, 1);
             flow.Upgrades.AddFocus(DrinkGroup.Number, BetTarget.Straight(1), 0.1m);
             flow.SetChipValue(10);
 

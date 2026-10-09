@@ -220,7 +220,7 @@ namespace ProjectCR.Tests
             Assert.AreEqual("이번 라운드 마지막 회전\n지급 ×1.2", Item("double_up").CardText);
             Assert.AreEqual("해골 방어", Item("skull_shield").DisplayName);
             Assert.AreEqual("남은 회전\n+1회", Item("spare_spin").CardText);
-            Assert.AreEqual("일반 낙첨 시\n베팅금 50% 환급", Item("insurance").CardText);
+            Assert.AreEqual("돈을 잃은 회전에\n잃은 금액 50% 환급", Item("insurance").CardText);
             Assert.AreEqual("회전권", Item("spare_spin").DisplayName);
         }
 
@@ -318,7 +318,7 @@ namespace ProjectCR.Tests
         {
             DrinkCatalog drinks = assets.Drinks();
             var flow = new GameFlowController(definition, balance, 3, drinks, Only("focus_color"));
-            flow.Drinks.AddStack(DrinkGroup.Color);
+            flow.Drinks.AddStack(Red);
             flow.Probabilities.SetStacks(Red, 0.37m, 1);
             flow.EnterShop();
             flow.Shop.Buy(0, Red);

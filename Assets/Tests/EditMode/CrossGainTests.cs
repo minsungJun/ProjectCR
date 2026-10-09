@@ -175,7 +175,7 @@ namespace ProjectCR.Tests
             flow.EnterShop();
             flow.Shop.Buy(0, BetTarget.None);
             flow.CloseShop();
-            flow.Drinks.SetStacks(DrinkGroup.Dozen, 1);
+            flow.Drinks.SetStacks(Dozen1, 1);
 
             // DOZEN ×3 × 1.5 = ×4.5: 3 → 13.5(버림 없이 누적).
             Spin(flow, new[] { 1 }, (Dozen1, 3));
@@ -193,9 +193,6 @@ namespace ProjectCR.Tests
                 Assert.AreEqual(ShopError.None, flow.Shop.Buy(i, BetTarget.None));
             }
 
-            // 보험은 회전마다 1장씩 자동으로 쓰이니(해골 회전도 소비) 2장 산다.
-            int insurance = flow.Shop.Offers.ToList().FindIndex(o => o.Item.Id == "insurance");
-            Assert.AreEqual(ShopError.None, flow.Shop.Buy(insurance, BetTarget.None));
             flow.CloseShop();
 
             SettlementResult skull = Spin(flow, new[] { RouletteDefinition.SkullNumber }, (Dozen1, 30));

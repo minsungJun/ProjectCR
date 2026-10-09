@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace ProjectCR.Tests
 {
     /// <summary>
-    /// 확률 음료가 보상 후보에 들어가고, 구체적인 대상이 후보를 만들 때 정해지며, 확정 한 번에 그 대상만 한 잔 느는지.
+    /// 확률 음료가 보상 후보에 들어가고, 마실 때 고른 대상(여러 개면 똑같이 나눠)에만 가중치가 붙는지.
     /// </summary>
     public class ProbabilityDrinkFlowTests
     {
@@ -60,41 +60,107 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void OfferTargets_AreConcrete_AndNeverSkull()
+        public void TargetOptions_AreThatGroupsBets_AndNeverSkull()
         {
-            DrinkCatalog catalog = ChanceOnly(6);
-            for (int seed = 1; seed <= 300; seed++)
+            foreach (ProbabilityDrinkDefinition drink in chances)
             {
-                foreach (DrinkOffer offer in new DrinkRewardController(catalog, seed).CreateOffer())
+                List<BetTarget> options = ProbabilityDrinkDefinition.TargetOptions(drink.Group);
+                int expected = drink.Group == DrinkGroup.Number ? 37
+                    : drink.Group == DrinkGroup.Column || drink.Group == DrinkGroup.Dozen ? 3 : 2;
+                Assert.AreEqual(expected, options.Count, $"{drink.Group}");
+                Assert.AreEqual(options.Count, options.Distinct().Count());
+                foreach (BetTarget t in options)
                 {
-                    BetTarget t = offer.Target;
-                    Assert.IsTrue(offer.IsProbability);
-                    Assert.IsFalse(t.IsNone);
+                    Assert.AreEqual(drink.Group, DrinkGroups.Of(t.Kind), "대상은 그 음료 묶음의 베팅 하나.");
                     Assert.AreNotEqual(RouletteDefinition.SkullNumber, t.Number);
-                    Assert.AreEqual(offer.Group, DrinkGroups.Of(t.Kind), "대상은 그 음료 묶음의 베팅 하나.");
-
                     if (t.IsStraight)
                     {
                         Assert.That(t.Number, Is.InRange(0, 36));
-                        Assert.AreEqual(0.17m, offer.Boost);
-                    }
-                    else if (t.IsInside)
-                    {
-                        Assert.IsTrue(InsideBets.IsValid(t), "베팅판에서 걸 수 있는 조합.");
-                        Assert.IsFalse(t.CoversNumber(0, PocketColor.Green), "숫자 묶음에는 0이 없다.");
-                        Assert.That(t.Numbers.Count(), Is.InRange(2, 6));
-                        Assert.AreEqual(0.18m, offer.Boost);
-                    }
-                    else if (offer.Group == DrinkGroup.Column || offer.Group == DrinkGroup.Dozen)
-                    {
-                        Assert.AreEqual(0.26m, offer.Boost);
-                    }
-                    else
-                    {
-                        Assert.AreEqual(0.37m, offer.Boost);
                     }
                 }
+
+                decimal boost = drink.Group == DrinkGroup.Number ? 0.17m
+                    : drink.Group == DrinkGroup.Column || drink.Group == DrinkGroup.Dozen ? 0.26m : 0.37m;
+                Assert.AreEqual(boost, DrinkOffer.ForProbability(drink).Boost, $"{drink.Group}");
             }
+        }
+
+        [Test]
+        public void ConfirmProbabilityDrink_RejectsMissingOrWrongTargets_AndKeepsOffer()
+        {
+            var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
+            int column = Index(flow, DrinkGroup.Column);
+
+            Assert.IsNull(flow.ConfirmDrink(column), "대상 없이 마실 수 없다");
+            Assert.IsNull(flow.ConfirmDrink(column, new BetTarget[0]));
+            Assert.IsNull(flow.ConfirmDrink(column, new[] { Red }), "다른 묶음의 대상");
+            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
+            Assert.IsNull(flow.ConfirmDrink(column, new[] { c1, c1 }), "같은 대상 두 번");
+            Assert.AreEqual(GamePhase.DrinkSelection, flow.Phase);
+            Assert.IsNotNull(flow.Rewards.CurrentOffer, "후보는 그대로");
+            Assert.AreEqual(0, flow.Probabilities.TotalStacks);
+        }
+
+        /// <summary>컬럼 +26%를 두 컬럼에 고르면 각각 +13%, 고르지 않은 컬럼은 그대로.</summary>
+        [Test]
+        public void ConfirmProbabilityDrink_SplitsBoostEvenly_AcrossChosenTargets()
+        {
+            var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
+            int column = Index(flow, DrinkGroup.Column);
+            DrinkOffer offered = flow.Rewards.CurrentOffer[column];
+            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
+            BetTarget c2 = BetTarget.Outside(BetKind.Column2);
+            BetTarget c3 = BetTarget.Outside(BetKind.Column3);
+
+            (double now, double after) = flow.PreviewProbabilityDrink(new[] { c1, c2 }, offered.Boost);
+            Assert.AreEqual(0, flow.Probabilities.TotalStacks, "미리보기는 상태를 바꾸지 않는다.");
+
+            DrinkOffer drink = flow.ConfirmDrink(column, new[] { c1, c2 });
+            Assert.AreSame(offered, drink);
+            Assert.IsNull(flow.ConfirmDrink(column, new[] { c1 }), "두 번 확정되지 않는다.");
+            CollectionAssert.AreEqual(new[] { c1, c2 }, flow.LastDrinkTargets);
+
+            Assert.AreEqual(0.13m, flow.Probabilities.Effects.First(e => e.Target == c1).Total);
+            Assert.AreEqual(0.13m, flow.Probabilities.Effects.First(e => e.Target == c2).Total);
+            Assert.AreEqual(0, flow.Probabilities.StacksOf(c3));
+
+            SpinConfig config = flow.BuildSpinConfig();
+            Assert.AreEqual(after, config.ProbabilityOf(c1) + config.ProbabilityOf(c2), 1e-12, "미리보기와 같은 확률");
+            Assert.Greater(after, now);
+            Assert.AreEqual(config.ProbabilityOf(c1), config.ProbabilityOf(c2), 1e-12, "똑같이 나눠 받는다");
+            Assert.Less(config.ProbabilityOf(c3), 12d / 38d, "고르지 않은 컬럼은 상대적으로 줄어든다");
+            Assert.AreEqual(1d / 38d, config.PocketProbabilities()[definition.IndexOfSkull()], 1e-12);
+            Assert.AreEqual(2, flow.Round.Round);
+        }
+
+        /// <summary>한 대상만 고른 잔과 나눠 받은 잔이 쌓이면 증가량이 그대로 더해진다(0.26 + 0.13).</summary>
+        [Test]
+        public void SplitAndSingleDrinks_AddUp()
+        {
+            var state = new ProbabilityDrinkRunState();
+            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
+            BetTarget c2 = BetTarget.Outside(BetKind.Column2);
+            state.AddSplit(new[] { c1 }, 0.26m);
+            state.AddSplit(new[] { c1, c2 }, 0.26m);
+
+            Assert.AreEqual(0.39m, state.Effects.First(e => e.Target == c1).Total);
+            Assert.AreEqual(2, state.StacksOf(c1));
+            Assert.AreEqual(0.13m, state.Effects.First(e => e.Target == c2).Total);
+        }
+
+        private static int Index(GameFlowController flow, DrinkGroup group)
+        {
+            IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
+            for (int i = 0; i < offer.Count; i++)
+            {
+                if (offer[i].Group == group)
+                {
+                    return i;
+                }
+            }
+
+            Assert.Fail($"{group} 음료가 후보에 없다");
+            return -1;
         }
 
         [Test]
@@ -115,40 +181,20 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void OfferTargets_StayFixed_UntilPicked()
+        public void ConfirmProbabilityDrink_OneTarget_GetsWholeBoost()
         {
             var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
-            var before = flow.Rewards.CurrentOffer.Select(o => o.Target).ToList();
+            int number = Index(flow, DrinkGroup.Number);
+            BetTarget seven = BetTarget.Straight(7);
 
-            CollectionAssert.AreEqual(before, flow.Rewards.CreateOffer().Select(o => o.Target).ToList());
-        }
-
-        [Test]
-        public void ConfirmProbabilityDrink_AddsOneStackToThatTarget_Only()
-        {
-            var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
-            DrinkOffer offered = flow.Rewards.CurrentOffer[1];
-
-            // 카드 미리보기와 확정 뒤 실제 확률이 같아야 한다.
-            SpinConfig current = flow.BuildSpinConfig();
-            double[] previewWeights = PocketWeightCalculator.Compute(definition, flow.Probabilities.WithExtraStack(offered.Target, offered.Boost));
-            double preview = PocketWeightCalculator.ProbabilityOf(definition,
-                PocketWeightCalculator.Probabilities(definition, previewWeights, current.SkullChance), offered.Target);
-            Assert.AreEqual(0, flow.Probabilities.TotalStacks, "미리보기는 상태를 바꾸지 않는다.");
-
-            DrinkOffer drink = flow.ConfirmDrink(1);
-            Assert.AreSame(offered, drink);
-            Assert.IsNull(flow.ConfirmDrink(1), "두 번 확정되지 않는다.");
-
-            Assert.AreEqual(1, flow.Probabilities.StacksOf(drink.Target));
+            DrinkOffer drink = flow.ConfirmDrink(number, new[] { seven });
+            Assert.IsNotNull(drink);
+            Assert.AreEqual(0.17m, flow.Probabilities.Effects.Single().Total);
             Assert.AreEqual(1, flow.Probabilities.TotalStacks);
             Assert.AreEqual(0, flow.Drinks.TotalStacks, "지급 배율 음료는 늘지 않는다.");
-            Assert.AreEqual(preview, flow.BuildSpinConfig().ProbabilityOf(drink.Target), 1e-12);
-            Assert.AreEqual(1d / 38d, flow.BuildSpinConfig().PocketProbabilities()[definition.IndexOfSkull()], 1e-12);
-            Assert.AreEqual(2, flow.Round.Round);
         }
 
-        /// <summary>기본 계수는 "1잔 마시면 그 대상 베팅의 기대 환수율 ≈ 110%" 기준이다.</summary>
+        /// <summary>기본 계수는 "대상 하나만 골라 1잔 마시면 그 대상 베팅의 기대 환수율 ≈ 110%" 기준이다.</summary>
         [Test]
         public void DefaultBoosts_GiveAbout110PercentReturn_AfterOneDrink()
         {
@@ -159,13 +205,12 @@ namespace ProjectCR.Tests
                 BetTarget.Outside(BetKind.Column2), BetTarget.Outside(BetKind.Dozen3),
                 BetTarget.Straight(17), BetTarget.Straight(0),
             };
-            targets.AddRange(ProbabilityDrinkDefinition.NumberSets());
 
             foreach (BetTarget target in targets)
             {
                 ProbabilityDrinkDefinition drink = chances.First(d => d.Group == DrinkGroups.Of(target.Kind));
                 var one = new GameFlowController(definition, balance, 5, ChanceOnly());
-                one.Probabilities.AddStack(target, drink.BoostFor(target));
+                one.Probabilities.AddSplit(new[] { target }, drink.Boost);
                 SpinConfig config = one.BuildSpinConfig();
                 double rtp = config.ProbabilityOf(target) * (double)config.MultiplierFor(target);
 

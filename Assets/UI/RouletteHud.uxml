@@ -58,6 +58,20 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- 확률 음료 대상 고르기. 내용은 DrinkTargetPicker가 채운다. -->
+        <ui:VisualElement name="drink-picker" class="modal drink-picker blocks-input">
+            <ui:VisualElement class="drink-picker__box">
+                <ui:Label name="drink-picker-title" class="drink-picker__title" />
+                <ui:Label name="drink-picker-hint" class="drink-picker__hint" />
+                <ui:VisualElement name="drink-picker-options" class="drink-picker__options" />
+                <ui:Label name="drink-picker-preview" class="drink-picker__preview" />
+                <ui:VisualElement class="drink-picker__buttons">
+                    <ui:Button name="drink-picker-cancel" class="btn btn--small drink-picker__cancel" text="취소" />
+                    <ui:Button name="drink-picker-drink" class="btn btn--primary drink-picker__drink" text="마시기" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <!-- 판 위 호버 안내. 커서를 따라다니고 입력을 받지 않는다(blocks-input 없음, picking Ignore). 내용은 RouletteHud.ShowBetTooltip. -->
         <ui:VisualElement name="bet-tooltip" class="bet-tooltip" picking-mode="Ignore">
             <ui:VisualElement class="bet-tooltip__head" picking-mode="Ignore">
@@ -67,6 +81,7 @@
             </ui:VisualElement>
             <ui:Label name="bet-tooltip-targets" class="bet-tooltip__targets" picking-mode="Ignore" />
             <ui:Label name="bet-tooltip-stake" class="bet-tooltip__stake" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-note" class="bet-tooltip__note" picking-mode="Ignore" />
             <ui:Label name="bet-tooltip-progress" class="bet-tooltip__progress" picking-mode="Ignore" />
         </ui:VisualElement>
 

@@ -147,13 +147,13 @@ namespace ProjectCR.Tests
                         flow.SubmitPayment();
                         break;
                     case GamePhase.DrinkSelection:
-                        // 자기 전략 묶음의 지급 음료 > 자기 베팅 칸을 올리는 확률 음료 > 첫 후보.
+                        // 자기 베팅 칸의 지급 음료 > 자기 묶음의 확률 음료 > 첫 후보.
                         IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
                         int pick = 0, best = 0;
                         for (int i = 0; i < offer.Count; i++)
                         {
-                            int score = !offer[i].IsProbability && offer[i].Group == wanted ? 2
-                                : offer[i].IsProbability && offer[i].Target == strategy.Target ? 1
+                            int score = !offer[i].IsProbability && offer[i].Target == strategy.Target ? 2
+                                : offer[i].IsProbability && offer[i].Group == wanted ? 1
                                 : 0;
                             if (score > best)
                             {
@@ -162,7 +162,10 @@ namespace ProjectCR.Tests
                             }
                         }
 
-                        flow.ConfirmDrink(pick);
+                        // 확률 음료면 자기 베팅 칸 하나만 고른다(다른 묶음이면 그 묶음 첫 대상).
+                        List<BetTarget> options = offer[pick].TargetOptions();
+                        BetTarget chosen = options.Contains(strategy.Target) ? strategy.Target : options.Count > 0 ? options[0] : BetTarget.None;
+                        flow.ConfirmDrink(pick, offer[pick].IsProbability ? new[] { chosen } : null);
                         break;
                     default:
                         return flow.Round.Round;
@@ -215,7 +218,7 @@ namespace ProjectCR.Tests
                 foreach ((int m, int k) in new[] { (0, 0), (1, 0), (1, 3) })
                 {
                     var flow = new GameFlowController(definition, balance, 1, catalog);
-                    flow.Drinks.SetStacks(DrinkGroup.Color, m);
+                    flow.Drinks.SetStacks(Red, m);
                     flow.Probabilities.SetStacks(Red, 0.37m, k);
                     for (int i = 0; i < s; i++)
                     {
@@ -244,7 +247,7 @@ namespace ProjectCR.Tests
             {
                 if (drink.Group == DrinkGroup.Color)
                 {
-                    redBoost = drink.BoostFor(Red);
+                    redBoost = drink.Boost;
                 }
             }
 
@@ -263,7 +266,7 @@ namespace ProjectCR.Tests
                 foreach (int k in chanceStacks)
                 {
                     var flow = new GameFlowController(definition, balance, 1, catalog);
-                    flow.Drinks.SetStacks(DrinkGroup.Color, m);
+                    flow.Drinks.SetStacks(Red, m);
                     flow.Probabilities.SetStacks(Red, redBoost, k);
                     SpinConfig config = flow.BuildSpinConfig();
                     double rtp = config.ProbabilityOf(Red) * (double)config.MultiplierFor(Red);

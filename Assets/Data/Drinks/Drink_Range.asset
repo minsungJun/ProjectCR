@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkDefinition
   group: 4
   displayName: "\uD558\uC774\uB85C\uC6B0 \uC5D0\uC77C"
-  description: 
+  description: "{target} \uBCA0\uD305\uC758 \uB2F9\uCCA8\uAE08 \uBC30\uC728\uC5D0
+    \xD7{boost}\uB97C \uACF1\uD569\uB2C8\uB2E4."
   icon: {fileID: 0}
   tint: {r: 0.11372549, g: 0.7019608, b: 0.85490197, a: 1}
   model: {fileID: 1452010423602553769, guid: eb1f4b717be70b649bfa394e45c11c8e, type: 3}

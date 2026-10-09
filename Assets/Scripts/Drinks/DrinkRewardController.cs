@@ -5,11 +5,12 @@ namespace ProjectCR
 {
     /// <summary>
     /// 라운드 통과 보상(음료 후보). 후보는 보상 화면을 열 때 <b>한 번만</b> 만들고, 고를 때까지 그대로 둔다.
-    /// 화면을 다시 그려도 후보(확률 음료의 대상 포함)가 바뀌지 않는다.
+    /// 화면을 다시 그려도 후보가 바뀌지 않는다.
     ///
     /// 후보 칸마다 계열(지급/확률)을 목록의 비중으로 고르고, 그 계열에서 아직 안 나온 음료를 하나 고른다.
     /// 한 후보 안에 같은 음료는 두 번 나오지 않는다. 이미 마신 음료도 다시 나올 수 있다.
-    /// 확률 음료는 이때 구체적인 대상(빨강, 2번째 더즌, 7번 …)을 정한다.
+    /// 지급 음료는 이때 배율을 올릴 대상 하나(1열, 빨강, 7번 …)를 정한다. 묶음 안의 대상은 모두 같은 확률이다.
+    /// 확률 음료의 대상은 여기서 정하지 않는다. 마실 때 플레이어가 고른다.
     ///
     /// 후보 추첨은 결과 추첨과 다른 난수를 쓴다. 보상을 뽑아도 회전 결과 순서가 바뀌지 않고,
     /// 같은 시드면 같은 후보가 나온다.
@@ -56,12 +57,13 @@ namespace ProjectCR
 
                 if (pickProbability)
                 {
-                    ProbabilityDrinkDefinition drink = Take(probabilities);
-                    offer.Add(DrinkOffer.ForProbability(drink, drink.DrawTarget(rng)));
+                    offer.Add(DrinkOffer.ForProbability(Take(probabilities)));
                 }
                 else
                 {
-                    offer.Add(DrinkOffer.ForPayout(Take(payouts)));
+                    DrinkDefinition drink = Take(payouts);
+                    List<BetTarget> targets = drink.Group.Targets();
+                    offer.Add(DrinkOffer.ForPayout(drink, targets[rng.Next(targets.Count)]));
                 }
             }
 

@@ -85,7 +85,7 @@ namespace ProjectCR
 
             stacks[g]--;
             payoutIncrease[g] = stacks[g] == 0 ? 0m : System.Math.Max(0m, payoutIncrease[g] - value);
-            Probabilities.RemoveStack(target);
+            Probabilities.RemoveStack(target, value);
         }
     }
 }

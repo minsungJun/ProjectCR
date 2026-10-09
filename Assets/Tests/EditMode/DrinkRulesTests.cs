@@ -105,19 +105,20 @@ namespace ProjectCR.Tests
             Assert.AreEqual(2.25m, DrinkRunState.Power(1.5m, 2));
             Assert.AreEqual(3.375m, DrinkRunState.Power(1.5m, 3));
 
-            flow.Drinks.AddStack(DrinkGroup.Color);
-            flow.Drinks.AddStack(DrinkGroup.Color);
-            Assert.AreEqual(2.25m, flow.Drinks.MultiplierOf(DrinkGroup.Color));
+            flow.Drinks.AddStack(Red);
+            flow.Drinks.AddStack(Red);
+            Assert.AreEqual(2.25m, flow.Drinks.MultiplierOf(Red));
             Assert.AreEqual(4.5m, flow.BuildSpinConfig().MultiplierFor(Red));
+            Assert.AreEqual(2m, flow.BuildSpinConfig().MultiplierFor(BetTarget.Outside(BetKind.Black)), "같은 묶음의 다른 대상은 그대로.");
             Assert.AreEqual(4.5m, flow.BuildSpinConfig().MultiplierFor(Red), "설정을 다시 만들어도 겹쳐 곱하지 않는다.");
         }
 
         [Test]
         public void HugeStacks_StopAtCap_WithoutOverflow()
         {
-            flow.Drinks.SetStacks(DrinkGroup.Number, 1_000_000);
+            flow.Drinks.SetStacks(BetTarget.Straight(17), 1_000_000);
 
-            Assert.AreEqual(DrinkRunState.MultiplierCap, flow.Drinks.MultiplierOf(DrinkGroup.Number));
+            Assert.AreEqual(DrinkRunState.MultiplierCap, flow.Drinks.MultiplierOf(BetTarget.Straight(17)));
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 17, 17), new ConfirmedBet(17, 1));
             Assert.AreEqual(Max, s.TotalPayout);
         }
@@ -132,10 +133,11 @@ namespace ProjectCR.Tests
         [Test]
         public void ColumnDrink_DoesNotBoostDozen()
         {
-            flow.Drinks.AddStack(DrinkGroup.Column);
+            flow.Drinks.AddStack(Column1);
             SpinConfig config = flow.BuildSpinConfig();
 
             Assert.AreEqual(4.5m, config.MultiplierFor(Column1));
+            Assert.AreEqual(3m, config.MultiplierFor(BetTarget.Outside(BetKind.Column2)), "1열 음료는 2열에 붙지 않는다.");
             Assert.AreEqual(3m, config.MultiplierFor(Dozen1));
             Assert.AreEqual(3, config.PayoutFor(Column1), "기본 배수는 그대로.");
         }
@@ -143,7 +145,7 @@ namespace ProjectCR.Tests
         [Test]
         public void ColorDrink_DoesNotBoostNumberBetOnRedNumber()
         {
-            flow.Drinks.AddStack(DrinkGroup.Color);
+            flow.Drinks.AddStack(Red);
 
             // 32는 빨강. 숫자 베팅은 Number 묶음이라 색상 음료가 붙지 않는다.
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 32), new ConfirmedBet(32, 10), new ConfirmedBet(Red, 10));
@@ -162,9 +164,9 @@ namespace ProjectCR.Tests
         [Test]
         public void Total_IsFlooredOnce_NotPerBet()
         {
-            flow.Drinks.AddStack(DrinkGroup.Color);
-            flow.Drinks.AddStack(DrinkGroup.Color);
-            flow.Drinks.AddStack(DrinkGroup.Column);
+            flow.Drinks.AddStack(Red);
+            flow.Drinks.AddStack(Red);
+            flow.Drinks.AddStack(Column1);
 
             // 34: 빨강, 1열. 빨강 1 × 4.5 + 1열 1 × 4.5 = 9. 베팅마다 버렸다면 8.
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 34), new ConfirmedBet(Red, 1), new ConfirmedBet(Column1, 1));
@@ -177,8 +179,8 @@ namespace ProjectCR.Tests
         [Test]
         public void MultipleBalls_SumExactly_ThenFloor()
         {
-            flow.Drinks.AddStack(DrinkGroup.Color);
-            flow.Drinks.AddStack(DrinkGroup.Color);
+            flow.Drinks.AddStack(Red);
+            flow.Drinks.AddStack(Red);
 
             // 빨강 1 × 4.5가 두 번 = 9.
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 32, 34), new ConfirmedBet(Red, 1));
@@ -190,20 +192,22 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void NumberDrink_BoostsInsideBetsToo()
+        public void NumberDrink_BoostsOnlyThatNumbersStraightBet()
         {
-            flow.Drinks.AddStack(DrinkGroup.Number);
+            flow.Drinks.AddStack(BetTarget.Straight(17));
             BetTarget split = BetTarget.Inside(BetKind.Split, 17, 20);
 
+            // 17 한 칸 ×36 × 1.5, 17이 들어간 스플릿은 ×18 그대로.
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 17), new ConfirmedBet(17, 2), new ConfirmedBet(split, 2));
-            CollectionAssert.AreEqual(new long[] { 108, 54 }, s.Bets.Select(b => b.Amount));
+            CollectionAssert.AreEqual(new long[] { 108, 36 }, s.Bets.Select(b => b.Amount));
+            Assert.AreEqual(36m, flow.BuildSpinConfig().MultiplierFor(BetTarget.Straight(20)));
         }
 
         [Test]
         public void Skull_PaysZero_EvenWithDrinks()
         {
-            flow.Drinks.SetStacks(DrinkGroup.Color, 5);
-            flow.Drinks.SetStacks(DrinkGroup.Number, 5);
+            flow.Drinks.SetStacks(Red, 5);
+            flow.Drinks.SetStacks(BetTarget.Straight(32), 5);
 
             SettlementResult s = Settle(SpinResult.FromNumbers(definition, 32, Skull), new ConfirmedBet(Red, 10), new ConfirmedBet(32, 10));
 
@@ -215,7 +219,7 @@ namespace ProjectCR.Tests
         [Test]
         public void Stake_IsChargedTheSame_WithDrinks()
         {
-            flow.Drinks.SetStacks(DrinkGroup.Color, 3);
+            flow.Drinks.SetStacks(Red, 3);
             flow.ForcedNumbers = new[] { 32 };
             flow.PlaceBet(Red, 10);
 
@@ -235,7 +239,7 @@ namespace ProjectCR.Tests
             flow.TryBeginSpin(out ActiveSpin spin);
 
             // 회전 중에 잔 수가 바뀌어도(디버그) 이미 시작한 회전은 시작 때 설정으로 정산한다.
-            flow.Drinks.SetStacks(DrinkGroup.Color, 4);
+            flow.Drinks.SetStacks(Red, 4);
             flow.CompleteSpin(spin.Id, out SettlementResult s);
             Assert.AreEqual(20, s.TotalPayout);
         }

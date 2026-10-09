@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ProbabilityDrinkDefinition
   group: 5
   displayName: "\uBC14\uC774\uC62C\uB81B \uC704\uC2A4\uD0A4"
+  description: "\uC120\uD0DD\uD55C \uC22B\uC790(1\u201336)\uC5D0 \uACF5\uC774 \uB5A8\uC5B4\uC9C8
+    \uD655\uB960\uC744 \uC62C\uB9BD\uB2C8\uB2E4."
   icon: {fileID: 0}
   tint: {r: 0.4862745, g: 0.08627451, b: 0.63529414, a: 1}
   model: {fileID: 649759423579581158, guid: 2a78c525ac912b1439a0f4187f7eaf31, type: 3}

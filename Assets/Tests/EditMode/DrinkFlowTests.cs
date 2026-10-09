@@ -168,10 +168,10 @@ namespace ProjectCR.Tests
         [Test]
         public void SameSeed_GivesSameOffer()
         {
-            // 확률 음료까지 넣은 목록: 같은 시드면 같은 음료, 같은 대상.
+            // 확률 음료까지 넣은 목록: 같은 시드면 같은 음료.
             DrinkCatalog mixed = assets.Drinks(withProbability: true);
-            var a = new DrinkRewardController(mixed, 99).CreateOffer().Select(o => ((object)o.Payout ?? o.Probability, o.Target)).ToList();
-            var b = new DrinkRewardController(mixed, 99).CreateOffer().Select(o => ((object)o.Payout ?? o.Probability, o.Target)).ToList();
+            var a = new DrinkRewardController(mixed, 99).CreateOffer().Select(o => (object)o.Payout ?? o.Probability).ToList();
+            var b = new DrinkRewardController(mixed, 99).CreateOffer().Select(o => (object)o.Payout ?? o.Probability).ToList();
             CollectionAssert.AreEqual(a, b);
         }
 
@@ -234,8 +234,9 @@ namespace ProjectCR.Tests
             DrinkOffer drink = flow.ConfirmDrink(2);
 
             Assert.AreSame(offered, drink);
-            Assert.AreEqual(1, flow.Drinks.StacksOf(drink.Group));
-            Assert.AreEqual(1, flow.Drinks.TotalStacks, "한 번 확정에 묶음 하나만 +1.");
+            Assert.AreEqual(1, flow.Drinks.StacksOf(drink.Target));
+            Assert.AreEqual(1, flow.Drinks.TotalStacks, "한 번 확정에 대상 하나만 +1.");
+            CollectionAssert.AreEqual(new[] { drink.Target }, flow.LastDrinkTargets);
             Assert.AreSame(drink, flow.LastDrink);
 
             Assert.AreEqual(GamePhase.Betting, flow.Phase);
@@ -244,6 +245,36 @@ namespace ProjectCR.Tests
             Assert.AreEqual(300, flow.Round.CurrentDue);
             Assert.AreEqual(11, flow.Wallet.Balance, "돈은 그대로 이어진다.");
             Assert.IsNull(flow.Rewards.CurrentOffer);
+        }
+
+        [Test]
+        public void PayoutOffer_HasOneTargetOfItsGroup_AndEveryTargetCanAppear()
+        {
+            var seen = new HashSet<BetTarget>();
+            for (int seed = 1; seed <= 400; seed++)
+            {
+                foreach (DrinkOffer offer in new DrinkRewardController(catalog, seed).CreateOffer())
+                {
+                    Assert.IsFalse(offer.IsProbability);
+                    CollectionAssert.Contains(offer.Group.Targets(), offer.Target, "대상은 그 음료 묶음의 대상 하나");
+                    seen.Add(offer.Target);
+                }
+            }
+
+            foreach (DrinkGroup group in new[] { DrinkGroup.Column, DrinkGroup.Dozen, DrinkGroup.Parity, DrinkGroup.Color, DrinkGroup.Range })
+            {
+                CollectionAssert.IsSubsetOf(group.Targets(), seen, $"{group}의 모든 대상이 나올 수 있다");
+            }
+        }
+
+        [Test]
+        public void PayoutOffer_TargetStaysFixed_UntilPicked()
+        {
+            PlayPassableRound(flow);
+            flow.SubmitPayment();
+            var before = flow.Rewards.CurrentOffer.Select(o => o.Target).ToList();
+
+            CollectionAssert.AreEqual(before, flow.Rewards.CreateOffer().Select(o => o.Target).ToList());
         }
 
         [Test]
@@ -287,17 +318,26 @@ namespace ProjectCR.Tests
             flow = NewFlow(42, all);
             PlayPassableRound(flow);
             flow.SubmitPayment();
-            flow.ConfirmDrink(OfferIndexOf(DrinkGroup.Color));
+            DrinkOffer drink = flow.ConfirmDrink(OfferIndexOf(DrinkGroup.Color));
 
-            SpinAndSettle(flow, Red, 10, 32);
-            Assert.AreEqual(11 - 10 + 30, flow.Wallet.Balance, "빨강 10 × 2 × 1.5 = 30");
+            // 색상 음료는 빨강·검정 중 정해진 하나에만 붙는다. 그 색 숫자 두 개와 반대 색 숫자 하나로 시험한다.
+            BetTarget color = drink.Target;
+            BetTarget other = BetTarget.Outside(color.Kind == BetKind.Red ? BetKind.Black : BetKind.Red);
+            int[] hits = Enumerable.Range(1, 36).Where(n => color.CoversNumber(n, definition.ColorOfNumber(n))).ToArray();
+            int miss = Enumerable.Range(1, 36).First(n => other.CoversNumber(n, definition.ColorOfNumber(n)));
 
-            SpinAndSettle(flow, Red, 10, 34);
+            SpinAndSettle(flow, color, 10, hits[0]);
+            Assert.AreEqual(11 - 10 + 30, flow.Wallet.Balance, "정해진 색 10 × 2 × 1.5 = 30");
+
+            SpinAndSettle(flow, color, 10, hits[1]);
             Assert.AreEqual(31 - 10 + 30, flow.Wallet.Balance);
 
-            flow.ForcedNumbers = new[] { 32, Skull };
+            SpinAndSettle(flow, other, 10, miss);
+            Assert.AreEqual(51 - 10 + 20, flow.Wallet.Balance, "반대 색은 음료가 붙지 않는다: 10 × 2 = 20");
+
+            flow.ForcedNumbers = new[] { hits[0], Skull };
             flow.ExtraBallCount = 1;
-            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(color, 10);
             flow.TryBeginSpin(out ActiveSpin spin);
             flow.CompleteSpin(spin.Id, out SettlementResult s);
             Assert.AreEqual(SpinOutcome.SkullBust, s.Outcome);

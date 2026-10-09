@@ -387,6 +387,7 @@ namespace ProjectCR
             box.Add(chips);
             if (chosen.IsNone)
             {
+                box.Add(MakeLabel($"확률을 올릴 대상을 고르세요. 당첨금 +{Percent(item.Value)}는 {item.Group.ToKorean()} 베팅 전체에 붙습니다", "shop-state"));
                 return box;
             }
 
@@ -397,7 +398,7 @@ namespace ProjectCR
             double after = PocketWeightCalculator.ProbabilityOf(flow.Definition,
                 PocketWeightCalculator.Probabilities(flow.Definition, weights, config.SkullChance), chosen);
 
-            box.Add(MakeLabel($"등장 확률 {NumberText.Percent(config.ProbabilityOf(chosen))} → {NumberText.Percent(after)}", "shop-state"));
+            box.Add(MakeLabel($"{DrinkOffer.TargetWithNumbers(chosen, flow.Definition)} 등장 확률 {NumberText.Percent(config.ProbabilityOf(chosen))} → {NumberText.Percent(after)}", "shop-state"));
             return box;
         }
 
@@ -463,7 +464,7 @@ namespace ProjectCR
 
             foreach (ProbabilityEffect effect in flow.Upgrades.Probabilities.Effects)
             {
-                lines.Add($"집중 · {DrinkOffer.TargetLabel(effect.Target)} 가중치 +{Percent(effect.BoostPerStack * effect.Stacks)} ({effect.Stacks}개)");
+                lines.Add($"집중 · {DrinkOffer.TargetLabel(effect.Target)} 가중치 +{Percent(effect.Total)} ({effect.Stacks}개)");
             }
 
             for (int t = 0; t < DrinkGroups.Count; t++)

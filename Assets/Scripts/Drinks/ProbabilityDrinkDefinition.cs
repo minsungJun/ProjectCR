@@ -1,17 +1,16 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace ProjectCR
 {
     /// <summary>
-    /// 확률 강화 음료 한 종류(정적 데이터). 마시면 <b>구체적인 대상 하나</b>의 추첨 가중치가 잔마다 계수만큼 오른다.
-    /// 대상은 후보를 만들 때 정한다(<see cref="DrawTarget"/>): 빨강/검정 중 하나, 세 컬럼 중 하나, 숫자 하나 등.
-    /// 묶음 전체(색상 전체, 컬럼 전체)를 올리지는 않는다.
+    /// 확률 강화 음료 한 종류(정적 데이터). 마실 때 <b>플레이어가 묶음 안에서 대상을 고른다</b>:
+    /// 코랄은 1열·2열·3열, 엠버는 1–12·13–24·25–36, 에메랄드는 홀·짝, 루비는 빨강·검정, 스카이는 1–18·19–36, 바이올렛은 숫자(0~36).
+    /// 한 잔의 가중치 증가(<see cref="Boost"/>)를 고른 대상 수로 똑같이 나눠 붙인다(컬럼 +30%에 두 개를 고르면 각각 +15%).
     ///
     /// 계수는 가중치 증가다(0.1 = 가중치 +10%). 당첨 확률 +10%p가 아니다.
-    /// 기본 계수는 "한 잔 마시면 그 대상 베팅의 기대 환수율 ≈ 110%"(강화 전 94.7%)에 맞췄다(2026-10-09).
-    /// 칸 수가 다르면 같은 환수율에 필요한 계수가 달라서 대상 종류마다 계수가 다르다.
+    /// 기본 계수는 "대상 하나만 골라 한 잔 마시면 그 대상 베팅의 기대 환수율 ≈ 110%"(강화 전 94.7%)에 맞췄다(2026-10-09).
+    /// 칸 수가 다르면 같은 환수율에 필요한 계수가 달라서 묶음마다 계수가 다르다.
     /// </summary>
     [CreateAssetMenu(fileName = "ProbDrink", menuName = "ProjectCR/Probability Drink")]
     public class ProbabilityDrinkDefinition : ScriptableObject
@@ -19,6 +18,11 @@ namespace ProjectCR
         [SerializeField] private DrinkGroup group;
 
         [SerializeField] private string displayName = "확률 음료";
+
+        [Tooltip("툴팁의 효과 설명 줄. 비우면 자동 문장(\"컬럼(1열·2열·3열) 중 고른 대상이 나올 확률을 올립니다. …\").\n" +
+                 "{group} = 묶음 이름(컬럼), {bets} = 고를 수 있는 대상(1열·2열·3열), {boost} = 한 잔 가중치(+26%)로 바뀐다.")]
+        [TextArea(2, 4)]
+        [SerializeField] private string description;
 
         [Tooltip("카드 그림. 비우면 강조색 잔 모양으로 대신 그린다.")]
         [SerializeField] private Sprite icon;
@@ -29,86 +33,63 @@ namespace ProjectCR
         [Tooltip("이 음료의 3D 모델(프리팹). 아직 게임 화면에서는 쓰지 않는다.")]
         [SerializeField] private GameObject model;
 
-        [Tooltip("숫자가 아닌 묶음의 한 잔당 가중치 증가. 1잔 110% 기준: 색상·홀짝·구간 0.37, 컬럼·더즌 0.26.")]
+        [Tooltip("숫자가 아닌 묶음의 한 잔 가중치 증가. 고른 대상 수로 나눠 붙는다. 대상 하나 110% 기준: 색상·홀짝·구간 0.37, 컬럼·더즌 0.26.")]
         [Min(0f)]
         [SerializeField] private float boostPerStack = 0.37f;
 
         [Header("숫자 묶음 전용")]
-        [Tooltip("숫자 하나(0 포함) 대상의 한 잔당 가중치 증가. 1잔 110% 기준 0.17.")]
+        [Tooltip("숫자 음료의 한 잔 가중치 증가. 고른 숫자 수로 나눠 붙는다. 숫자 하나 110% 기준 0.17.")]
         [Min(0f)]
         [SerializeField] private float singleNumberBoost = 0.17f;
 
-        [Tooltip("숫자 2~6개(스플릿·스트리트·코너·식스 라인, 0 제외) 대상의 한 잔당 가중치 증가. 1잔 110% 기준 0.18(2칸 110.7% ~ 6칸 108.6%).")]
-        [Min(0f)]
-        [SerializeField] private float numberSetBoost = 0.18f;
-
-        [Tooltip("후보를 만들 때 숫자 하나가 대상이 될 확률. 나머지는 숫자 묶음.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float singleNumberChance = 0.5f;
-
-        // 숫자 묶음 후보: 베팅판에서 걸 수 있는 안쪽 조합 중 0이 없는 것.
-        private static List<BetTarget> numberSets;
-
         public DrinkGroup Group => group;
         public string DisplayName => displayName;
+
+        /// <summary>인스펙터에 적은 설명(자리 표시 바꿈 전). 비었으면 null.</summary>
+        public string CustomDescription => string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
         public Sprite Icon => icon;
         public Color Tint => tint;
         public GameObject Model => model;
 
-        /// <summary>대상 종류별 한 잔당 가중치 증가(decimal로 정확히).</summary>
-        public decimal BoostFor(BetTarget target)
-        {
-            float value = group != DrinkGroup.Number ? boostPerStack
-                : target.IsStraight ? singleNumberBoost
-                : numberSetBoost;
-            return (decimal)Mathf.Max(0f, value);
-        }
+        /// <summary>한 잔의 가중치 증가 전체(decimal로 정확히). 고른 대상 수로 나눠 붙는다.</summary>
+        public decimal Boost => (decimal)Mathf.Max(0f, group == DrinkGroup.Number ? singleNumberBoost : boostPerStack);
 
-        /// <summary>후보 카드에 올릴 구체적인 대상을 하나 뽑는다. 해골은 대상이 될 수 없다.</summary>
-        public BetTarget DrawTarget(System.Random rng)
+        /// <summary>대상 n개를 골랐을 때 대상 하나에 붙는 증가량.</summary>
+        public decimal BoostEach(int count) => count > 0 ? Boost / count : 0m;
+
+        /// <summary>이 묶음에서 고를 수 있는 대상(숫자 묶음은 0~36 숫자 하나씩). 해골은 없다.</summary>
+        public static List<BetTarget> TargetOptions(DrinkGroup group) => group.Targets();
+
+        /// <summary>고른 대상 목록이 맞는지: 하나 이상, 모두 이 묶음의 대상, 겹치지 않음.</summary>
+        public static bool AreValidTargets(DrinkGroup group, IReadOnlyList<BetTarget> targets)
         {
-            switch (group)
+            if (targets == null || targets.Count == 0)
             {
-                case DrinkGroup.Color:
-                    return BetTarget.Outside(rng.Next(2) == 0 ? BetKind.Red : BetKind.Black);
-                case DrinkGroup.Parity:
-                    return BetTarget.Outside(rng.Next(2) == 0 ? BetKind.Odd : BetKind.Even);
-                case DrinkGroup.Range:
-                    return BetTarget.Outside(rng.Next(2) == 0 ? BetKind.Low : BetKind.High);
-                case DrinkGroup.Column:
-                    return BetTarget.Outside(BetKind.Column1 + rng.Next(3));
-                case DrinkGroup.Dozen:
-                    return BetTarget.Outside(BetKind.Dozen1 + rng.Next(3));
-                default:
-                    if (rng.NextDouble() < singleNumberChance)
-                    {
-                        return BetTarget.Straight(rng.Next(37)); // 0~36
-                    }
-
-                    List<BetTarget> sets = NumberSets();
-                    return sets[rng.Next(sets.Count)];
+                return false;
             }
-        }
 
-        /// <summary>0이 들어가지 않은 안쪽 베팅 조합(숫자 2~6개).</summary>
-        public static List<BetTarget> NumberSets()
-        {
-            if (numberSets == null)
+            List<BetTarget> options = TargetOptions(group);
+            for (int i = 0; i < targets.Count; i++)
             {
-                numberSets = new List<BetTarget>();
-                foreach (InsideBetSpot spot in InsideBets.All)
+                if (!options.Contains(targets[i]))
                 {
-                    if (!spot.Target.CoversNumber(0, PocketColor.Green))
+                    return false;
+                }
+
+                for (int j = 0; j < i; j++)
+                {
+                    if (targets[j] == targets[i])
                     {
-                        numberSets.Add(spot.Target);
+                        return false;
                     }
                 }
             }
 
-            return numberSets;
+            return true;
         }
 
-        /// <summary>코드로 만든다(테스트, 기본 에셋 생성). 숫자 묶음 계수는 기본값.</summary>
+        /// <summary>코드로 만든다(테스트, 기본 에셋 생성). 숫자 계수는 기본값.</summary>
         public static ProbabilityDrinkDefinition Create(DrinkGroup group, string displayName, Color tint, float boostPerStack)
         {
             var drink = CreateInstance<ProbabilityDrinkDefinition>();
@@ -120,7 +101,7 @@ namespace ProjectCR
             return drink;
         }
 
-        /// <summary>기본 6종(1잔 ≈ 110% 기준): 색상·홀짝·구간 +37%, 컬럼·더즌 +26%, 숫자 하나 +17%·숫자 묶음 +18%.</summary>
+        /// <summary>기본 6종(대상 하나 1잔 ≈ 110% 기준): 색상·홀짝·구간 +37%, 컬럼·더즌 +26%, 숫자 +17%.</summary>
         public static ProbabilityDrinkDefinition[] CreateDefaults()
         {
             return new[]

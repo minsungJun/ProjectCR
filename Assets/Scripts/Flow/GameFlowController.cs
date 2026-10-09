@@ -41,7 +41,7 @@ namespace ProjectCR
             ShieldsUsed = shieldsUsed;
         }
 
-        /// <summary>이 회전에 보험이 걸렸다(시작 때 확정).</summary>
+        /// <summary>이 회전 시작 때 보험 증서가 있었다(실제로 쓰는지는 정산 때 손익으로 정한다).</summary>
         public bool Insured { get; }
 
         public decimal InsuranceRatio { get; }
@@ -176,6 +176,9 @@ namespace ProjectCR
         /// <summary>마지막으로 마신 음료. 없으면 null.</summary>
         public DrinkOffer LastDrink { get; private set; }
 
+        /// <summary>마지막 음료의 대상(지급 음료는 정해진 대상 하나, 확률 음료는 고른 대상들).</summary>
+        public IReadOnlyList<BetTarget> LastDrinkTargets { get; private set; } = new BetTarget[0];
+
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
 
         /// <summary>
@@ -244,7 +247,7 @@ namespace ProjectCR
             SpinConfig config = BuildSpinConfig();
             Round.TryConsumeSpin();
             Cross.TakePendingForSpin();
-            bool insured = Inventory.TakeInsuranceForSpin();
+            bool insured = Inventory.Insurances > 0;
             if (config.PayoutScale != 1m)
             {
                 Inventory.Use(ShopEffect.DoubleUp);
@@ -313,10 +316,12 @@ namespace ProjectCR
                 }
             }
 
-            // 보험: 해골이 아닌 일반 낙첨(지급 0)이면 베팅금 일부 환급. 해골 낙첨·당첨에는 없다.
-            if (spin.Insured && settlement.Outcome == SpinOutcome.Lose)
+            // 보험: 돈을 잃은 회전(받은 돈 < 건 돈)이면 이때 증서 1장을 쓰고 잃은 금액의 일부를 돌려준다.
+            // 본전·이득인 회전과 해골 낙첨에는 쓰지 않는다(증서가 그대로 남는다).
+            long lost = settlement.TotalStake - settlement.TotalPayout;
+            if (spin.Insured && !settlement.IsSkullBust && lost > 0 && Inventory.UseInsurance())
             {
-                long refund = (long)Math.Floor(settlement.TotalStake * spin.InsuranceRatio);
+                long refund = (long)Math.Floor(lost * spin.InsuranceRatio);
                 settlement.ApplyInsuranceRefund(Wallet.Add(refund));
             }
 
@@ -386,34 +391,69 @@ namespace ProjectCR
 
         /// <summary>
         /// 음료 후보 중 하나를 마신다. DrinkSelection 상태에서만 동작하고, 성공하면 한 잔을 더한 뒤 다음 라운드로 넘어간다.
-        /// 지급 강화는 묶음 잔 수 +1, 확률 강화는 후보에 정해진 대상의 잔 수 +1.
-        /// 상태가 맞지 않거나 번호가 틀리면 null이고 아무것도 바뀌지 않는다.
+        /// 지급 강화는 후보에 정해진 대상의 잔 수 +1. 확률 강화는 <paramref name="targets"/>(그 묶음의 대상 하나 이상, 겹치지 않게)에
+        /// 한 잔 가중치를 똑같이 나눠 붙인다.
+        /// 상태가 맞지 않거나 번호·대상이 틀리면 null이고 아무것도 바뀌지 않는다(후보도 그대로).
         /// </summary>
-        public DrinkOffer ConfirmDrink(int offerIndex)
+        public DrinkOffer ConfirmDrink(int offerIndex, IReadOnlyList<BetTarget> targets = null)
         {
             if (Phase != GamePhase.DrinkSelection)
             {
                 return null;
             }
 
-            DrinkOffer drink = Rewards.Take(offerIndex);
-            if (drink == null)
+            IReadOnlyList<DrinkOffer> offer = Rewards.CurrentOffer;
+            if (offer == null || offerIndex < 0 || offerIndex >= offer.Count)
             {
                 return null;
             }
 
+            if (offer[offerIndex].IsProbability && !ProbabilityDrinkDefinition.AreValidTargets(offer[offerIndex].Group, targets))
+            {
+                return null;
+            }
+
+            DrinkOffer drink = Rewards.Take(offerIndex);
             if (drink.IsProbability)
             {
-                Probabilities.AddStack(drink.Target, drink.Boost);
+                Probabilities.AddSplit(targets, drink.Boost);
+                LastDrinkTargets = new List<BetTarget>(targets);
             }
             else
             {
-                Drinks.AddStack(drink.Group);
+                Drinks.AddStack(drink.Target);
+                LastDrinkTargets = new[] { drink.Target };
             }
 
             LastDrink = drink;
             StartNextRound();
             return drink;
+        }
+
+        /// <summary>
+        /// 확률 음료를 고른 대상들에 나눠 마셨을 때 그 대상들 합계 등장 확률(공 하나 기준, 지금 → 마신 뒤).
+        /// 음료·상점 집중 효과를 모두 넣고, <b>상태는 바꾸지 않는다</b>(고르기·툴팁 미리보기용). 대상이 없으면 (0, 0).
+        /// </summary>
+        public (double now, double after) PreviewProbabilityDrink(IReadOnlyList<BetTarget> targets, decimal total)
+        {
+            if (targets == null || targets.Count == 0)
+            {
+                return (0d, 0d);
+            }
+
+            SpinConfig config = BuildSpinConfig();
+            var effects = Probabilities.WithSplit(targets, total);
+            effects.AddRange(Upgrades.Probabilities.Effects);
+            double[] probabilities = PocketWeightCalculator.Probabilities(Definition, PocketWeightCalculator.Compute(Definition, effects), config.SkullChance);
+            double now = 0d;
+            double after = 0d;
+            foreach (BetTarget target in targets)
+            {
+                now += config.ProbabilityOf(target);
+                after += PocketWeightCalculator.ProbabilityOf(Definition, probabilities, target);
+            }
+
+            return (now, after);
         }
 
         // ---------- 상점 ----------
@@ -492,11 +532,10 @@ namespace ProjectCR
                 config.StraightPayout = StraightPayoutOverride;
             }
 
-            // 음료: 묶음 배율 = 한 잔 배율^잔 수. 기본 배수에 곱하는 건 SpinConfig.MultiplierFor.
-            for (int i = 0; i < DrinkGroups.Count; i++)
+            // 음료: 대상 배율 = 한 잔 배율^잔 수(마신 대상만). 기본 배수에 곱하는 건 SpinConfig.MultiplierFor.
+            foreach (BetTarget target in Drinks.Targets)
             {
-                var group = (DrinkGroup)i;
-                config.SetGroupBoost(group, Drinks.MultiplierOf(group));
+                config.SetTargetBoost(target, Drinks.MultiplierOf(target));
             }
 
             // 상점 강화: (1 + 집중 증가 + 다음 회전 교차 증가). 음료 배율 뒤에 곱한다(SpinConfig.MultiplierFor).

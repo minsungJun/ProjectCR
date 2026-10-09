@@ -265,10 +265,10 @@ namespace ProjectCR.Tests
             Assert.AreEqual(0, flow.Inventory.CountOf(ShopEffect.SpareSpin));
         }
 
-        // ---------- 보험 증서 (회전마다 1장 자동) ----------
+        // ---------- 보험 증서 (돈을 잃은 회전에만 1장 자동) ----------
 
         [Test]
-        public void Insurance_UsesOnePerSpin_RefundsHalfOnPlainLoss()
+        public void Insurance_UsedOnlyOnLosingSpin_RefundsHalfOfLoss()
         {
             GameFlowController flow = Bought("insurance", 2);
             Assert.AreEqual(2, flow.Inventory.Insurances);
@@ -276,29 +276,59 @@ namespace ProjectCR.Tests
             long before = flow.Wallet.Balance;
 
             SettlementResult lose = Spin(flow, Red, 21, 2);
-            Assert.AreEqual(10, lose.InsuranceRefund, "21의 50% = 10.5 → 10");
+            Assert.AreEqual(10, lose.InsuranceRefund, "잃은 21의 50% = 10.5 → 10");
             Assert.AreEqual(before - 21 + 10, flow.Wallet.Balance);
-            Assert.AreEqual(1, flow.Inventory.Insurances, "회전마다 1장씩.");
+            Assert.AreEqual(1, flow.Inventory.Insurances, "잃은 회전에 1장.");
 
             Assert.AreEqual(10, Spin(flow, Red, 20, 2).InsuranceRefund, "두 번째 장도 자동.");
             Assert.AreEqual(0, Spin(flow, Red, 20, 2).InsuranceRefund, "다 쓰면 환급 없음.");
         }
 
         [Test]
-        public void Insurance_NoRefund_OnWinOrSkull_ButStillUsed()
+        public void Insurance_NotUsed_OnWin_BreakEven_OrSkull()
         {
-            GameFlowController flow = Bought("insurance", 2);
+            GameFlowController flow = Bought("insurance", 1);
             flow.CloseShop();
+            flow.Wallet.Add(1_000);
+
             Assert.AreEqual(0, Spin(flow, Red, 20, 32).InsuranceRefund, "당첨이면 환급 없음.");
-            Assert.AreEqual(1, flow.Inventory.Insurances, "당첨이어도 그 회전에 1장 쓴다.");
+            Assert.AreEqual(1, flow.Inventory.Insurances, "당첨이면 쓰지 않는다.");
+
+            // 빨강 10 + 검정 10, 32(빨강): 20 받고 20 걸어 본전.
+            flow.ForcedNumbers = new[] { 32 };
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(BetTarget.Outside(BetKind.Black), 10);
+            flow.TryBeginSpin(out ActiveSpin even);
+            flow.CompleteSpin(even.Id, out SettlementResult breakEven);
+            Assert.AreEqual(0, breakEven.Net);
+            Assert.AreEqual(0, breakEven.InsuranceRefund);
+            Assert.AreEqual(1, flow.Inventory.Insurances, "본전이면 쓰지 않는다.");
 
             SettlementResult skull = Spin(flow, Red, 20, Skull);
             Assert.AreEqual(SpinOutcome.SkullBust, skull.Outcome);
             Assert.AreEqual(0, skull.InsuranceRefund, "해골 낙첨에는 환급 없음.");
-            Assert.AreEqual(0, flow.Inventory.Insurances);
+            Assert.AreEqual(1, flow.Inventory.Insurances, "해골 낙첨에도 쓰지 않는다.");
         }
 
-        // ---------- 납부 지원금(지속 효과) ----------
+        [Test]
+        public void Insurance_PartialLoss_RefundsHalfOfWhatWasLost()
+        {
+            GameFlowController flow = Bought("insurance", 1);
+            flow.CloseShop();
+            long before = flow.Wallet.Balance;
+
+            // 빨강 10 + 7번 20, 32(빨강): 20 받고 30 걸어 10 잃음 → 5 환급.
+            flow.ForcedNumbers = new[] { 32 };
+            flow.PlaceBet(Red, 10);
+            flow.PlaceBet(BetTarget.Straight(7), 20);
+            flow.TryBeginSpin(out ActiveSpin spin);
+            flow.CompleteSpin(spin.Id, out SettlementResult partial);
+
+            Assert.AreEqual(SpinOutcome.Win, partial.Outcome, "지급은 있지만");
+            Assert.AreEqual(5, partial.InsuranceRefund, "잃은 10의 50%");
+            Assert.AreEqual(before - 30 + 20 + 5, flow.Wallet.Balance);
+            Assert.AreEqual(0, flow.Inventory.Insurances);
+        }
 
         [Test]
         public void PaymentSupport_RefundsShareOfPaidDue_EveryRound()

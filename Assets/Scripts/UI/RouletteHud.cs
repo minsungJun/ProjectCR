@@ -53,6 +53,10 @@ namespace ProjectCR
         private Label tooltipTargets;
         private Label tooltipStake;
         private Label tooltipProgress;
+        private Label tooltipNote;
+
+        /// <summary>확률 음료 대상 고르기 창. Initialize 뒤에 생긴다.</summary>
+        public DrinkTargetPicker DrinkPicker { get; private set; }
 
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
         public void Initialize(RouletteDefinition definition)
@@ -74,6 +78,8 @@ namespace ProjectCR
             tooltipTargets = root.Q<Label>("bet-tooltip-targets");
             tooltipStake = root.Q<Label>("bet-tooltip-stake");
             tooltipProgress = root.Q<Label>("bet-tooltip-progress");
+            tooltipNote = root.Q<Label>("bet-tooltip-note");
+            DrinkPicker = new DrinkTargetPicker(root);
 
 
             // [옵션] = 일시정지 메뉴(Esc와 같다). 시점 전환은 옵션 왼쪽 버튼.
@@ -160,6 +166,7 @@ namespace ProjectCR
             }
 
             betTooltip.RemoveFromClassList(TooltipWrapClass);
+            SetNote(null);
             bool boosted = showPayout && info.IsBoosted;
             tooltipKind.text = showPayout ? $"{info.KindName} ·" : info.KindName;
             tooltipBase.text = $"×{info.BasePayout} →";
@@ -191,7 +198,8 @@ namespace ProjectCR
         }
 
         /// <summary>
-        /// 로봇 선반 음료 툴팁: 이름 · 변화(금색) / 효과 / 예시·확률 / 안내. 판 호버 툴팁과 같은 요소·위치 규칙을 쓴다.
+        /// 로봇 선반 음료 툴팁: 이름 · 종류 · 변화(금색) / 효과 / 예시·수치 / 유지·쌓임(흐리게) / 안내(금색).
+        /// 판 호버 툴팁과 같은 요소·위치 규칙을 쓰고, 긴 문장은 줄바꿈한다.
         /// </summary>
         public void ShowDrinkTooltip(DrinkHoverText text, string hint)
         {
@@ -200,9 +208,11 @@ namespace ProjectCR
                 return;
             }
 
-            betTooltip.RemoveFromClassList(TooltipWrapClass);
+            betTooltip.AddToClassList(TooltipWrapClass);
             tooltipKind.text = $"{text.Title} ·";
-            tooltipBase.style.display = DisplayStyle.None;
+            tooltipBase.text = $"{text.Kind} ·";
+            tooltipBase.style.display = string.IsNullOrEmpty(text.Kind) ? DisplayStyle.None : DisplayStyle.Flex;
+            SetNote(text.Duration);
             tooltipFinal.text = text.Accent;
             tooltipFinal.style.display = DisplayStyle.Flex;
             tooltipFinal.EnableInClassList("bet-tooltip__final--boosted", true);
@@ -217,6 +227,18 @@ namespace ProjectCR
 
         private const string TooltipWrapClass = "bet-tooltip--wrap";
 
+        /// <summary>툴팁의 흐린 메모 줄(음료의 유지·쌓임). 비우면 숨긴다.</summary>
+        private void SetNote(string note)
+        {
+            if (tooltipNote == null)
+            {
+                return;
+            }
+
+            tooltipNote.text = note ?? string.Empty;
+            tooltipNote.style.display = string.IsNullOrEmpty(note) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
         /// <summary>
         /// 테이블 배지(보유 강화) 툴팁: 이름 · 종류(금색) / 효과 설명(긴 문장은 줄바꿈) / 지금 상태 / 적용 기간.
         /// 판 호버 툴팁과 같은 요소·위치 규칙을 쓴다.
@@ -229,6 +251,7 @@ namespace ProjectCR
             }
 
             betTooltip.AddToClassList(TooltipWrapClass);
+            SetNote(null);
             tooltipKind.text = $"{text.Title} ·";
             tooltipBase.style.display = DisplayStyle.None;
             tooltipFinal.text = text.Accent;

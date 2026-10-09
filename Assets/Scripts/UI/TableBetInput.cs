@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 namespace ProjectCR
 {
     /// <summary>
-    /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기, 오른쪽 클릭(끌지 않고 떼기) = 그 자리 베팅 빼기,
+    /// 3D 테이블 마우스 입력. 판 왼쪽 클릭 = 칩 놓기(같은 칸에서 <see cref="holdDelay"/>초 누르고 있으면 칩을 계속 놓는다),
+    /// 오른쪽 클릭(끌지 않고 떼기) = 그 자리 베팅 빼기,
     /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수, 강화 배지 = 호버만(툴팁). 마우스가 HUD 위에 있으면 무시한다.
     /// 입력을 이벤트로 넘기기만 하고, 베팅 가능 여부는 GameFlowController가 판단한다.
     /// <see cref="Interactable"/>이 false면(1인칭으로 둘러보는 중) 아무것도 가리키지 않고 클릭도 보내지 않는다.
@@ -20,6 +21,23 @@ namespace ProjectCR
 
         [Tooltip("트레이 칩 콜라이더를 찾는 광선 길이(m).")]
         [SerializeField] private float trayRayDistance = 10f;
+
+        [Header("길게 눌러 계속 걸기")]
+        [Tooltip("판의 같은 칸을 이만큼(초) 누르고 있으면 칩을 계속 놓기 시작한다.")]
+        [Min(0.1f)]
+        [SerializeField] private float holdDelay = 2f;
+
+        [Tooltip("계속 놓기 시작할 때 칩 사이 간격(초).")]
+        [Min(0.01f)]
+        [SerializeField] private float repeatInterval = 0.15f;
+
+        [Tooltip("가장 빨라졌을 때 칩 사이 간격(초).")]
+        [Min(0.01f)]
+        [SerializeField] private float fastRepeatInterval = 0.04f;
+
+        [Tooltip("계속 놓기 시작한 뒤 가장 빠른 간격까지 걸리는 시간(초).")]
+        [Min(0f)]
+        [SerializeField] private float rampSeconds = 2f;
 
         public event Action<BetTarget> TargetClicked;
         public event Action<BetTarget> TargetRemoveRequested;
@@ -44,6 +62,10 @@ namespace ProjectCR
         private const float RightDragThreshold = 6f;
 
         private BetTarget hover = BetTarget.None;
+
+        // 왼쪽 버튼을 누르고 있는 칸의 시간 계산. 칸을 벗어나거나 떼면 멈춘다.
+        private HoldRepeat hold;
+
         private Vector2 rightPressScreen;
         private bool rightDragged;
         private TabletButton hoveredButton;
@@ -52,6 +74,17 @@ namespace ProjectCR
 
         /// <summary>지금 마우스가 가리키는 베팅 대상(클릭하면 이 대상에 놓인다). 판 밖·HUD 위·트레이·태블릿이면 None.</summary>
         public BetTarget CurrentHover => hover;
+
+        /// <summary>길게 눌러 칩을 계속 놓는 중인가.</summary>
+        public bool IsRepeating => hold != null && hold.IsRepeating;
+
+        /// <summary>길게 누르기를 멈춘다(돈이 모자라 더 못 놓을 때 등). 버튼을 다시 눌러야 새로 시작한다.</summary>
+        public void CancelHold() => hold?.Cancel();
+
+        private void Awake()
+        {
+            hold = new HoldRepeat(holdDelay, repeatInterval, fastRepeatInterval, rampSeconds);
+        }
 
         /// <summary>마지막으로 읽은 마우스 화면 좌표(Input System, 왼쪽 아래 원점).</summary>
         public Vector2 PointerScreen { get; private set; }
@@ -161,9 +194,20 @@ namespace ProjectCR
 
             if (mouse.leftButton.wasPressedThisFrame)
             {
+                hold.Press(target);
+                TargetClicked?.Invoke(target);
+                return;
+            }
+
+            // 길게 누르기: 일시정지(timeScale 0)와 상관없이 실제 시간으로 잰다. 막혀 있으면 Interactable이 꺼져 여기까지 오지 않는다.
+            int repeats = hold.Tick(target, mouse.leftButton.isPressed, Time.unscaledDeltaTime);
+            for (int i = 0; i < repeats && hold.Target == target; i++)
+            {
+                // 놓다가 막히면 RouletteGame이 CancelHold를 불러 hold.Target이 None이 된다.
                 TargetClicked?.Invoke(target);
             }
-            else if (rightClicked)
+
+            if (rightClicked)
             {
                 TargetRemoveRequested?.Invoke(target);
             }
@@ -188,6 +232,7 @@ namespace ProjectCR
 
         private void ClearHover()
         {
+            CancelHold();
             SetHover(BetTarget.None);
             SetButtonHover(null);
             SetDrinkHover(null);
@@ -237,6 +282,12 @@ namespace ProjectCR
 
         private void SetHover(BetTarget target)
         {
+            // 누르던 칸을 벗어나면(다른 칸·트레이·태블릿·음료) 길게 누르기를 멈춘다.
+            if (hold != null && hold.Target != target)
+            {
+                CancelHold();
+            }
+
             if (hover == target)
             {
                 return;

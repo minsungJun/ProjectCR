@@ -4,27 +4,42 @@ using System.Collections.Generic;
 namespace ProjectCR
 {
     /// <summary>
-    /// 확률 효과 하나: 대상(빨강, 2번째 더즌, 7번, {1,2,4,5} 등), 한 잔당 가중치 증가 계수, 잔 수.
-    /// 같은 대상이면 한 효과로 묶어 잔 수만 늘린다(<see cref="ProbabilityDrinkRunState"/>).
+    /// 확률 효과 하나: 대상(빨강, 2번째 더즌, 7번, {1,2,4,5} 등), 받은 횟수, 가중치 증가 합.
+    /// 같은 대상이면 한 효과로 묶어 횟수와 증가량을 더한다(<see cref="ProbabilityDrinkRunState"/>).
+    /// 한 잔을 여러 대상에 나눠 받으면 잔마다 증가량이 달라서 계수 × 횟수가 아니라 합을 그대로 들고 있는다.
     /// </summary>
     public readonly struct ProbabilityEffect
     {
+        /// <summary>같은 계수로 stacks번 받은 효과.</summary>
         public ProbabilityEffect(BetTarget target, decimal boostPerStack, int stacks)
+            : this(target, stacks, boostPerStack * stacks, true)
+        {
+        }
+
+        private ProbabilityEffect(BetTarget target, int stacks, decimal total, bool _)
         {
             Target = target;
-            BoostPerStack = boostPerStack;
             Stacks = stacks;
+            Total = total;
         }
+
+        /// <summary>받은 횟수와 증가량 합으로 만든다.</summary>
+        public static ProbabilityEffect WithTotal(BetTarget target, int stacks, decimal total) =>
+            new ProbabilityEffect(target, stacks, total, true);
 
         public BetTarget Target { get; }
 
-        /// <summary>한 잔당 가중치 증가(0.1 = +10%).</summary>
-        public decimal BoostPerStack { get; }
-
+        /// <summary>이 대상이 효과를 받은 횟수(잔 수, 집중 강화 개수).</summary>
         public int Stacks { get; }
 
-        /// <summary>이 효과가 대상 칸에 더하는 증가량 = 잔 수 × 계수.</summary>
-        public double Increase => (double)BoostPerStack * Stacks;
+        /// <summary>가중치 증가 합(0.1 = +10%).</summary>
+        public decimal Total { get; }
+
+        /// <summary>한 번에 받은 평균 증가량.</summary>
+        public decimal BoostPerStack => Stacks > 0 ? Total / Stacks : 0m;
+
+        /// <summary>이 효과가 대상 칸에 더하는 증가량.</summary>
+        public double Increase => (double)Total;
     }
 
     /// <summary>
