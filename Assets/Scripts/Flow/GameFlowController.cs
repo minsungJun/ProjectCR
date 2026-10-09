@@ -21,6 +21,9 @@ namespace ProjectCR
         Shopping,
 
         GameOver,
+
+        /// <summary>마지막 라운드(GameBalance.FinalRound) 납부까지 마쳤다. 더 진행하지 않는다.</summary>
+        GameClear,
     }
 
     /// <summary>진행 중인 회전 하나. 연출이 끝나면 Id로 정산을 요청한다.</summary>
@@ -72,7 +75,7 @@ namespace ProjectCR
     /// 해골 회전은 모든 베팅 낙첨에 더해 남은 보유 금액이 절반이 된다(<see cref="GameBalance.SkullKeptBalance"/>).
     /// <b>해골은 상태를 바꾸지 않는다.</b> 해골 회전은 지급 0으로 정산되는 정상 회전 종료이고,
     /// 회전 수 1회를 쓰고 일반 회전과 같은 규칙으로 Betting 또는 RoundPayment로 간다.
-    /// GameOver는 납부 실패에서만 생긴다. 음료는 해골 판정을 바꾸지 않는다(해골 회전은 음료와 상관없이 지급 0).
+    /// GameOver는 납부 실패에서만, GameClear는 마지막 라운드(GameBalance.FinalRound) 납부 성공에서만 생긴다. 음료는 해골 판정을 바꾸지 않는다(해골 회전은 음료와 상관없이 지급 0).
     ///
     /// 진행 상태(돈, 라운드, 음료 잔 수)는 전부 이 객체에 있다. 새 게임은 새 객체를 만드는 것으로 초기화한다.
     /// </summary>
@@ -361,6 +364,14 @@ namespace ProjectCR
 
             // 납부 지원금(지속 효과): 방금 낸 납부금의 일부를 돌려받는다. 납부 판정은 이미 끝났으니 부족분을 메우지는 못한다.
             LastPaymentRefund = Wallet.Add((long)Math.Floor(due * Upgrades.PaymentRefund));
+
+            // 마지막 라운드 납부까지 마쳤으면 클리어. 음료·다음 라운드는 없다.
+            if (GameBalance.FinalRound > 0 && Round.Round >= GameBalance.FinalRound)
+            {
+                Phase = GamePhase.GameClear;
+                return outcome;
+            }
+
             if (Rewards.HasCatalog && Rewards.CreateOffer().Count > 0)
             {
                 Phase = GamePhase.DrinkSelection;

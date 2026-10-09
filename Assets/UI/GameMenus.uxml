@@ -1,0 +1,31 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="Options" src="Options.uxml" />
+    <Style src="Menus.uss" />
+    <!-- 게임 위에 뜨는 메뉴(HUD보다 위): 일시정지, 결과, 공용 옵션창. 숨긴 창은 display: none이라 입력을 받지 않는다. -->
+    <ui:VisualElement name="root" class="menu-root" picking-mode="Ignore">
+        <ui:VisualElement name="pause-panel" class="menu-backdrop">
+            <ui:VisualElement class="menu-panel">
+                <ui:Label class="menu-title" text="일시정지" />
+                <ui:VisualElement class="menu-buttons">
+                    <ui:Button name="pause-resume" class="menu-button" text="계속하기" />
+                    <ui:Button name="pause-restart" class="menu-button" text="다시하기" />
+                    <ui:Button name="pause-settings" class="menu-button" text="설정" />
+                    <ui:Button name="pause-main-menu" class="menu-button" text="메인메뉴로" />
+                    <ui:Button name="pause-quit" class="menu-button" text="종료" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="result-panel" class="menu-backdrop">
+            <ui:VisualElement class="menu-panel result-box">
+                <ui:Label name="result-title" class="menu-title result-title" text="게임 오버" />
+                <ui:Label name="result-text" class="result-text" />
+                <ui:VisualElement class="menu-buttons">
+                    <ui:Button name="result-main-menu" class="menu-button" text="메인 메뉴로" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Instance template="Options" class="menu-fill" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

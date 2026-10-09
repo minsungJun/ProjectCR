@@ -44,6 +44,18 @@ namespace ProjectCR
             }
         }
 
+        /// <summary>그 동작의 버튼을 깜빡이게 하거나 원래대로 돌린다(튜토리얼 서비스 안내).</summary>
+        public void SetHighlighted(TabletAction action, bool value)
+        {
+            foreach (TabletButton button in buttons)
+            {
+                if (button != null && button.Action == action)
+                {
+                    button.SetHighlighted(value);
+                }
+            }
+        }
+
         /// <summary>회전 버튼 글자: 이번 라운드 남은 회전 / 라운드 기본 회전 수(회전권으로 기본보다 많아질 수 있다).</summary>
         public static string SpinLabel(GameFlowController flow) =>
             $"회전 ({flow.Round.SpinsRemaining}/{flow.GameBalance.SpinsPerRound})";

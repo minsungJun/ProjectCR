@@ -494,3 +494,45 @@ u ≥ 1이면 커브 값과 상관없이 정확히 끝 각도를 쓴다. 착지�
 - 게임 씬 Roulette의 기존 lighting 인스턴스(위치·개수 그대로)에 조명 루트마다 Light 1개와 유리 그림자 끔을 더했다. 게임 카메라 후처리·Volume은 건드리지 않았다(원래 후처리 꺼짐, Volume 없음).
 - 확인용 씬 `Scenes/CasinoLightingPreview.unity`: 어두운 방, 기둥 벽등(바닥 1.45m), 높이 3m 천장 샹들리에(최하단 2.35m), 반사 프로브 1회 캡처, 전용 Bloom(`Settings/CasinoLightingVolumeProfile`, 1/0.2/0.5).
   캡처(실제 URP 렌더): `Temp/CasinoLightingCaptures/*.png`.
+
+## 딜러 튜토리얼과 게임 클리어 (2026-10-09)
+
+- 게임 클리어: `GameBalance.finalRound`(기본 10) 라운드 납부까지 마치면 `GamePhase.GameClear`. 음료·다음 라운드 없이 끝난다. 0이면 끝없이.
+- 왼쪽 위 딜러 대화창(`TutorialDialogueView`, HUD UIDocument의 `tutorial-panel`): 딜러 아이콘(`Art/Image/Icon_removebg.png`) → 0.15초 뒤 대사 초당 30자.
+  출력 중 누르면 문장 완성, 다 나온 뒤 [다음] 또는 [네]/[아니오](고르는 즉시 버튼 잠금). 자동 넘김 없음, 화면 시간 기준(timeScale 무관). 대화 중에는 결과 안내를 숨긴다.
+- 대사: `Data/Tutorial/TutorialDialogue.asset`(사용자 원문 그대로, `{dealer}` = 딜러 이름, 임시 "**", 비우면 "딜러"). 대화창 바탕은 검정.
+- 페이지별 강조(`TutorialPage.highlight`, 그리기는 `TutorialHighlighter`, 기존 표시를 빌려 쓰고 페이지가 바뀌면 원래대로):
+  칩 고르기 → 트레이 모든 칸 테두리 천천히 깜빡임 / 숫자 하나·바깥 → 그 베팅 점(호버 점 복제) / 선·교차점 → 안쪽 조합 점 /
+  배율 설명 → 빨강 호버 안내(칩 10 → 20)와 칸 강조 / 초록 0 → 0 칸 점 / 보라 위험 칸 → 카메라 룰렛 자리, 해골 칸 깜빡임(다음 페이지에 베팅 자리로).
+- 진행(`TutorialController`, 시점은 `RouletteGame`이 기존 연출이 끝난 자리에서 부른다):
+  - 최초 진입: 시작 카메라가 멈춘 뒤 도입 → 네: 짧은 답 / 아니오: 기본 규칙 → 공통(위험 칸·복수 공·회전 수·납부·회전 확정).
+  - 첫 라운드 통과: 로봇이 음료를 내려놓은 뒤 "이건 무료입니다." → 끝나야 음료를 고를 수 있다.
+  - 음료를 고르고 로봇이 떠나 베팅 화면으로 돌아온 뒤, 상점을 열 수 있으면 서비스 안내. 태블릿 [서비스]가 깜빡이고(PropertyBlock), 상점 진입·회전 시작·새 게임에서 꺼진다.
+  - 게임 오버·클리어: 판정 뒤 대사를 먼저, 끝나면 결과 창(`RouletteHud.HoldEndPanel`). 결말이 나면 남은 음료·서비스 안내는 취소.
+- 시작 카메라: 게임은 `CameraPostion_Default`(좌석에서 홀을 보는 자리, CameraRig.defaultPose)에서 시작한다. 튜토리얼 게임은 도입 대화를 거기서 하고,
+  페이지마다 카메라 자리(`TutorialPage.camera`: 도입 = 시작 자리, 규칙 설명 = 베팅판, 위험 칸~피하라 = 룰렛, 회전 수·납부·회전 버튼 = 베팅판)로 옮긴다.
+  튜토리얼이 없는 게임은 시작 자리를 1초(`RouletteGame.openingHold`) 보여 준 뒤 베팅판으로. 베팅판에 도착할 때까지 베팅 입력은 막는다.
+  도착하면 딜러가 버튼 없는 안내(`TutorialDialogueData.startNotice`, "트레이에서 칩을 고르고 … ‘회전’을 누르십시오.")를 띄운다.
+  안내는 입력을 막지 않고(창 아래 판도 눌린다) 첫 회전을 시작하면 사라진다. 결과 줄은 첫 정산 전에는 숨긴다.
+- 대상: 최초로 시작한 게임 하나만. 시작하는 순간 PlayerPrefs `ProjectCR.Tutorial.v1.Started`를 저장해 새 게임·다시 시작에서는 반복하지 않는다. 안내마다 그 게임에서 한 번.
+  개발용: `TutorialController.alwaysShow`(새 게임마다 표시), 메뉴 `Tools/ProjectCR/Tutorial/Reset Saved Progress`.
+- 대화 중 막는 것: 칩·베팅 추가/제거·회전·전체 회수·서비스·음료 선택/확정·시점 전환(3D 입력 끔 + RouletteGame 진입점 검사). 1인칭이면 대화 시작 때 연출 시점으로 돌아온다.
+- 문구와 규칙 차이(문구는 바꾸지 않음): "0이 나오면 0에 직접 건 베팅만 당첨"이지만, 0이 포함된 조합(0·1 스플릿, 0·1·2 등)도 0에서 당첨된다.
+
+## 메인 메뉴·설정·일시정지·결과 (2026-10-09)
+
+- 씬: 빌드 0 `MainMenu`(MainMenuView), 1 `Roulette`. 이동은 `SceneFlow`(한 번만, 이동 전 일시정지 해제). 새 게임 = Roulette 씬 새로 열기(튜토리얼 기록은 그대로).
+- 공용 UI 스타일 `UI/Menus.uss`: 검은 바탕, 황동 테두리, 아이보리 글자. 버튼은 같은 크기 가로형 버튼을 세로로 쌓는다. 옵션 탭만 가로.
+- 메인 메뉴: [새 게임] [이어하기] [설정] [종료]. **이어하기는 저장·복원 기능이 없어 늘 비활성**(`MainMenuView.HasContinue`).
+- 공용 옵션창 `UI/Options.uxml` + `OptionsView`(메인 메뉴·일시정지가 같은 UXML·같은 설정): [사운드] 전체/배경음/효과음 0~100%, [화면] 화면 모드·해상도(지원 목록, 같은 크기 하나로)·품질(QualitySettings 단계)·프레임 제한(30/60/120/제한 없음, 제한 시 수직 동기화 끔).
+  바꾸면 바로 적용·저장(`GameSettings`, PlayerPrefs `ProjectCR.Settings.*`), 실행 시작 때 복원. X·Esc로 닫으면 연 화면으로 돌아간다.
+- 사운드: `Resources/Audio/MainMixer`(Master → BGM, SFX), 노출 파라미터 MasterVolume·BGMVolume·SFXVolume(dB).
+  - BGM(`BgmPlayer`, 두 씬에 하나씩 두고 먼저 생긴 하나만 남아 씬을 옮겨도 이어진다): `Audio/BGM`의 곡을 번갈아(첫 곡 무작위, 곡 사이 1.5초). 스트리밍 임포트. 일시정지 중에도 흐른다.
+  - 효과음(`GameSfx`, Roulette 씬): 칩 베팅 = `Chip/Bet_Chip`, 칩 고르기 = `Chip/Grap_Chip_1·2`(바로 전과 다른 것), 공 굴러감 = `Roulette/Roulette_ball_1`(회전 연출 시작에 한 번). 파일은 7.5초지만 소리는 6.2초에서 끝난다(5.25~6.1초 칸에 떨어지는 소리).
+    그래서 공 연출(`SpinMotionSettings_CRR`)을 6.2초(출발 0.5 + 회전 2 + 감속 2.7 + 안착 1)로 맞췄다. 안착 구간 5.2~6.2초가 칸 소리와 겹친다.
+    `Roulette` 폴더의 다른 소리(drop/roll/stop)는 쓰지 않는다. 일시정지 동안 함께 멈춘다.
+  - 연결 메뉴 `Tools/ProjectCR/Audio/Setup`.
+- 일시정지(`GamePause`, `PauseMenuView`): Esc 또는 HUD [옵션]. [계속하기] [다시하기] [설정] [메인메뉴로] [종료]. timeScale 0 + AudioListener.pause, 튜토리얼 대사 출력도 멈춘다.
+  일시정지·결과 창이 떠 있는 동안 게임 입력(칩·베팅·회전·서비스·음료·시점 전환·1인칭 돌리기)을 막는다. 옵션창을 닫아도 일시정지는 그대로.
+- 결과 창(`GameResultView`): 클리어·오버 공용, 버튼은 [메인 메뉴로] 하나. 튜토리얼 대상 게임은 결말 대사 뒤에 뜬다. 결과 창이 떠 있으면 일시정지를 열지 않는다.
+- 준비 메뉴 `Tools/ProjectCR/Menus/Setup`: 믹서·메인 메뉴 씬·빌드 목록·GameMenus 연결·[서비스] 강조 테두리.

@@ -42,26 +42,100 @@
     min-width: 88px;
 }
 
-.options-menu {
-    margin-top: 4px;
-    padding: 6px;
-    background-color: var(--ink);
-    border-width: 1px;
-    border-color: var(--line);
-    border-radius: 8px;
+.spacer {
+    flex-grow: 1;
+}
+
+/* ---------- 딜러 튜토리얼 대화창 (왼쪽 위) ---------- */
+
+/* 검은 바탕, 황동 테두리, 아이보리 글자. 결과 안내 자리에 뜨고, 그동안 결과 안내는 숨긴다(RouletteHud.SetResultVisible). */
+.tutorial-panel {
+    position: absolute;
+    left: 24px;
+    top: 16px;
+    width: 860px;
+    max-width: 72%;
+    min-width: 300px;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 14px 18px 14px 14px;
+    background-color: rgba(6, 6, 7, 0.94);
+    border-width: 2px;
+    border-color: rgb(200, 156, 72);
+    border-radius: 10px;
+    display: none;
+    opacity: 0;
+    translate: 0 -8px;
+    transition-property: opacity, translate;
+    transition-duration: 0.18s, 0.18s;
+}
+
+.tutorial-panel--open {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.tutorial-dealer-icon {
+    width: 92px;
+    height: 92px;
+    flex-shrink: 0;
+    margin-right: 14px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.tutorial-content {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.tutorial-speaker {
+    font-size: 17px;
+    -unity-font-style: bold;
+    color: rgb(214, 170, 86);
+    margin-bottom: 4px;
+}
+
+.tutorial-text {
+    min-height: 66px;
+    font-size: 21px;
+    color: rgb(244, 236, 216);
+    white-space: normal;
+}
+
+.tutorial-choice-row {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 10px;
     display: none;
 }
 
-.options-menu--open {
-    display: flex;
+.tutorial-button {
+    min-width: 96px;
+    height: 36px;
+    margin: 0 0 0 8px;
+    padding: 0 16px;
+    font-size: 17px;
+    -unity-font-style: bold;
+    color: rgb(28, 22, 12);
+    background-color: rgb(214, 170, 86);
+    border-width: 1px;
+    border-color: rgb(244, 220, 160);
+    border-radius: 6px;
 }
 
-.options-item {
-    min-width: 140px;
+.tutorial-button:hover {
+    background-color: rgb(236, 192, 104);
 }
 
-.spacer {
-    flex-grow: 1;
+.tutorial-button:disabled {
+    opacity: 0.5;
+}
+
+.tutorial-next {
+    align-self: flex-end;
+    margin-top: 10px;
+    display: none;
 }
 
 /* ---------- 결과 (왼쪽 위) ---------- */

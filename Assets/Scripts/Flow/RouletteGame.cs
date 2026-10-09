@@ -39,6 +39,21 @@ namespace ProjectCR
         [Tooltip("3D 테이블 표시(놓인 칩, 트레이, 잔액 표시).")]
         [SerializeField] private TableChipView tableView;
 
+        [Tooltip("딜러 튜토리얼(왼쪽 위 대화창). 없으면 튜토리얼 없이 돈다.")]
+        [SerializeField] private TutorialController tutorial;
+
+        [Tooltip("효과음(칩 베팅·칩 고르기·공 굴러감). 없으면 소리 없이 돈다.")]
+        [SerializeField] private GameSfx sfx;
+
+        [Tooltip("일시정지 메뉴(Esc·[옵션]). 없으면 일시정지 없이 돈다.")]
+        [SerializeField] private PauseMenuView pauseMenu;
+
+        [Tooltip("게임 클리어·오버 결과 창([메인 메뉴로]).")]
+        [SerializeField] private GameResultView resultView;
+
+        [Tooltip("튜토리얼 페이지별 화면 강조(칩 트레이, 베팅 점, 빨강 안내, 위험 칸).")]
+        [SerializeField] private TutorialHighlighter tutorialHighlighter;
+
         [Tooltip("보유 강화 배지(테이블 원 위). 없으면 배지 없이 돈다.")]
         [SerializeField] private UpgradeBadgeView upgradeBadges;
 
@@ -91,7 +106,12 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
-            hud.RestartClicked += StartNewRun;
+            GamePause.Changed += OnPauseChanged;
+            if (pauseMenu != null)
+            {
+                hud.OptionsClicked += pauseMenu.Open;
+                pauseMenu.RestartRequested += StartNewRun;
+            }
 
             if (shopView != null)
             {
@@ -114,10 +134,18 @@ namespace ProjectCR
                 tableInput.BadgeHoverChanged += OnBadgeHover;
             }
 
+            if (tutorial != null)
+            {
+                tutorial.Initialize();
+                tutorial.HighlightChanged += OnTutorialHighlight;
+                tutorial.CameraRequested += OnTutorialCamera;
+            }
+
             ApplyView();
             if (cameraRig != null)
             {
-                cameraRig.SnapToBetting();
+                // 게임은 시작 자리(좌석에서 홀을 보는 시점)에서 시작한다. 베팅판으로는 OpeningGuide가 옮긴다.
+                cameraRig.SnapToDefault();
             }
 
             StartNewRun();
@@ -137,10 +165,15 @@ namespace ProjectCR
             StopAllCoroutines();
             verifying = false;
             presenter.ResetView();
+            if (sfx != null)
+            {
+                sfx.StopBallRoll();
+            }
+
             if (cameraRig != null)
             {
-                // 게임 오버 뒤 다시 시작할 때 룰렛 자리에서 돌아온다. 처음 시작에서는 이미 그 자리다.
-                cameraRig.MoveToBetting();
+                // 새 게임은 시작 자리에서. 다시 시작이면 지금 자리에서 그쪽으로 옮겨 간다(처음 시작에서는 이미 그 자리다).
+                cameraRig.MoveToDefault();
             }
 
             if (drinkServer != null)
@@ -172,8 +205,25 @@ namespace ProjectCR
             Debug.Log($"[RouletteGame] 새 게임. 시드 {flow.Seed}");
 
             hud.ClearHistory();
-            hud.ShowMessage("트레이에서 칩을 고르고 테이블 베팅판에 놓은 뒤 회전을 누르세요.");
+            hud.ClearResult();
+
+            // 튜토리얼: 최초로 시작한 게임만 대상. 이전 게임의 대화·강조·결말 대기는 정리한다.
+            tutorialActive = false;
+            if (resultView != null)
+            {
+                resultView.Hide();
+            }
+
+            hud.SetResultVisible(true);
+            if (tutorial != null)
+            {
+                tutorial.BeginRun();
+            }
+
+            openingActive = true;
+            ApplyInputLock();
             RefreshViews();
+            StartCoroutine(OpeningGuide());
         }
 
         /// <summary>HUD 회전 버튼과 같은 경로. 상태가 Betting이 아니면 GameFlowController가 거절한다.</summary>
@@ -192,17 +242,33 @@ namespace ProjectCR
 
         private void OnTargetClicked(BetTarget target)
         {
+            if (InputLocked)
+            {
+                return;
+            }
+
             if (pickingSlot >= 0)
             {
                 FinishPick(target);
                 return;
             }
 
-            ApplyBetAction(flow.PlaceChip(target));
+            BetError error = flow.PlaceChip(target);
+            if (error == BetError.None && sfx != null)
+            {
+                sfx.PlayBetChip();
+            }
+
+            ApplyBetAction(error);
         }
 
         private void OnTargetRemoveRequested(BetTarget target)
         {
+            if (InputLocked)
+            {
+                return;
+            }
+
             if (pickingSlot >= 0)
             {
                 FinishPick(BetTarget.None);
@@ -215,6 +281,11 @@ namespace ProjectCR
         /// <summary>테이블 태블릿 버튼: 회전 · 서비스(상점) · 전체 회수(전체 취소). HUD 버튼과 같은 경로라 규칙도 같다.</summary>
         private void OnTabletPressed(TabletAction action)
         {
+            if (InputLocked)
+            {
+                return;
+            }
+
             switch (action)
             {
                 case TabletAction.Spin when flow.Phase == GamePhase.DrinkSelection:
@@ -239,9 +310,14 @@ namespace ProjectCR
 
         private void OnShopClicked()
         {
-            if (shopView == null || verifying || !flow.EnterShop())
+            if (shopView == null || verifying || InputLocked || !flow.EnterShop())
             {
                 return;
+            }
+
+            if (tutorial != null)
+            {
+                tutorial.EndServiceHighlight();
             }
 
             shopView.Show(flow);
@@ -314,10 +390,30 @@ namespace ProjectCR
             shopView.Refresh(flow);
         }
 
-        private void OnClearClicked() => ApplyBetAction(flow.ClearBets());
+        private void OnClearClicked()
+        {
+            if (!InputLocked)
+            {
+                ApplyBetAction(flow.ClearBets());
+            }
+        }
 
         /// <summary>트레이에서 고른 칩 금액. 보유보다 큰 칩도 고를 수 있고, 놓을 때 막힌다.</summary>
-        private void OnChipSelected(long value) => ApplyBetAction(flow.SetChipValue(value));
+        private void OnChipSelected(long value)
+        {
+            if (InputLocked)
+            {
+                return;
+            }
+
+            BetError error = flow.SetChipValue(value);
+            if (error == BetError.None && sfx != null)
+            {
+                sfx.PlayGrabChip();
+            }
+
+            ApplyBetAction(error);
+        }
 
         // ---------- 판 위 호버 안내(툴팁 + 칸 강조) ----------
 
@@ -500,7 +596,7 @@ namespace ProjectCR
 
         private void OnSpinClicked()
         {
-            if (verifying)
+            if (verifying || InputLocked)
             {
                 return;
             }
@@ -515,6 +611,11 @@ namespace ProjectCR
             }
 
             Debug.Log($"[RouletteGame] 회전 #{spin.Id}: {Describe(spin.Bets)} → 결과 {Describe(spin.Result)}");
+            if (tutorial != null)
+            {
+                tutorial.EndServiceHighlight();
+                tutorial.HideNotice();
+            }
 
             RefreshViews();
             StartCoroutine(RunSpin(spin));
@@ -530,6 +631,11 @@ namespace ProjectCR
                 {
                     yield return null;
                 }
+            }
+
+            if (sfx != null)
+            {
+                sfx.PlayBallRoll();
             }
 
             yield return presenter.Play(spin.Result);
@@ -572,6 +678,27 @@ namespace ProjectCR
 
             Debug.Log($"[RouletteGame] 라운드 {round} 납부 {outcome}: 납부금 {due:N0}, 남은 돈 {flow.Wallet.Balance:N0}");
 
+            // 결말(게임 오버·클리어): 튜토리얼 대상 게임이면 딜러 대사를 먼저, 끝나면 결과 창.
+            if (flow.Phase == GamePhase.GameOver || flow.Phase == GamePhase.GameClear)
+            {
+                bool cleared = flow.Phase == GamePhase.GameClear;
+                Debug.Log(cleared ? $"[RouletteGame] 게임 클리어: 라운드 {round}까지 납부" : "[RouletteGame] 게임 오버");
+                RefreshViews();
+                if (tutorial != null && tutorial.WillPlayEnding)
+                {
+                    yield return RunTutorial(tutorial.PlayEnding(cleared));
+                }
+
+                // 결과 창은 결말 대사가 끝난 뒤(튜토리얼이 없으면 바로).
+                if (resultView != null)
+                {
+                    resultView.Show(flow);
+                }
+
+                ApplyInputLock();
+                yield break;
+            }
+
             if (flow.Phase == GamePhase.DrinkSelection && drinkServer != null)
             {
                 // 로봇이 오른쪽으로 와서 선반에 후보를 올려 둔다. 카메라는 로봇 쪽으로.
@@ -584,6 +711,17 @@ namespace ProjectCR
 
                 RefreshViews();
                 yield return drinkServer.Serve(flow.Rewards.CurrentOffer);
+
+                // 첫 라운드 통과(튜토리얼): 로봇과 음료가 보이는 상태에서 딜러 안내, 끝나면 음료를 고를 수 있다.
+                if (tutorial != null && tutorial.Progress.ShouldShow(TutorialStep.Drink))
+                {
+                    while (cameraRig != null && cameraRig.IsMoving)
+                    {
+                        yield return null;
+                    }
+
+                    yield return RunTutorial(tutorial.PlayDrink());
+                }
             }
             else if (flow.Phase == GamePhase.DrinkSelection)
             {
@@ -628,7 +766,7 @@ namespace ProjectCR
         /// <summary>한 번 누르면 고르고(외곽선 고정), 고른 잔을 한 번 더 누르면 마신다. 태블릿 [마시기]도 같다.</summary>
         private void OnDrinkClicked(ServedDrink drink)
         {
-            if (drink == null || !CanPickDrink)
+            if (drink == null || !CanPickDrink || InputLocked)
             {
                 return;
             }
@@ -647,7 +785,7 @@ namespace ProjectCR
 
         private void ConfirmServedDrink()
         {
-            if (drinkSelected < 0 || !CanPickDrink)
+            if (drinkSelected < 0 || !CanPickDrink || InputLocked)
             {
                 return;
             }
@@ -682,10 +820,11 @@ namespace ProjectCR
             drinkHovered = -1;
             drinkSelected = -1;
             hud.HideBetTooltip();
+            Coroutine robotLeaving = null;
             if (drinkServer != null)
             {
                 drinkServer.SetSelected(-1);
-                StartCoroutine(drinkServer.Leave(offerIndex));
+                robotLeaving = StartCoroutine(drinkServer.Leave(offerIndex));
             }
 
             if (drink.IsProbability)
@@ -704,6 +843,7 @@ namespace ProjectCR
             if (flow.Phase == GamePhase.Betting)
             {
                 MoveCameraToBetting();
+                StartCoroutine(ServiceGuide(robotLeaving));
             }
             else if (flow.Phase == GamePhase.RoundPayment)
             {
@@ -749,6 +889,11 @@ namespace ProjectCR
 
         private void ToggleView()
         {
+            if (InputLocked)
+            {
+                return;
+            }
+
             firstPersonView = !firstPersonView;
             ApplyView();
         }
@@ -765,10 +910,184 @@ namespace ProjectCR
                 firstPersonCamera.enabled = firstPersonView;
             }
 
-            // 1인칭은 둘러보기 전용: 테이블·트레이·태블릿·음료를 누를 수 없다.
+            ApplyInputLock();
+        }
+
+        // ---------- 튜토리얼 ----------
+
+        // 튜토리얼 대화를 띄우는 중(대화창이 실제로 열리기 전 한 프레임 포함).
+        private bool tutorialActive;
+
+        /// <summary>
+        /// 게임 입력을 막는 때: 튜토리얼 대화 중(대화창 버튼만 받는다), 일시정지 중(메뉴만 받는다), 결과 창이 떠 있을 때.
+        /// 막는 것: 칩·베팅·회전·전체 회수·서비스·음료·시점 전환.
+        /// </summary>
+        private bool InputLocked => tutorialActive || openingActive || (tutorial != null && tutorial.IsRunning) || GamePause.IsPaused
+                                    || (resultView != null && resultView.IsShown);
+
+        /// <summary>일시정지가 바뀌면 3D 입력을 맞추고, 켜질 때는 판·음료 안내를 지운다.</summary>
+        private void OnPauseChanged(bool paused)
+        {
+            ApplyInputLock();
+            if (paused)
+            {
+                HideBetGuide();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            GamePause.Changed -= OnPauseChanged;
+        }
+
+        /// <summary>
+        /// 3D 테이블 입력을 지금 상태에 맞춘다. 1인칭은 둘러보기 전용이고, 대화 중에도 막는다.
+        /// 끄는 순간 호버가 지워져 판·음료·배지 툴팁과 강조도 사라진다.
+        /// </summary>
+        private void ApplyInputLock()
+        {
             if (tableInput != null)
             {
-                tableInput.Interactable = !firstPersonView;
+                tableInput.Interactable = !firstPersonView && !InputLocked;
+            }
+        }
+
+        /// <summary>
+        /// 대사 한 묶음을 띄운다: 그동안 입력을 막고 결과 안내를 숨긴다. 1인칭이면 연출 시점으로 돌아온다(로봇·음료가 보이게).
+        /// 끝나면 지금 상태에 맞는 입력을 되돌린다. 돈·회전·납부는 건드리지 않는다.
+        /// </summary>
+        private IEnumerator RunTutorial(IEnumerator play)
+        {
+            tutorialActive = true;
+            if (firstPersonView)
+            {
+                firstPersonView = false;
+                ApplyView();
+            }
+
+            ApplyInputLock();
+            HideBetGuide();
+            hud.HideBetTooltip();
+            hud.SetResultVisible(false);
+
+            yield return play;
+
+            tutorialActive = false;
+            hud.SetResultVisible(true);
+            ApplyInputLock();
+            RefreshViews();
+        }
+
+        /// <summary>튜토리얼 페이지 강조. 강조가 끝나면 화면을 다시 그려 칩 트레이 등 원래 표시로 돌린다.</summary>
+        private void OnTutorialHighlight(TutorialHighlight highlight)
+        {
+            if (tutorialHighlighter == null)
+            {
+                return;
+            }
+
+            tutorialHighlighter.Show(highlight, flow);
+            if (highlight == TutorialHighlight.None && flow != null)
+            {
+                RefreshViews();
+            }
+        }
+
+        // 게임 시작 연출 중(시작 자리 → 베팅판). 이동이 끝날 때까지 베팅 입력을 막는다.
+        private bool openingActive;
+
+        [Header("시작 연출")]
+        [Tooltip("튜토리얼이 없는 게임에서 시작 자리를 보여 주는 시간(초). 그 뒤 베팅판으로 옮겨 간다.")]
+        [Min(0f)]
+        [SerializeField] private float openingHold = 1f;
+
+        /// <summary>
+        /// 새 게임 시작: 시작 자리(CameraPostion_Default)에서 출발한다. 튜토리얼 대상 게임이면 도입 안내를 하고(페이지마다 카메라 자리를 옮긴다),
+        /// 아니면 시작 자리를 잠깐 보여 준다. 둘 다 끝나면 베팅판으로 옮겨 가고, 도착하면 베팅을 받는다.
+        /// </summary>
+        private IEnumerator OpeningGuide()
+        {
+            yield return null;
+            while (cameraRig != null && cameraRig.IsMoving)
+            {
+                yield return null;
+            }
+
+            bool tutorialIntro = tutorial != null && tutorial.Progress.ShouldShow(TutorialStep.Intro);
+            if (tutorialIntro)
+            {
+                yield return RunTutorial(tutorial.PlayIntro());
+            }
+            else
+            {
+                yield return new WaitForSeconds(openingHold);
+            }
+
+            if (cameraRig != null)
+            {
+                cameraRig.MoveToBetting();
+                while (cameraRig.IsMoving)
+                {
+                    yield return null;
+                }
+            }
+
+            openingActive = false;
+            ApplyInputLock();
+
+            // 튜토리얼 없이 시작한 게임: 딜러가 할 일을 짧게 알려 준다(첫 회전을 시작하면 사라진다). 튜토리얼 게임은 도입에서 이미 설명했다.
+            if (!tutorialIntro && tutorial != null)
+            {
+                tutorial.ShowStartNotice();
+            }
+        }
+
+        /// <summary>튜토리얼 페이지의 카메라 자리: 시작 자리 / 베팅판 / 룰렛.</summary>
+        private void OnTutorialCamera(TutorialCamera place)
+        {
+            if (cameraRig == null)
+            {
+                return;
+            }
+
+            switch (place)
+            {
+                case TutorialCamera.Default:
+                    cameraRig.MoveToDefault();
+                    break;
+                case TutorialCamera.Board:
+                    cameraRig.MoveToBetting();
+                    break;
+                case TutorialCamera.Roulette:
+                    cameraRig.MoveToRoulette();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 서비스 안내: 음료를 고른 뒤 로봇이 떠나고 베팅 화면으로 돌아오면, 상점을 열 수 있을 때 한 번.
+        /// 그 사이 회전을 시작했거나 상점에 들어갔으면 이번에는 건너뛴다(다음 라운드 통과 때 다시 본다).
+        /// </summary>
+        private IEnumerator ServiceGuide(Coroutine robotLeaving)
+        {
+            if (tutorial == null || !tutorial.Progress.ShouldShow(TutorialStep.Service))
+            {
+                yield break;
+            }
+
+            if (robotLeaving != null)
+            {
+                yield return robotLeaving;
+            }
+
+            while (cameraRig != null && cameraRig.IsMoving)
+            {
+                yield return null;
+            }
+
+            if (flow.CanEnterShop && !InputLocked)
+            {
+                yield return RunTutorial(tutorial.PlayService(tableView != null ? tableView.Tablet : null));
             }
         }
 

@@ -1,0 +1,53 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="Menus.uss" />
+    <!-- 공용 옵션창: 위 [사운드] [화면] 탭(가로), 아래 고른 탭의 항목(세로). OptionsView가 묶는다. -->
+    <ui:VisualElement name="options-panel" class="menu-backdrop">
+        <ui:VisualElement class="menu-panel options-box">
+            <ui:VisualElement class="options-header">
+                <ui:Label class="menu-title options-title" text="설정" />
+                <ui:Button name="options-close" class="menu-close" text="✕" />
+            </ui:VisualElement>
+            <ui:VisualElement class="options-tabs">
+                <ui:Button name="options-tab-sound" class="options-tab" text="사운드" />
+                <ui:Button name="options-tab-screen" class="options-tab" text="화면" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="options-sound" class="options-page">
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="전체 음량" />
+                    <ui:Slider name="options-master" class="options-slider" low-value="0" high-value="100" />
+                    <ui:Label name="options-master-value" class="options-value" text="80%" />
+                </ui:VisualElement>
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="배경음 음량" />
+                    <ui:Slider name="options-bgm" class="options-slider" low-value="0" high-value="100" />
+                    <ui:Label name="options-bgm-value" class="options-value" text="60%" />
+                </ui:VisualElement>
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="효과음 음량" />
+                    <ui:Slider name="options-sfx" class="options-slider" low-value="0" high-value="100" />
+                    <ui:Label name="options-sfx-value" class="options-value" text="80%" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="options-screen" class="options-page">
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="화면 모드" />
+                    <ui:DropdownField name="options-screen-mode" class="options-dropdown" />
+                </ui:VisualElement>
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="해상도" />
+                    <ui:DropdownField name="options-resolution" class="options-dropdown" />
+                </ui:VisualElement>
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="품질" />
+                    <ui:DropdownField name="options-quality" class="options-dropdown" />
+                </ui:VisualElement>
+                <ui:VisualElement class="options-row">
+                    <ui:Label class="options-label" text="프레임 제한" />
+                    <ui:DropdownField name="options-frame-limit" class="options-dropdown" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

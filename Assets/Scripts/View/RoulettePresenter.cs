@@ -462,6 +462,20 @@ namespace ProjectCR
             }
         }
 
+        /// <summary>칸 하나를 결과 강조와 같은 방식으로 깜빡인다(튜토리얼: 보라색 위험 칸). 다른 강조는 지운다.</summary>
+        public void BlinkPocket(int pocketIndex)
+        {
+            ClearHighlight();
+            if (pocketIndex >= 0 && pocketIndex < pocketRenderers.Length && pocketRenderers[pocketIndex] != null)
+            {
+                highlightedPockets.Add(pocketIndex);
+                highlightTime = 0f;
+            }
+        }
+
+        /// <summary>칸 강조를 모두 끈다.</summary>
+        public void StopBlink() => ClearHighlight();
+
         private void Highlight(SpinResult result)
         {
             foreach (BallResult ball in result.Balls)

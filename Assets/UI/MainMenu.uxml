@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="Options" src="Options.uxml" />
+    <Style src="Menus.uss" />
+    <ui:VisualElement name="root" class="menu-root main-menu-root">
+        <!-- 메인 메뉴: 제목 아래 가로형 버튼 4개를 세로로 쌓는다. MainMenuView가 묶는다. -->
+        <ui:VisualElement name="main-menu" class="main-menu">
+            <ui:Label name="main-title" class="main-title" text="ProjectCR" />
+            <ui:VisualElement class="menu-buttons">
+                <ui:Button name="main-new-game" class="menu-button" text="새 게임" />
+                <ui:Button name="main-continue" class="menu-button" text="이어하기" />
+                <ui:Button name="main-settings" class="menu-button" text="설정" />
+                <ui:Button name="main-quit" class="menu-button" text="종료" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Instance template="Options" class="menu-fill" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

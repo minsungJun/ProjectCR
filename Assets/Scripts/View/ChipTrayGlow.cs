@@ -8,6 +8,7 @@ namespace ProjectCR
     ///
     /// 칸 사각형(가운데·반 크기·두 축, 이 오브젝트 로컬)은 빌더(RouletteModelSetup)가 트레이 메시와 칸막이에서 재서 넣는다.
     /// 메시 하나를 다시 만들어 그리고, 숨길 때는 렌더러만 끈다. 다른 머티리얼은 건드리지 않는다(밝기는 MaterialPropertyBlock).
+    /// 튜토리얼에서는 <see cref="ShowAll"/>로 모든 칸 테두리를 천천히 깜빡인다(거의 꺼졌다 켜진다). 다시 Show(칸)를 부르면 평소대로.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class ChipTrayGlow : MonoBehaviour
@@ -47,6 +48,11 @@ namespace ProjectCR
         private MaterialPropertyBlock block;
         private int shown = -1;
 
+        // 모든 칸을 보여 주는 중(튜토리얼). 이때는 깜빡임이 더 깊다.
+        private const int AllCompartments = -2;
+        private const float BlinkMin = 0.08f;
+        private const float BlinkPeriod = 1.8f;
+
         public int Count => centers.Length;
 
         public void Configure(Vector3[] compartmentCenters, Vector2[] compartmentHalfSizes, Vector3 longAxis, Vector3 depthAxis)
@@ -85,8 +91,10 @@ namespace ProjectCR
             }
 
             // 천천히 밝아졌다 어두워진다(시간 기준이라 프레임과 무관).
-            float wave = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f / Mathf.Max(0.1f, pulsePeriod));
-            float brightness = Mathf.Lerp(pulseMin, 1f, wave);
+            bool blinking = shown == AllCompartments;
+            float period = blinking ? BlinkPeriod : pulsePeriod;
+            float wave = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f / Mathf.Max(0.1f, period));
+            float brightness = Mathf.Lerp(blinking ? BlinkMin : pulseMin, 1f, wave);
             block ??= new MaterialPropertyBlock(); // 플레이 중 스크립트 다시 불러오기 뒤에도 안전하게
             meshRenderer.GetPropertyBlock(block);
             block.SetColor(ColorId, new Color(1f, 1f, 1f, brightness));
@@ -109,12 +117,47 @@ namespace ProjectCR
             }
 
             shown = index;
+            Rebuild(index, index + 1);
+        }
+
+        /// <summary>모든 칸 테두리를 천천히 깜빡인다(튜토리얼 "칩을 고르십시오"). 끝나면 Show(고른 칸) 또는 Hide.</summary>
+        public void ShowAll()
+        {
+            if (mesh == null || centers.Length == 0)
+            {
+                return;
+            }
+
+            meshRenderer.enabled = true;
+            if (shown == AllCompartments)
+            {
+                return;
+            }
+
+            shown = AllCompartments;
+            Rebuild(0, Mathf.Min(centers.Length, halfSizes.Length));
+        }
+
+        /// <summary>칸 [from, to)의 테두리 메시를 다시 만든다.</summary>
+        private void Rebuild(int from, int to)
+        {
             vertices.Clear();
             colors.Clear();
             triangles.Clear();
+            for (int i = from; i < to; i++)
+            {
+                AddCompartment(centers[i], halfSizes[i]);
+            }
 
-            Vector3 center = centers[index];
-            Vector2 half = halfSizes[index];
+            mesh.Clear();
+            mesh.SetVertices(vertices);
+            mesh.SetColors(colors);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+        }
+
+        private void AddCompartment(Vector3 center, Vector2 half)
+        {
             float line = lineWidth * 0.5f;
             Color clear = new Color(glowColor.r, glowColor.g, glowColor.b, 0f);
             Color halo = new Color(glowColor.r, glowColor.g, glowColor.b, 0.5f);
@@ -124,12 +167,6 @@ namespace ProjectCR
             AddRing(Corners(center, half, -line), Corners(center, half, line), glowColor, glowColor);
             AddRing(Corners(center, half, line), Corners(center, half, line + outerHalo), halo, clear);
             AddRing(Corners(center, half, -line), Corners(center, half, -line - innerHalo), innerGlow, clear);
-
-            mesh.Clear();
-            mesh.SetVertices(vertices);
-            mesh.SetColors(colors);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateBounds();
         }
 
         public void Hide()

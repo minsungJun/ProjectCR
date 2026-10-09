@@ -41,7 +41,7 @@ namespace ProjectCR
         private void Update()
         {
             Mouse mouse = Mouse.current;
-            if (mouse == null || !view.enabled)
+            if (mouse == null || !view.enabled || GamePause.IsPaused)
             {
                 dragging = false;
                 return;

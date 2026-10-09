@@ -95,6 +95,42 @@ namespace ProjectCR
             meshRenderer.enabled = vertices.Count > 0;
         }
 
+        /// <summary>
+        /// 여러 베팅의 자리를 한 번에 강조한다(튜토리얼). 바깥 베팅은 그 영역만, 숫자 하나는 그 칸만 칠한다
+        /// (바깥 베팅이 포함하는 숫자 칸까지 칠하면 판 전체가 덮여서). 안쪽 조합(선·교차점)은 칸이 아니라서 건너뛴다.
+        /// </summary>
+        public void ShowAreas(IEnumerable<BetTarget> targets)
+        {
+            if (board == null || mesh == null)
+            {
+                return;
+            }
+
+            vertices.Clear();
+            colors.Clear();
+            triangles.Clear();
+
+            BoardLayout layout = board.Layout;
+            foreach (BetTarget target in targets)
+            {
+                if (layout.TryGetOutsideArea(target, out Rect area))
+                {
+                    AddRect(area);
+                }
+                else if (target.IsStraight)
+                {
+                    AddRect(layout.CellOf(target.Number));
+                }
+            }
+
+            mesh.Clear();
+            mesh.SetVertices(vertices);
+            mesh.SetColors(colors);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            meshRenderer.enabled = vertices.Count > 0;
+        }
+
         public void Hide()
         {
             if (meshRenderer != null)

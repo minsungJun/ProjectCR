@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.SpinMotionSettings
   launchDuration: 0.5
   spinDuration: 2
-  decelDuration: 2.5
+  decelDuration: 2.7
   settleDuration: 1
   ballRevolutions: 6
   launchAngle: 240

@@ -67,6 +67,10 @@ namespace ProjectCR
         [Tooltip("1라운드 납부금.")]
         [SerializeField] private long firstRoundDue = 120;
 
+        [Tooltip("이 라운드의 납부까지 마치면 게임 클리어(죽음의 문턱을 넘는다). 0이면 끝없이 이어진다.")]
+        [Min(0)]
+        [SerializeField] private int finalRound = 10;
+
         [Tooltip("라운드가 하나 지날 때마다 납부금에 곱하는 값.")]
         [SerializeField] private float dueGrowth = 2.5f;
 
@@ -105,6 +109,9 @@ namespace ProjectCR
         public int MaxBallCount => Math.Max(ballCount, maxBallCount);
         public int MaxOwnedUpgrades => Math.Max(1, maxOwnedUpgrades);
         public int SpinsPerRound => spinsPerRound;
+
+        /// <summary>이 라운드 납부를 마치면 게임 클리어. 0이면 끝이 없다.</summary>
+        public int FinalRound => Math.Max(0, finalRound);
         public float SkullBalanceKeep => skullBalanceKeep;
 
         /// <summary>해골 벌칙 뒤 남는 보유 금액 = 반올림(balance × skullBalanceKeep). 0.5에서 91 → 46.</summary>
