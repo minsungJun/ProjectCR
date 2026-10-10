@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b928527b13627046bd22a33e5777bb4, type: 3}
+  m_Name: DrinkCatalog
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkCatalog
+  drinks:
+  - {fileID: 11400000, guid: 66643d0ee8d97294fb37b2c1fbfbfaf6, type: 2}
+  - {fileID: 11400000, guid: 06630dbc00552f448a720769fb85cc06, type: 2}
+  - {fileID: 11400000, guid: 0f67a25dd668314418581982a592b159, type: 2}
+  - {fileID: 11400000, guid: 0a53086ccb512eb40bd38b2dc752b807, type: 2}
+  - {fileID: 11400000, guid: 89e3be450facefd488a1ea7a22181776, type: 2}
+  - {fileID: 11400000, guid: d81fe1a9a07da5b4f92a3c13ad8c4ec5, type: 2}
+  probabilityDrinks:
+  - {fileID: 11400000, guid: 0bf7d411f1ea00f4f9be15cddc20c887, type: 2}
+  - {fileID: 11400000, guid: 9fc59a7d4d4154b4e9667a6bd67c52f2, type: 2}
+  - {fileID: 11400000, guid: 30b6e825061542547971d869f1c068fd, type: 2}
+  - {fileID: 11400000, guid: ff0fc40fe749a444eb5424d3466af9a7, type: 2}
+  - {fileID: 11400000, guid: d709b9a189c922345b6ea35332933485, type: 2}
+  - {fileID: 11400000, guid: a5aae469baa75d6468a75f918337282f, type: 2}
+  payoutShare: 1
+  probabilityShare: 1
+  offerCount: 4

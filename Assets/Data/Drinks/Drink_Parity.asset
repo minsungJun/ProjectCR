@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22352380813bb1841b35175d7416c2df, type: 3}
+  m_Name: Drink_Parity
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.DrinkDefinition
+  group: 2
+  displayName: "\uD640\uC9DD \uD558\uC774\uBCFC"
+  description: "{target} \uBCA0\uD305\uC758 \uB2F9\uCCA8\uAE08 \uBC30\uC728\uC5D0
+    \xD7{boost}\uB97C \uACF1\uD569\uB2C8\uB2E4."
+  icon: {fileID: 0}
+  tint: {r: 0.08627451, g: 0.65882355, b: 0.29411766, a: 1}
+  model: {fileID: 7385939101328902279, guid: 2f15ccef42e8d1c43bf40c85846bec9b, type: 3}
+  boostPerStack: 1.5

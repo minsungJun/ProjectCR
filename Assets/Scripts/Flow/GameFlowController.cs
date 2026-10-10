@@ -1,0 +1,711 @@
+using System;
+using System.Collections.Generic;
+
+namespace ProjectCR
+{
+    public enum GamePhase
+    {
+        /// <summary>번호와 금액을 고르는 중. 회전을 시작할 수 있는 유일한 상태.</summary>
+        Betting,
+
+        /// <summary>베팅이 확정·차감되었고 연출이 도는 중. 베팅 변경과 추가 회전을 막는다.</summary>
+        Spinning,
+
+        /// <summary>회전을 다 썼거나 베팅할 돈이 없다. 마지막 결과를 보여 준 뒤 납부를 판정한다.</summary>
+        RoundPayment,
+
+        /// <summary>납부에 성공했고 음료를 고르는 중. 베팅·회전·재납부를 막는다. 고르면 다음 라운드.</summary>
+        DrinkSelection,
+
+        /// <summary>상점 이용 중(베팅 중에만 들어온다). 베팅·회전을 막고, 닫으면 놓아 둔 베팅 그대로 Betting으로 돌아간다.</summary>
+        Shopping,
+
+        GameOver,
+
+        /// <summary>마지막 라운드(GameBalance.FinalRound) 납부까지 마쳤다. 더 진행하지 않는다.</summary>
+        GameClear,
+    }
+
+    /// <summary>진행 중인 회전 하나. 연출이 끝나면 Id로 정산을 요청한다.</summary>
+    public sealed class ActiveSpin
+    {
+        public ActiveSpin(int id, IReadOnlyList<ConfirmedBet> bets, SpinConfig config, SpinResult result,
+            bool insured = false, decimal insuranceRatio = 0m, int shieldsUsed = 0)
+        {
+            Id = id;
+            Bets = bets;
+            Config = config;
+            Result = result;
+            Insured = insured;
+            InsuranceRatio = insuranceRatio;
+            ShieldsUsed = shieldsUsed;
+        }
+
+        /// <summary>이 회전 시작 때 보험 증서가 있었다(실제로 쓰는지는 정산 때 손익으로 정한다).</summary>
+        public bool Insured { get; }
+
+        public decimal InsuranceRatio { get; }
+
+        /// <summary>시작 때 해골을 막느라 쓴 방패 수(결과는 이미 다시 뽑힌 뒤다).</summary>
+        public int ShieldsUsed { get; }
+
+        public int Id { get; }
+
+        /// <summary>이 회전에 확정된 베팅 전체. 합계는 시작 때 한 번 차감됐다.</summary>
+        public IReadOnlyList<ConfirmedBet> Bets { get; }
+
+        public SpinConfig Config { get; }
+        public SpinResult Result { get; }
+    }
+
+    /// <summary>
+    /// 베팅 → 회전 → 정산 → (납부) 상태 전환을 맡는다. MonoBehaviour가 아니라서 EditMode 테스트로 돌린다.
+    /// 씬 쪽 연결(연출 대기, UI 갱신)은 RouletteGame이 한다.
+    ///
+    /// <b>중복 방지는 UI가 아니라 여기서 한다.</b>
+    /// 회전은 Betting 상태에서만 시작되고 시작과 동시에 Spinning으로 바뀐다.
+    /// 정산은 진행 중인 회전의 Id와 맞을 때 한 번만 실행된다.
+    ///
+    /// 한 회전의 순서(아이템이 끼어들 자리):
+    /// 베팅 검증 → 확정·합계 1회 차감 → <see cref="BuildSpinConfig"/>(회전 전) → 추첨 → <see cref="ApplyResultOverrides"/>(결과 확정 후)
+    /// → 모든 공의 연출 완료 → <see cref="CompleteSpin"/>(전체 결과 평가 → 정산 → 기록) → 다음 진행
+    /// → 라운드 종료 시 <see cref="SubmitPayment"/>(납부 1회) → <see cref="ConfirmDrink"/>(음료 1잔, 다음 라운드).
+    /// 음료 목록이 없으면 납부 성공 즉시 다음 라운드로 넘어간다.
+    ///
+    /// 해골 회전은 모든 베팅 낙첨에 더해 남은 보유 금액이 절반이 된다(<see cref="GameBalance.SkullKeptBalance"/>).
+    /// <b>해골은 상태를 바꾸지 않는다.</b> 해골 회전은 지급 0으로 정산되는 정상 회전 종료이고,
+    /// 회전 수 1회를 쓰고 일반 회전과 같은 규칙으로 Betting 또는 RoundPayment로 간다.
+    /// GameOver는 납부 실패에서만, GameClear는 마지막 라운드(GameBalance.FinalRound) 납부 성공에서만 생긴다. 음료는 해골 판정을 바꾸지 않는다(해골 회전은 음료와 상관없이 지급 0).
+    ///
+    /// 진행 상태(돈, 라운드, 음료 잔 수)는 전부 이 객체에 있다. 새 게임은 새 객체를 만드는 것으로 초기화한다.
+    /// </summary>
+    public sealed class GameFlowController
+    {
+        // 보상 추첨 난수를 결과 추첨 난수와 떼어 놓는 값. 같은 시드면 보상도 같다.
+        private const int RewardSeedSalt = 0x5EED5EED;
+
+        // 상점 진열 난수용. 결과·보상 난수와 떨어뜨린다.
+        private const int ShopSeedSalt = 0x5A0B5A0B;
+
+        // 딜러의 귀띔 단서 고르기용(결과 난수와 따로).
+        private const int HintSeedSalt = 0x4D1A7E57;
+
+        private readonly Random rng;
+        private readonly Random hintRng;
+
+        // 딜러의 귀띔으로 미리 뽑아 둔 다음 회전 결과(해골 방어 적용 후)와 그때 쓴 해골 방어 수. 없으면 null.
+        private SpinResult preparedResult;
+        private int preparedShieldsUsed;
+        private int lastSpinId;
+
+        public GameFlowController(RouletteDefinition definition, GameBalance gameBalance, int seed, DrinkCatalog drinkCatalog = null,
+            ShopCatalog shopCatalog = null)
+        {
+            Definition = definition;
+            GameBalance = gameBalance;
+            Seed = seed != 0 ? seed : NewSeed();
+            rng = new Random(Seed);
+            hintRng = new Random(Seed ^ HintSeedSalt);
+
+            Wallet = new Wallet(gameBalance.InitialMoney, gameBalance.MaxMoney);
+            Bet = new BetManager(definition, gameBalance.MinBet);
+            Round = new RoundManager(gameBalance);
+            Drinks = new DrinkRunState(drinkCatalog);
+            Probabilities = new ProbabilityDrinkRunState();
+            Rewards = new DrinkRewardController(drinkCatalog, Seed ^ RewardSeedSalt);
+            Rewards.DrunkTargets = DrunkTargets;
+            Inventory = new InventoryState();
+            Upgrades = new BettingUpgradeState();
+            Cross = new CrossBetEffectState();
+            OwnedUpgrades = new UpgradeSlots(gameBalance.MaxOwnedUpgrades);
+            Shop = new ShopController(this, shopCatalog, Seed ^ ShopSeedSalt);
+            Phase = GamePhase.Betting;
+        }
+
+        public RouletteDefinition Definition { get; }
+        public GameBalance GameBalance { get; }
+
+        /// <summary>실제로 쓴 시드. 로그에 남겨 같은 진행을 재현한다.</summary>
+        public int Seed { get; }
+
+        public Wallet Wallet { get; }
+        public BetManager Bet { get; }
+        public RoundManager Round { get; }
+
+        /// <summary>이번 게임에서 마신 지급 강화 음료(묶음별 잔 수).</summary>
+        public DrinkRunState Drinks { get; }
+
+        /// <summary>이번 게임에서 마신 확률 강화 음료(대상별 잔 수).</summary>
+        public ProbabilityDrinkRunState Probabilities { get; }
+
+        /// <summary>라운드 통과 보상(음료 후보).</summary>
+        public DrinkRewardController Rewards { get; }
+
+        /// <summary>상점(진열·재고·구매).</summary>
+        public ShopController Shop { get; }
+
+        /// <summary>소모품 보유·장착·이번 라운드 효과.</summary>
+        public InventoryState Inventory { get; }
+
+        /// <summary>상점 집중 강화(음료와 따로 저장).</summary>
+        public BettingUpgradeState Upgrades { get; }
+
+        /// <summary>상점 교차 강화(보유 + 다음 회전 강화).</summary>
+        public CrossBetEffectState Cross { get; }
+
+        /// <summary>보유 강화 칸(최대 GameBalance.MaxOwnedUpgrades). 테이블 배지와 1:1.</summary>
+        public UpgradeSlots OwnedUpgrades { get; }
+
+        public GamePhase Phase { get; private set; }
+
+        public ActiveSpin CurrentSpin { get; private set; }
+        public SettlementResult LastSettlement { get; private set; }
+
+        /// <summary>정산까지 끝난 회전 수(게임 전체).</summary>
+        public int SpinsPlayed { get; private set; }
+
+        /// <summary>지급 0으로 끝난 회전이 연속 몇 번인가. 해골 낙첨도 센다. 지급이 하나라도 있으면 0.</summary>
+        public int ConsecutiveLosses { get; private set; }
+        public PaymentOutcome? LastPayment { get; private set; }
+
+        /// <summary>마지막으로 낸 납부금. 보상 화면 머리글용.</summary>
+        public long LastPaidDue { get; private set; }
+
+        /// <summary>마지막 납부 때 납부 지원금으로 돌려받은 돈. 없으면 0.</summary>
+        public long LastPaymentRefund { get; private set; }
+
+        /// <summary>마지막으로 마신 음료. 없으면 null.</summary>
+        public DrinkOffer LastDrink { get; private set; }
+
+        /// <summary>확률 음료로 마신 대상(처음 마신 순서). 다음 확률 음료 후보가 같은 묶음에서 이 대상들을 다시 잘 고른다.</summary>
+        public IReadOnlyList<BetTarget> DrunkTargets()
+        {
+            var targets = new List<BetTarget>();
+            foreach (ProbabilityEffect effect in Probabilities.Effects)
+            {
+                targets.Add(effect.Target);
+            }
+
+            return targets;
+        }
+
+        /// <summary>마지막 음료의 대상(정해진 대상 하나, 숫자 지급 음료는 없음).</summary>
+        public IReadOnlyList<BetTarget> LastDrinkTargets { get; private set; } = new BetTarget[0];
+
+        public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
+
+        /// <summary>
+        /// 딜러의 귀띔 단서: 다음 회전에 나오지 않는 베팅(바깥 베팅 하나, 모두 나오면 숫자 하나). 없으면 None.
+        /// 상점을 나갈 때 결과를 미리 뽑아 두고 그 결과에서 고르므로 거짓이 없다. 그 회전이 시작되면 지워진다.
+        /// </summary>
+        public BetTarget DealerHintTarget { get; private set; } = BetTarget.None;
+
+        public bool HasDealerHint => !DealerHintTarget.IsNone;
+
+        // ---------- 디버그·검증용 (아이템 시스템 전까지 확장성 확인에 쓴다) ----------
+
+        /// <summary>비어 있지 않으면 공 i의 결과를 ForcedNumbers[i]로 덮어쓴다. 음수는 무시.</summary>
+        public IReadOnlyList<int> ForcedNumbers { get; set; }
+
+        /// <summary>회전마다 GameBalance.BallCount에 더할 공 수.</summary>
+        public int ExtraBallCount { get; set; }
+
+        /// <summary>0보다 크면 숫자 하나 베팅의 지급 배수를 이 값으로 바꾼다.</summary>
+        public int StraightPayoutOverride { get; set; }
+
+        // ---------- 베팅 (Betting 상태에서만) ----------
+
+        /// <summary>대상에 칩 금액만큼 건다. 같은 대상이면 쌓인다.</summary>
+        public BetError PlaceChip(BetTarget target) => WhenBetting(() => Bet.PlaceChip(target, Wallet));
+
+        /// <summary>대상에 amount를 건다. 같은 대상이면 쌓인다.</summary>
+        public BetError PlaceBet(BetTarget target, long amount) => WhenBetting(() => Bet.PlaceBet(target, amount, Wallet));
+
+        public BetError RemoveBet(BetTarget target) => WhenBetting(() => Bet.RemoveBet(target));
+
+        /// <summary>칩 끌기: from 베팅을 통째로 to로 옮기고(있으면 합침), to가 None이면 뺀다.</summary>
+        public BetError MoveBet(BetTarget from, BetTarget to) => WhenBetting(() => Bet.MoveBet(from, to));
+
+        /// <summary>대상에서 칩 하나(칩 금액)만큼 뺀다. 남는 게 최소 베팅보다 적으면 통째로 뺀다.</summary>
+        public BetError RemoveChip(BetTarget target) => WhenBetting(() => Bet.RemoveChip(target));
+
+        public BetError UndoLastChip() => WhenBetting(Bet.UndoLastChip);
+
+        public BetError ClearBets() => WhenBetting(Bet.ClearBets);
+
+        public BetError SetChipValue(long value) => WhenBetting(() => Bet.SetChipValue(value));
+
+        public BetError ValidateBet()
+        {
+            return Phase == GamePhase.Betting ? Bet.Validate(Wallet) : BetError.NotInBettingPhase;
+        }
+
+        // ---------- 회전 ----------
+
+        /// <summary>
+        /// 베팅을 확정·차감하고 결과를 추첨한다. 성공하면 Spinning으로 바뀌고,
+        /// 그동안 다시 불러도 NotInBettingPhase로 거절된다.
+        /// </summary>
+        public BetError TryBeginSpin(out ActiveSpin spin)
+        {
+            spin = null;
+
+            if (Phase != GamePhase.Betting || !Round.HasSpins)
+            {
+                return BetError.NotInBettingPhase;
+            }
+
+            BetError error = Bet.TryConfirm(Wallet, out IReadOnlyList<ConfirmedBet> bets);
+            if (error != BetError.None)
+            {
+                return error;
+            }
+
+            // 이 회전 설정을 확정한다(공 수, 지급 배율, 가중치, 다음 회전 교차 강화, 마지막 회전 더블 업).
+            // 회전 수를 쓰기 전에 만든다(미리보기와 같은 "남은 회전" 기준). 이후 상점·아이템은 이 회전에 영향이 없다.
+            SpinConfig config = BuildSpinConfig();
+            Round.TryConsumeSpin();
+            Cross.TakePendingForSpin();
+            bool insured = Inventory.Insurances > 0;
+            if (config.PayoutScale != 1m)
+            {
+                Inventory.Use(ShopEffect.DoubleUp);
+            }
+
+            SpinResult result;
+            int shieldsUsed;
+            if (preparedResult != null && preparedResult.Balls.Count == config.BallCount)
+            {
+                // 딜러의 귀띔: 상점을 나갈 때 미리 뽑아 둔 결과(해골 방어까지 적용)를 그대로 쓴다.
+                result = ApplyResultOverrides(preparedResult);
+                shieldsUsed = preparedShieldsUsed;
+            }
+            else
+            {
+                result = SpinResolver.Resolve(config, rng);
+                result = ApplyResultOverrides(result);
+
+                // 해골 방어(자동): 가진 횟수만큼 해골 공만 같은 설정으로 다시 뽑는다.
+                result = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out shieldsUsed);
+            }
+
+            Inventory.ConsumeShields(shieldsUsed);
+            ClearDealerHint();
+
+            spin = new ActiveSpin(++lastSpinId, bets, config, result, insured, Inventory.InsuranceRatio, shieldsUsed);
+            CurrentSpin = spin;
+            Phase = GamePhase.Spinning;
+            return BetError.None;
+        }
+
+        /// <summary>
+        /// 모든 공의 연출이 끝난 뒤 한 번 부른다. 진행 중인 회전이 아니거나 이미 정산했으면 false.
+        /// </summary>
+        public bool CompleteSpin(int spinId, out SettlementResult settlement)
+        {
+            settlement = null;
+
+            if (Phase != GamePhase.Spinning || CurrentSpin == null || CurrentSpin.Id != spinId)
+            {
+                return false;
+            }
+
+            // 전체 결과 평가 → 정산. 해골이면 지급 0이고 이미 뺀 베팅금은 돌려주지 않는다.
+            ActiveSpin spin = CurrentSpin;
+            settlement = PayoutCalculator.Calculate(spin.Bets, spin.Result, spin.Config, Wallet.MaxMoney);
+            Wallet.Add(settlement.TotalPayout);
+
+            // 해골 벌칙: 베팅금을 뺀 뒤 남은 보유 금액을 절반으로(소수점 반올림). 공이 여러 개 해골이어도 회전당 한 번.
+            if (settlement.IsSkullBust)
+            {
+                long penalty = Wallet.Balance - GameBalance.SkullKeptBalance(Wallet.Balance);
+                Wallet.TrySpend(penalty);
+                settlement.ApplySkullPenalty(penalty);
+            }
+
+            settlement.ApplyShieldsUsed(spin.ShieldsUsed);
+
+            // 해골 방어를 다 썼으면 강화 칸에서 뺀다(배지가 사라진다). 결과를 미리 보여 주지 않게 시작이 아니라 정산 때 뺀다.
+            if (spin.ShieldsUsed > 0 && Inventory.Shields == 0)
+            {
+                int shieldSlot = OwnedUpgrades.IndexOf(ShopEffect.SkullShield);
+                if (shieldSlot >= 0)
+                {
+                    OwnedUpgrades.Clear(shieldSlot);
+                }
+            }
+
+            // 보험: 돈을 잃은 회전(받은 돈 < 건 돈)이면 이때 증서 1장을 쓰고 잃은 금액의 일부를 돌려준다.
+            // 본전·이득인 회전과 해골 낙첨에는 쓰지 않는다(증서가 그대로 남는다).
+            long lost = settlement.TotalStake - settlement.TotalPayout;
+            if (spin.Insured && !settlement.IsSkullBust && lost > 0 && Inventory.UseInsurance())
+            {
+                long refund = (long)Math.Floor(lost * spin.InsuranceRatio);
+                settlement.ApplyInsuranceRefund(Wallet.Add(refund));
+            }
+
+            // 교차 강화: 발동 묶음 베팅 당첨(Win) 또는 이번 라운드 누적 지급액 목표 달성(Gain)이면 다음 회전 강화(해골 낙첨이면 없음).
+            // 정산이 이 한 곳뿐이라(단계·회전 번호 검사) 같은 회전이 두 번 누적되지 않는다.
+            settlement.ApplyCrossTriggers(Cross.OnSettled(settlement, Round.CurrentDue));
+
+            LastSettlement = settlement;
+            SpinsPlayed++;
+            ConsecutiveLosses = settlement.Outcome == SpinOutcome.Win ? 0 : ConsecutiveLosses + 1;
+            CurrentSpin = null;
+            Bet.Unlock(Wallet.Balance);
+
+            // 회전이 끝나면 판의 칩을 없앤다. 베팅금은 시작 때 빠졌고 당첨금은 원금 포함으로 들어왔으니 돈은 그대로다.
+            Bet.ClearBets();
+
+            Phase = NextPhaseAfterSpin();
+            return true;
+        }
+
+        // ---------- 라운드 ----------
+
+        /// <summary>
+        /// 납부를 판정한다. RoundPayment 상태에서만 동작하고, 부르는 즉시 상태가 바뀌어 두 번째 호출은 null(이중 차감 없음).
+        /// 성공하면 납부금을 한 번 빼고 음료 선택(목록이 없으면 바로 다음 라운드), 실패하면 아무것도 빼지 않고 GameOver.
+        /// </summary>
+        public PaymentOutcome? SubmitPayment()
+        {
+            if (Phase != GamePhase.RoundPayment)
+            {
+                return null;
+            }
+
+            long due = Round.CurrentDue;
+            PaymentOutcome outcome = Round.Pay(Wallet);
+            LastPayment = outcome;
+
+            if (outcome == PaymentOutcome.Insufficient)
+            {
+                Phase = GamePhase.GameOver;
+                return outcome;
+            }
+
+            LastPaidDue = due;
+
+            // 납부 지원금(지속 효과): 방금 낸 납부금의 일부를 돌려받는다. 납부 판정은 이미 끝났으니 부족분을 메우지는 못한다.
+            LastPaymentRefund = Wallet.Add((long)Math.Floor(due * Upgrades.PaymentRefund));
+
+            // 마지막 라운드 납부까지 마쳤으면 클리어. 음료·다음 라운드는 없다.
+            if (GameBalance.FinalRound > 0 && Round.Round >= GameBalance.FinalRound)
+            {
+                Phase = GamePhase.GameClear;
+                return outcome;
+            }
+
+            if (Rewards.HasCatalog && Rewards.CreateOffer().Count > 0)
+            {
+                Phase = GamePhase.DrinkSelection;
+            }
+            else
+            {
+                StartNextRound();
+            }
+
+            return outcome;
+        }
+
+        /// <summary>
+        /// 음료 후보 중 하나를 마신다. DrinkSelection 상태에서만 동작하고, 성공하면 한 잔을 더한 뒤 다음 라운드로 넘어간다.
+        /// 지급 강화는 후보에 정해진 대상의 잔 수 +1(숫자는 묶음 전체 +1). 확률 강화는 후보에 정해진 대상의 가중치가 한 잔만큼 오른다.
+        /// 상태가 맞지 않거나 번호가 틀리면 null이고 아무것도 바뀌지 않는다(후보도 그대로).
+        /// </summary>
+        public DrinkOffer ConfirmDrink(int offerIndex)
+        {
+            if (Phase != GamePhase.DrinkSelection)
+            {
+                return null;
+            }
+
+            IReadOnlyList<DrinkOffer> offer = Rewards.CurrentOffer;
+            if (offer == null || offerIndex < 0 || offerIndex >= offer.Count)
+            {
+                return null;
+            }
+
+            DrinkOffer drink = Rewards.Take(offerIndex);
+            if (drink.IsProbability)
+            {
+                Probabilities.AddStack(drink.Target, drink.Boost);
+                LastDrinkTargets = new[] { drink.Target };
+            }
+            else if (drink.IsWholeGroup)
+            {
+                Drinks.AddGroupStack(drink.Group);
+                LastDrinkTargets = new BetTarget[0];
+            }
+            else
+            {
+                Drinks.AddStack(drink.Target);
+                LastDrinkTargets = new[] { drink.Target };
+            }
+
+            LastDrink = drink;
+            StartNextRound();
+            return drink;
+        }
+
+        /// <summary>
+        /// 확률 음료를 고른 대상들에 나눠 마셨을 때 그 대상들 합계 등장 확률(공 하나 기준, 지금 → 마신 뒤).
+        /// 음료·상점 집중 효과를 모두 넣고, <b>상태는 바꾸지 않는다</b>(고르기·툴팁 미리보기용). 대상이 없으면 (0, 0).
+        /// </summary>
+        public (double now, double after) PreviewProbabilityDrink(IReadOnlyList<BetTarget> targets, decimal total)
+        {
+            if (targets == null || targets.Count == 0)
+            {
+                return (0d, 0d);
+            }
+
+            SpinConfig config = BuildSpinConfig();
+            var effects = Probabilities.WithSplit(targets, total);
+            effects.AddRange(Upgrades.Probabilities.Effects);
+            double[] probabilities = PocketWeightCalculator.Probabilities(Definition, PocketWeightCalculator.Compute(Definition, effects), config.SkullChance);
+            double now = 0d;
+            double after = 0d;
+            foreach (BetTarget target in targets)
+            {
+                now += config.ProbabilityOf(target);
+                after += PocketWeightCalculator.ProbabilityOf(Definition, probabilities, target);
+            }
+
+            return (now, after);
+        }
+
+        /// <summary>
+        /// 디버그: 지금 라운드를 바로 끝내고 납부 단계로 보낸다(베팅 중일 때만). 판의 칩은 거두고(돈은 회전 때만 빠지므로 그대로),
+        /// 남은 회전은 버린다. 납부 판정은 부른 쪽이 <see cref="SubmitPayment"/>로 한다.
+        /// </summary>
+        public bool ForceRoundEnd()
+        {
+            if (Phase != GamePhase.Betting)
+            {
+                return false;
+            }
+
+            Bet.ClearBets();
+            Round.ForfeitRemainingSpins();
+            Phase = GamePhase.RoundPayment;
+            return true;
+        }
+
+        // ---------- 상점 ----------
+
+        /// <summary>
+        /// 상점을 열 수 있는 때: 라운드가 끝나고(음료 선택까지 마치고) 새 라운드의 <b>첫 회전을 시작하기 전</b>, 베팅 중일 때만.
+        /// 1라운드는 끝난 라운드가 없어서 닫혀 있다(ShopCatalog.openOnFirstRound로 열 수 있다).
+        /// </summary>
+        public bool CanEnterShop =>
+            Phase == GamePhase.Betting && Shop.HasCatalog && Round.SpinsTaken == 0
+            && (Round.Round > 1 || Shop.State.OpenOnFirstRound);
+
+        /// <summary>
+        /// 상점에 들어간다(<see cref="CanEnterShop"/>일 때만). 놓아 둔 베팅은 그대로 두고, 회전·라운드는 진행되지 않는다.
+        /// 이번 라운드 진열이 없으면 만든다(다시 들어와도 같은 진열·재고).
+        /// </summary>
+        public bool EnterShop()
+        {
+            if (!CanEnterShop)
+            {
+                return false;
+            }
+
+            Shop.State.EnsureDisplay(Round.Round);
+            Phase = GamePhase.Shopping;
+            return true;
+        }
+
+        /// <summary>
+        /// 상점을 닫는다. 베팅 상태로 돌아가되, 상점에서 돈을 다 써서 최소 베팅도 못 하고 놓은 칩도 없으면
+        /// 기존 규칙대로 남은 회전을 버리고 납부 판정(RoundPayment)으로 간다.
+        /// </summary>
+        public bool CloseShop()
+        {
+            if (Phase != GamePhase.Shopping)
+            {
+                return false;
+            }
+
+            if (Bet.HasBets || CanAffordMinimumBet)
+            {
+                Phase = GamePhase.Betting;
+                PrepareDealerHint();
+            }
+            else
+            {
+                Round.ForfeitRemainingSpins();
+                Phase = GamePhase.RoundPayment;
+            }
+
+            return true;
+        }
+
+        // ---------- 아이템이 끼어들 자리 ----------
+
+        /// <summary>
+        /// 회전 전. 정의 에셋을 복사한 설정에 공 수·가중치·배율 보정을 건다.
+        /// UI 미리보기도 이걸 불러서 화면의 배율과 실제 계산이 같은 값을 쓰게 한다.
+        /// </summary>
+        public SpinConfig BuildSpinConfig()
+        {
+            SpinConfig config = SpinConfig.Create(Definition, GameBalance);
+            config.BallCount += ExtraBallCount;
+
+            // 특수 강화 추가 공(이번 게임 동안). 최대 공 수를 넘지 않는다(디버그로 더한 공은 그대로 둔다).
+            int withItems = config.BallCount + Upgrades.ExtraBalls;
+            config.BallCount = Math.Min(withItems, Math.Max(config.BallCount, GameBalance.MaxBallCount));
+
+            // 더블 업 쿠폰: 이번 라운드 마지막 회전(남은 회전 1)이면 회전 전체 지급 ×값. 미리보기와 정산이 같은 조건을 쓴다.
+            if (Inventory.DoubleUps > 0 && Round.SpinsRemaining == 1)
+            {
+                config.PayoutScale = Inventory.DoubleUpMultiplier;
+            }
+            if (StraightPayoutOverride > 0)
+            {
+                config.StraightPayout = StraightPayoutOverride;
+            }
+
+            // 음료: 대상 배율 = 한 잔 배율^잔 수(마신 대상만). 기본 배수에 곱하는 건 SpinConfig.MultiplierFor.
+            foreach (BetTarget target in Drinks.Targets)
+            {
+                config.SetTargetBoost(target, Drinks.MultiplierOf(target));
+            }
+
+            for (int i = 0; i < DrinkGroups.Count; i++)
+            {
+                config.SetGroupBoost((DrinkGroup)i, Drinks.GroupMultiplierOf((DrinkGroup)i));
+            }
+
+            // 상점 강화: (1 + 집중 증가 + 다음 회전 교차 증가). 음료 배율 뒤에 곱한다(SpinConfig.MultiplierFor).
+            for (int i = 0; i < DrinkGroups.Count; i++)
+            {
+                var group = (DrinkGroup)i;
+                config.SetGroupBonus(group, Upgrades.PayoutIncrease(group) + Cross.Pending(group));
+            }
+
+            // 확률(음료 + 상점 집중): 같은 칸이면 증가량을 더한다. 일반 칸 가중치만 바꾸고 해골(SkullChance)은 그대로 1/38.
+            // 베팅과 상관없이 지금 효과를 그대로 쓴다(건 칸을 따로 유리하게 하지 않는다).
+            if (Probabilities.Effects.Count > 0 || Upgrades.Probabilities.Effects.Count > 0)
+            {
+                var effects = new List<ProbabilityEffect>(Probabilities.Effects);
+                effects.AddRange(Upgrades.Probabilities.Effects);
+                config.SetWeights(PocketWeightCalculator.Compute(Definition, effects));
+            }
+
+            return config;
+        }
+
+        /// <summary>
+        /// 딜러의 귀띔(상점을 나갈 때 자동 사용): 다음 회전 결과를 지금 설정으로 미리 뽑고(해골 방어까지 적용),
+        /// 그 결과의 어떤 공도 들어가지 않는 바깥 베팅 하나를 단서로 고른다. 그런 바깥 베팅이 없으면(공 여러 개가 다 덮을 때) 나오지 않는 숫자 하나.
+        /// 상점은 라운드 첫 회전 전에만 열리고 그 뒤로는 설정이 바뀌지 않으니 미리 뽑은 결과가 그대로 쓰인다.
+        /// </summary>
+        private void PrepareDealerHint()
+        {
+            if (Inventory.DealerHints <= 0 || preparedResult != null)
+            {
+                return;
+            }
+
+            Inventory.Use(ShopEffect.DealerHint);
+            SpinConfig config = BuildSpinConfig();
+            SpinResult result = SpinResolver.Resolve(config, rng);
+            preparedResult = SpinResolver.ShieldSkulls(result, config, rng, Inventory.Shields, out preparedShieldsUsed);
+
+            var candidates = new List<BetTarget>();
+            for (BetKind kind = BetKind.Red; kind <= BetKind.Column3; kind++)
+            {
+                BetTarget target = BetTarget.Outside(kind);
+                if (!CoversAny(target, preparedResult))
+                {
+                    candidates.Add(target);
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                for (int n = 0; n <= 36; n++)
+                {
+                    BetTarget target = BetTarget.Straight(n);
+                    if (!CoversAny(target, preparedResult))
+                    {
+                        candidates.Add(target);
+                    }
+                }
+            }
+
+            DealerHintTarget = candidates.Count > 0 ? candidates[hintRng.Next(candidates.Count)] : BetTarget.None;
+        }
+
+        private static bool CoversAny(BetTarget target, SpinResult result)
+        {
+            foreach (BallResult ball in result.Balls)
+            {
+                if (target.Covers(ball))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ClearDealerHint()
+        {
+            preparedResult = null;
+            preparedShieldsUsed = 0;
+            DealerHintTarget = BetTarget.None;
+        }
+
+        /// <summary>결과 확정 후. 재추첨·결과 변환이 들어올 자리. 지금은 디버그 지정 번호만 처리한다.</summary>
+        private SpinResult ApplyResultOverrides(SpinResult result)
+        {
+            return SpinResolver.OverrideNumbers(result, Definition, ForcedNumbers);
+        }
+
+        /// <summary>
+        /// 회전이 남았고 최소 베팅을 낼 수 있으면 다시 Betting.
+        /// 회전이 남았어도 베팅할 돈이 없으면 남은 회전을 버리고 납부 판정으로 간다.
+        /// 납부금 할인 같은 효과가 생길 수 있어 바로 GameOver로 보내지 않는다.
+        /// </summary>
+        private GamePhase NextPhaseAfterSpin()
+        {
+            if (Round.HasSpins && CanAffordMinimumBet)
+            {
+                return GamePhase.Betting;
+            }
+
+            Round.ForfeitRemainingSpins();
+            return GamePhase.RoundPayment;
+        }
+
+        /// <summary>
+        /// 납부(와 음료)를 마친 뒤. 라운드 번호 +1, 회전 수를 다시 채우고 판을 비운다. 돈과 음료는 그대로.
+        /// 새 라운드에서도 최소 베팅을 못 내면 기존 규칙대로 남은 회전을 버리고 납부 판정으로 간다.
+        /// </summary>
+        private void StartNextRound()
+        {
+            // 추가 공 효과 끝. 교차 강화는 누적 지급액(Gain) 미달분만 버리고 다음 회전 강화는 남긴다(다음 라운드 첫 회전).
+            Inventory.OnRoundEnded();
+            Cross.OnRoundEnded();
+            ClearDealerHint();
+            Round.AdvanceRound();
+            Bet.Unlock(Wallet.Balance);
+            Bet.ClearBets();
+            Phase = NextPhaseAfterSpin();
+        }
+
+        private BetError WhenBetting(Func<BetError> action)
+        {
+            return Phase == GamePhase.Betting ? action() : BetError.NotInBettingPhase;
+        }
+
+        private static int NewSeed()
+        {
+            int seed = Environment.TickCount ^ Guid.NewGuid().GetHashCode();
+            return seed != 0 ? seed : 1;
+        }
+    }
+}

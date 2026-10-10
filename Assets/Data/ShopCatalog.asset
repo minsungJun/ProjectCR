@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d901d4cadd349b144833d6fc0142b47c, type: 3}
+  m_Name: ShopCatalog
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.ShopCatalog
+  items:
+  - {fileID: 11400000, guid: e03e88fadea469e4692e3a57a95d6cd4, type: 2}
+  - {fileID: 11400000, guid: 10d86a6a3ba9da5409f50d8e6bf06874, type: 2}
+  - {fileID: 11400000, guid: fd07e19f1836f8f42b7c73c2303d1696, type: 2}
+  - {fileID: 11400000, guid: 24c720e7898f6ed4d80299d7e86b6243, type: 2}
+  - {fileID: 11400000, guid: 65ef046057cbb93408293c5a5fde1fbf, type: 2}
+  - {fileID: 11400000, guid: b1399f63bed9ef642b1d02774e892540, type: 2}
+  - {fileID: 11400000, guid: ab5f4c593da9c7f44a11621d6d58f0a6, type: 2}
+  - {fileID: 11400000, guid: 7e45337a5ba9f8f44a4bb8ec5c4b9e18, type: 2}
+  - {fileID: 11400000, guid: c9e1a3712e951a149b0b17d1de56ff8e, type: 2}
+  - {fileID: 11400000, guid: 181dcb2f5b1750e4eb9d85f9e4665d4c, type: 2}
+  - {fileID: 11400000, guid: 5766688e2b623ed47b043e953cf2613a, type: 2}
+  - {fileID: 11400000, guid: 65d702c7da46ccd48a1fe5f65409814e, type: 2}
+  - {fileID: 11400000, guid: b63a7bfbff9c1394a99b5731b968b68b, type: 2}
+  - {fileID: 11400000, guid: ce5b12c87bf061b4a82ef75272f579fd, type: 2}
+  - {fileID: 11400000, guid: c5f2694f21d4a864983b1b442b0e3887, type: 2}
+  - {fileID: 11400000, guid: 4599f83dd6ddb2246b18b7a8d91339b5, type: 2}
+  - {fileID: 11400000, guid: 50181d52124ac094fa24e9c4ea9b8a99, type: 2}
+  - {fileID: 11400000, guid: 472469554e12a3d4685cc093d23f7765, type: 2}
+  - {fileID: 11400000, guid: 58bb6cc368277c244a092fc333970d9d, type: 2}
+  - {fileID: 11400000, guid: 441fbfa816f713f4aa960def746f53e1, type: 2}
+  - {fileID: 11400000, guid: fdf57f74ca9074743bfd025fb4d26e5f, type: 2}
+  - {fileID: 11400000, guid: c58c17b9c71699d4db0746947d6e65b3, type: 2}
+  - {fileID: 11400000, guid: d6872c87dde9a35458f30b4df93db49c, type: 2}
+  - {fileID: 11400000, guid: b63592e5ada03d649ab8406aed48c8e3, type: 2}
+  - {fileID: 11400000, guid: d84045f4154b9f3449aae30a963d2330, type: 2}
+  - {fileID: 11400000, guid: 70fad5ccb7fe4d7408a9ed0a54397d85, type: 2}
+  - {fileID: 11400000, guid: a69f7956d15bc024f80a2592a1296c2d, type: 2}
+  - {fileID: 11400000, guid: b2b727afeb951e546ad2cf1792b0cb6a, type: 2}
+  - {fileID: 11400000, guid: 90f4c5ccea38f184b845faec8e59a9bc, type: 2}
+  - {fileID: 11400000, guid: 9a449e0b3b7d353498585e3c9e1ffb61, type: 2}
+  - {fileID: 11400000, guid: af6799c4d7027f24f9f72ae36ac7704f, type: 2}
+  - {fileID: 11400000, guid: 8faca6606631be3459141102dc793e2b, type: 2}
+  - {fileID: 11400000, guid: 63a245fd37697474aa35707d404c6837, type: 2}
+  - {fileID: 11400000, guid: 53e97fe63296bab4084d70083e8fa3e9, type: 2}
+  - {fileID: 11400000, guid: b416b2f36b53d0f418ec457f5b00e5db, type: 2}
+  - {fileID: 11400000, guid: 8cf556bdd98ec9a4cbfd2a50a7ea2c1c, type: 2}
+  - {fileID: 11400000, guid: 2963985e7cf94b8458e0c83c01d79adc, type: 2}
+  - {fileID: 11400000, guid: 0f713abf254b8d9489c7c137ae58d63e, type: 2}
+  - {fileID: 11400000, guid: 2b9817b83f97f92419fdec5826d30d2f, type: 2}
+  - {fileID: 11400000, guid: 222914164e6a1ef4a87083c61664c308, type: 2}
+  - {fileID: 11400000, guid: dbedb16008b019640885c3c90ab2f81e, type: 2}
+  - {fileID: 11400000, guid: c7367c1df98b03b42942d1de5ac6ad24, type: 2}
+  - {fileID: 11400000, guid: 8a307cb3fcb48a74296cfeb3ffbe5eca, type: 2}
+  moneyIcon: {fileID: 0}
+  upgradeSlots: 4
+  showAllConsumables: 1
+  keyConsumableSlot: 1
+  consumableSlots: 1
+  openOnFirstRound: 0

@@ -1,0 +1,75 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="RouletteHud.uss" />
+    <ui:VisualElement name="root" class="root" picking-mode="Ignore">
+        <!-- 오른쪽 위: [시점 전환] [옵션]. 옵션은 일시정지 메뉴를 연다(Esc와 같다). -->
+        <ui:VisualElement class="options blocks-input">
+            <ui:VisualElement class="options-row">
+                <ui:Button name="view-toggle" class="btn btn--small view-toggle" text="시점 전환" />
+                <ui:Button name="options" class="btn btn--small options-button" text="옵션" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 회전 결과(나온 숫자 · 손익)와 그 아래 이전에 나온 숫자 5개. 첫 회전 전에는 숨긴다(시작 안내는 딜러 대화창). -->
+        <ui:VisualElement class="result-area" picking-mode="Ignore">
+            <ui:VisualElement name="result-panel" class="result-panel" picking-mode="Ignore">
+                <ui:VisualElement name="result-balls" class="result-balls" picking-mode="Ignore" />
+                <ui:Label name="result" class="result" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement name="result-history" class="result-history" picking-mode="Ignore" />
+            <ui:Label name="dealer-hint" class="dealer-hint" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- 딜러 튜토리얼 대화창(왼쪽 위). 아이콘이 먼저 뜨고 대사가 한 글자씩 나온다. TutorialDialogueView가 채운다. -->
+        <ui:VisualElement name="tutorial-panel" class="tutorial-panel blocks-input">
+            <ui:VisualElement name="tutorial-dealer-icon" class="tutorial-dealer-icon" picking-mode="Ignore" />
+            <ui:VisualElement name="tutorial-content" class="tutorial-content">
+                <ui:Label name="tutorial-speaker" class="tutorial-speaker" picking-mode="Ignore" />
+                <ui:Label name="tutorial-text" class="tutorial-text" picking-mode="Ignore" />
+                <ui:VisualElement name="tutorial-choice-row" class="tutorial-choice-row">
+                    <ui:Button name="tutorial-choice-yes" class="tutorial-button" text="네" />
+                    <ui:Button name="tutorial-choice-no" class="tutorial-button" text="아니오" />
+                </ui:VisualElement>
+                <ui:Button name="tutorial-next" class="tutorial-button tutorial-next" text="다음" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 서비스(상점). [소모품] / [강화] 탭, 상품 카드는 ShopView가 그린다. 코인 아이콘은 ShopCatalog.moneyIcon. -->
+        <ui:VisualElement name="shop-panel" class="modal shop-modal blocks-input">
+            <ui:VisualElement class="shop-box">
+                <ui:VisualElement class="shop-header">
+                    <ui:Label class="shop-title" text="서비스" />
+                    <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                    <ui:VisualElement class="shop-wallet" picking-mode="Ignore">
+                        <ui:VisualElement name="shop-coin" class="shop-coin shop-coin--large" picking-mode="Ignore" />
+                        <ui:Label class="shop-wallet__label" text="보유" />
+                        <ui:Label name="shop-money" class="shop-money" text="0" />
+                    </ui:VisualElement>
+                    <ui:Button name="shop-close" class="shop-close" text="✕" />
+                </ui:VisualElement>
+                <ui:Label name="shop-funds" class="shop-funds" />
+                <ui:VisualElement class="shop-tabs">
+                    <ui:Button name="shop-tab-consumable" class="shop-tab" text="소모품" />
+                    <ui:Button name="shop-tab-upgrade" class="shop-tab" text="강화" />
+                </ui:VisualElement>
+                <ui:VisualElement class="shop-felt">
+                    <ui:Label name="shop-notice" class="shop-notice" />
+                    <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 판 위 호버 안내. 커서를 따라다니고 입력을 받지 않는다(blocks-input 없음, picking Ignore). 내용은 RouletteHud.ShowBetTooltip. -->
+        <ui:VisualElement name="bet-tooltip" class="bet-tooltip" picking-mode="Ignore">
+            <ui:VisualElement class="bet-tooltip__head" picking-mode="Ignore">
+                <ui:Label name="bet-tooltip-kind" class="bet-tooltip__kind" picking-mode="Ignore" />
+                <ui:Label name="bet-tooltip-base" class="bet-tooltip__base" picking-mode="Ignore" />
+                <ui:Label name="bet-tooltip-final" class="bet-tooltip__final" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Label name="bet-tooltip-targets" class="bet-tooltip__targets" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-stake" class="bet-tooltip__stake" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-note" class="bet-tooltip__note" picking-mode="Ignore" />
+            <ui:Label name="bet-tooltip-progress" class="bet-tooltip__progress" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

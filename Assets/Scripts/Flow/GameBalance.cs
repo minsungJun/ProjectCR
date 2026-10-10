@@ -1,0 +1,162 @@
+using System;
+using UnityEngine;
+
+namespace ProjectCR
+{
+    /// <summary>
+    /// 밸런스 수치를 한곳에 모은 설정. <b>여기 있는 값은 전부 임시값이다.</b>
+    /// 아이템과 다른 베팅 종류가 들어온 뒤 다시 잡는다.
+    ///
+    /// 정적 설정이라 런타임에 고치지 않는다. 회전 단위로 바뀌는 값은 SpinConfig로 복사해서 쓴다.
+    /// </summary>
+    [CreateAssetMenu(fileName = "GameBalance", menuName = "ProjectCR/Game Balance")]
+    public class GameBalance : ScriptableObject
+    {
+        [Header("돈")]
+        [Tooltip("새 게임 시작 자금.")]
+        [SerializeField] private long initialMoney = 100;
+
+        [Tooltip("보유 금액 상한. 넘치는 지급은 여기서 잘린다. UI 12자리에 맞춘 값.")]
+        [SerializeField] private long maxMoney = 999_999_999_999;
+
+        [Header("베팅")]
+        [Tooltip("한 번에 걸 수 있는 최소 금액. 보유 금액이 이보다 적으면 베팅할 수 없다.")]
+        [SerializeField] private long minBet = 1;
+
+        [Tooltip("숫자 하나 베팅의 <b>원금 포함 총 지급 배수</b>. 36이면 100을 걸어 맞혔을 때 3,600을 받는다(순이익 3,500).")]
+        [SerializeField] private int straightTotalPayout = 36;
+
+        [Tooltip("스플릿(붙은 두 숫자)의 원금 포함 총 지급 배수. 표준 18.")]
+        [SerializeField] private int splitTotalPayout = 18;
+
+        [Tooltip("스트리트(한 줄 세 숫자)·트리오(0·1·2, 0·2·3)의 원금 포함 총 지급 배수. 표준 12.")]
+        [SerializeField] private int streetTotalPayout = 12;
+
+        [Tooltip("코너(네 숫자)·퍼스트 포(0·1·2·3)의 원금 포함 총 지급 배수. 표준 9.")]
+        [SerializeField] private int cornerTotalPayout = 9;
+
+        [Tooltip("식스 라인(두 줄 여섯 숫자)의 원금 포함 총 지급 배수. 표준 6.")]
+        [SerializeField] private int sixLineTotalPayout = 6;
+
+        [Tooltip("더즌(1–12 등)·컬럼(1열 등)의 원금 포함 총 지급 배수. 12칸에 걸리므로 표준은 3.")]
+        [SerializeField] private int dozenColumnTotalPayout = 3;
+
+        [Tooltip("빨강·검정, 홀·짝, 1–18·19–36의 원금 포함 총 지급 배수. 18칸에 걸리므로 표준은 2. 0과 해골에서는 진다.")]
+        [SerializeField] private int evenMoneyTotalPayout = 2;
+
+        [Tooltip("회전마다 굴리는 공 수. 아이템이 늘리는 값의 기준.")]
+        [SerializeField] private int ballCount = 1;
+
+        [Tooltip("추가 공 아이템을 써도 넘지 못하는 회전당 공 수.")]
+        [Min(1)]
+        [SerializeField] private int maxBallCount = 3;
+
+        [Tooltip("동시에 가질 수 있는 강화(지속 효과 상품) 수. 테이블의 배지 자리 수와 맞춘다. 다 차면 살 때 하나를 버린다.")]
+        [Min(1)]
+        [SerializeField] private int maxOwnedUpgrades = 6;
+
+        [Header("해골")]
+        [Tooltip("해골에 걸리면 베팅금을 뺀 뒤 남은 보유 금액에 곱해 남기는 비율. 0.5면 절반(소수점 반올림). 회전당 한 번.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float skullBalanceKeep = 0.5f;
+
+        [Header("라운드")]
+        [Tooltip("라운드당 회전 횟수.")]
+        [SerializeField] private int spinsPerRound = 5;
+
+        [Tooltip("1라운드 납부금.")]
+        [SerializeField] private long firstRoundDue = 120;
+
+        [Tooltip("이 라운드의 납부까지 마치면 게임 클리어(죽음의 문턱을 넘는다). 0이면 끝없이 이어진다.")]
+        [Min(0)]
+        [SerializeField] private int finalRound = 10;
+
+        [Tooltip("라운드가 하나 지날 때마다 납부금에 곱하는 값.")]
+        [SerializeField] private float dueGrowth = 2.5f;
+
+        [Tooltip("납부금을 이 단위로 올림한다. 증가율 2.5, 단위 5면 120, 300, 750, 1,875, 4,690, 11,720, 29,300, 73,245…")]
+        [SerializeField] private long dueRoundingUnit = 5;
+
+        public long InitialMoney => initialMoney;
+        public long MaxMoney => maxMoney;
+        public long MinBet => minBet;
+        public int StraightTotalPayout => straightTotalPayout;
+        public int DozenColumnTotalPayout => dozenColumnTotalPayout;
+        public int EvenMoneyTotalPayout => evenMoneyTotalPayout;
+
+        /// <summary>배수 묶음별 원금 포함 총 지급 배수.</summary>
+        public int TotalPayoutOf(PayoutClass payoutClass)
+        {
+            switch (payoutClass)
+            {
+                case PayoutClass.Straight:
+                    return straightTotalPayout;
+                case PayoutClass.Split:
+                    return splitTotalPayout;
+                case PayoutClass.Street:
+                    return streetTotalPayout;
+                case PayoutClass.Corner:
+                    return cornerTotalPayout;
+                case PayoutClass.SixLine:
+                    return sixLineTotalPayout;
+                case PayoutClass.DozenColumn:
+                    return dozenColumnTotalPayout;
+                default:
+                    return evenMoneyTotalPayout;
+            }
+        }
+        public int BallCount => ballCount;
+        public int MaxBallCount => Math.Max(ballCount, maxBallCount);
+        public int MaxOwnedUpgrades => Math.Max(1, maxOwnedUpgrades);
+        public int SpinsPerRound => spinsPerRound;
+
+        /// <summary>이 라운드 납부를 마치면 게임 클리어. 0이면 끝이 없다.</summary>
+        public int FinalRound => Math.Max(0, finalRound);
+        public float SkullBalanceKeep => skullBalanceKeep;
+
+        /// <summary>해골 벌칙 뒤 남는 보유 금액 = 반올림(balance × skullBalanceKeep). 0.5에서 91 → 46.</summary>
+        public long SkullKeptBalance(long balance)
+        {
+            if (balance <= 0)
+            {
+                return 0;
+            }
+
+            decimal kept = Math.Round(balance * (decimal)Mathf.Clamp01(skullBalanceKeep), MidpointRounding.AwayFromZero);
+            return Math.Min(balance, (long)kept);
+        }
+
+        /// <summary>
+        /// round는 1부터. due(n) = 올림(firstRoundDue × dueGrowth^(n−1), 단위).
+        /// 앞 라운드 납부금에 곱해 가지 않고 매번 공식으로 계산해서 올림 오차가 쌓이지 않는다.
+        /// 라운드 끝은 없다. 상한(maxMoney)에 닿으면 거기서 멈춘다(기본값 기준 약 26라운드).
+        /// </summary>
+        public long GetDue(int round)
+        {
+            double raw = firstRoundDue * Math.Pow(dueGrowth, Math.Max(0, round - 1));
+            long unit = Math.Max(1, dueRoundingUnit);
+            double rounded = Math.Ceiling(raw / unit) * unit;
+            return rounded >= maxMoney ? maxMoney : (long)rounded;
+        }
+
+        private void OnValidate()
+        {
+            initialMoney = Math.Max(0, initialMoney);
+            maxMoney = Math.Max(1, maxMoney);
+            minBet = Math.Max(1, minBet);
+            straightTotalPayout = Math.Max(1, straightTotalPayout);
+            splitTotalPayout = Math.Max(1, splitTotalPayout);
+            streetTotalPayout = Math.Max(1, streetTotalPayout);
+            cornerTotalPayout = Math.Max(1, cornerTotalPayout);
+            sixLineTotalPayout = Math.Max(1, sixLineTotalPayout);
+            dozenColumnTotalPayout = Math.Max(1, dozenColumnTotalPayout);
+            evenMoneyTotalPayout = Math.Max(1, evenMoneyTotalPayout);
+            ballCount = Math.Max(1, ballCount);
+            skullBalanceKeep = Mathf.Clamp01(skullBalanceKeep);
+            spinsPerRound = Math.Max(1, spinsPerRound);
+            firstRoundDue = Math.Max(0, firstRoundDue);
+            dueGrowth = Mathf.Max(1f, dueGrowth);
+            dueRoundingUnit = Math.Max(1, dueRoundingUnit);
+        }
+    }
+}

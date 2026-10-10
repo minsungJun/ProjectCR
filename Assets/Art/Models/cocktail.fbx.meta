@@ -1,0 +1,235 @@
+fileFormatVersion: 2
+guid: 01f082a19335b6349a9814a4de96af73
+ModelImporter:
+  serializedVersion: 24200
+  internalIDToNameTable: []
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Amber
+    second: {fileID: 2100000, guid: 96e7703ec008d56488db0de3c438a2fd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Blueberry
+    second: {fileID: 2100000, guid: 5e9bf56a34b27c840b1c8d1327446eec, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Cherry_Dark
+    second: {fileID: 2100000, guid: 5734cd0081fca6445a91bef2ad1308d6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Cherry_Red
+    second: {fileID: 2100000, guid: d7bc1e459e7902f42820c9a0a67cfabb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Citrus_Pith
+    second: {fileID: 2100000, guid: 59776ac375fc19545989c2f742273516, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Clear_Crystal
+    second: {fileID: 2100000, guid: a9c2e40173e3e894b972344f8fac36a2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_CoralOrange
+    second: {fileID: 2100000, guid: 9449469d4a2282d40a3181ef7ab28e1c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Dark_Straw
+    second: {fileID: 2100000, guid: f9d9a68c9b821344e96c9127b485a840, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Emerald
+    second: {fileID: 2100000, guid: a3e29b9f20b4f354faa7cf6b013e17d2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Flower_Heart
+    second: {fileID: 2100000, guid: bbdab6854f1b5fe4b9259829ee5a77aa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Ice
+    second: {fileID: 2100000, guid: 1c530ba4c9209a541b3e16eac50f2173, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Leaf_Veins
+    second: {fileID: 2100000, guid: 55c7c722b03672043a8a4d5e36f5e3fc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Lemon_Flesh
+    second: {fileID: 2100000, guid: ce2de6ba73fe4dc4691b1ec651149548, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Lemon_Peel
+    second: {fileID: 2100000, guid: e673668c9721779448480382588cdafd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Lime_Flesh
+    second: {fileID: 2100000, guid: d71f10676a4691649a952965e6fed187, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Lime_Peel
+    second: {fileID: 2100000, guid: a425ba179e0de6b4eb31847cb71aed50, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Mint_Green
+    second: {fileID: 2100000, guid: 2073ef5b973d3454ca1bf814234ea088, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Orange_Peel
+    second: {fileID: 2100000, guid: 9ff68a6ec5b43514f9882352f91e0ed7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Pineapple_Flesh
+    second: {fileID: 2100000, guid: d108ab6c8bde8964dbef7563b8129751, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Pineapple_Rind
+    second: {fileID: 2100000, guid: 6647af35443e9cb4db47d61c166998fb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Ruby
+    second: {fileID: 2100000, guid: 8b0302651fc82b840a9db4640f59f2a4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_SkyBlue
+    second: {fileID: 2100000, guid: 57e7f71dfca74474b84d7dab8649ff3c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Viola_Purple
+    second: {fileID: 2100000, guid: 716a863ce8bd1bc4c8707afa6fefd1be, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRD_Violet
+    second: {fileID: 2100000, guid: a94bac7fd342d4a4a985987f977a3e6d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CRR_Brass_Satin
+    second: {fileID: 2100000, guid: 040c1b896c4c23d4da09aa1f4a3ab94d, type: 2}
+  materials:
+    materialImportMode: 2
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    strictVertexDataChecks: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  referencedClips: []
+  importAnimation: 1
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 2
+  humanoidOversampling: 1
+  avatarSetup: 0
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
