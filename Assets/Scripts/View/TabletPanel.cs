@@ -68,6 +68,8 @@ namespace ProjectCR
                     return flow.ValidateBet() == BetError.None;
                 case TabletAction.Service:
                     return flow.CanEnterShop;
+                case TabletAction.Drinks:
+                    return flow.Phase == GamePhase.Betting && DrinkEffectSummary.HasAny(flow);
                 default:
                     return flow.Phase == GamePhase.Betting && flow.Bet.HasBets;
             }

@@ -26,6 +26,12 @@ namespace ProjectCR
         [Tooltip("게임 시작 자리(좌석에서 홀을 보는 시점). 튜토리얼 대화도 여기서 시작한다. 비우면 베팅판 자리.")]
         [SerializeField] private Transform defaultPose;
 
+        [Tooltip("서비스(상점)에 들어갔을 때 카메라 자리. 비우면 움직이지 않는다.")]
+        [SerializeField] private Transform shopPose;
+
+        [Tooltip("태블릿 [음료] 화면을 볼 때 카메라 자리(태블릿 화면을 정면에서 확대). 비우면 움직이지 않는다.")]
+        [SerializeField] private Transform tabletFocusPose;
+
         [Tooltip("자리 사이를 옮겨 가는 시간(초).")]
         [Min(0.05f)]
         [SerializeField] private float moveDuration = 0.9f;
@@ -57,6 +63,24 @@ namespace ProjectCR
         public void MoveToRoulette() => MoveTo(roulettePose, 0f);
 
         public void MoveToDrink() => MoveTo(drinkPose, 0f);
+
+        /// <summary>태블릿 확대 자리로 옮긴다. 자리가 비어 있으면 지금 자리 그대로.</summary>
+        public void MoveToTabletFocus()
+        {
+            if (tabletFocusPose != null)
+            {
+                MoveTo(tabletFocusPose, 0f);
+            }
+        }
+
+        /// <summary>상점 자리로 옮긴다. 자리가 비어 있으면 지금 자리 그대로.</summary>
+        public void MoveToShop()
+        {
+            if (shopPose != null)
+            {
+                MoveTo(shopPose, 0f);
+            }
+        }
 
         public void SnapToDefault() => Snap(defaultPose != null ? defaultPose : bettingPose);
 

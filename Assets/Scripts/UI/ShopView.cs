@@ -15,11 +15,31 @@ namespace ProjectCR
     /// 창 전체에 blocks-input이 붙어 열려 있는 동안 3D 테이블 입력이 막힌다.
     /// 숫자 집중 대상은 판에서 고른다: 창을 잠시 접고(<see cref="SetPicking"/>) RouletteGame이 판 클릭을 대상으로 넘겨준다.
     /// 강화 칸이 다 찼을 때 강화를 사면 카드 대신 보유 강화 목록을 보여 주고, 하나를 고르면 그걸 버리고 산다(취소하면 그대로).
+    /// 태블릿 화면(<see cref="tabletScreen"/>)이 정해져 있으면 창을 그 화면 위에 맞춰 띄운다: 매 프레임 화면 메시의 꼭짓점을 화면 좌표로 바꿔
+    /// 그 사각형에 창을 놓고, 카메라가 상점 자리로 옮겨 가는 동안(<see cref="CameraBusy"/>)은 숨겨 둔다. 비어 있으면 화면 가운데 창이다.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class ShopView : MonoBehaviour
     {
         private const string ActiveTabClass = "shop-tab--active";
+        private const string TabletClass = "shop-modal--tablet";
+        private const string TabletHiddenClass = "shop-modal--tablet-hidden";
+
+        [Header("태블릿 화면에 띄우기")]
+        [Tooltip("상점 창을 맞출 태블릿 화면 메시(CRT_Tablet_Screen). 비우면 화면 가운데 창으로 띄운다.")]
+        [SerializeField] private MeshFilter tabletScreen;
+
+        [Tooltip("화면 메시 테두리에서 안쪽으로 줄이는 여백(패널 px).")]
+        [Min(0f)]
+        [SerializeField] private float tabletInset = 6f;
+
+        [Tooltip("화면을 비추는 카메라. 비우면 Camera.main.")]
+        [SerializeField] private Camera tabletCamera;
+
+        // 태블릿 화면 메시 꼭짓점(로컬). 메시가 런타임에 읽히지 않아서(Read/Write 꺼짐) 에디터에서 미리 읽어 저장해 둔다(OnValidate).
+        [SerializeField, HideInInspector] private Vector3[] screenPoints = new Vector3[0];
+
+        private VisualElement shopBox;
 
         public event Action Closed;
         /// <summary>진열 칸, 집중 대상, 버릴 강화 칸(버리지 않으면 -1).</summary>
@@ -47,10 +67,27 @@ namespace ProjectCR
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>카메라가 아직 상점 자리로 옮겨 가는 중인가(RouletteGame이 넣는다). 그동안은 태블릿 창을 숨긴다.</summary>
+        public Func<bool> CameraBusy;
+
+        private bool picking;
+
+        private bool FitsTablet => tabletScreen != null && screenPoints != null && screenPoints.Length > 0;
+
+#if UNITY_EDITOR
+        /// <summary>태블릿 화면 메시 꼭짓점을 읽어 저장한다(에디터에서는 Read/Write가 꺼진 메시도 읽힌다).</summary>
+        private void OnValidate()
+        {
+            screenPoints = TabletScreenFit.ReadPoints(tabletScreen);
+        }
+#endif
+
         public void Initialize()
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
             panel = root.Q("shop-panel");
+            shopBox = panel.Q(className: "shop-box");
+            panel.EnableInClassList(TabletClass, FitsTablet);
             coin = root.Q("shop-coin");
             money = root.Q<Label>("shop-money");
             funds = root.Q<Label>("shop-funds");
@@ -68,6 +105,9 @@ namespace ProjectCR
         public void Show(GameFlowController flow)
         {
             IsOpen = true;
+            picking = false;
+            panel.EnableInClassList(TabletClass, FitsTablet);
+            panel.EnableInClassList(TabletHiddenClass, FitsTablet);
             discardFor = -1;
             panel.style.display = DisplayStyle.Flex;
             ShowNotice(string.Empty);
@@ -87,6 +127,12 @@ namespace ProjectCR
         /// <summary>판에서 대상을 고르는 동안 창을 접는다(상점은 열린 상태 그대로).</summary>
         public void SetPicking(bool picking)
         {
+            this.picking = picking;
+            if (FitsTablet)
+            {
+                panel.EnableInClassList(TabletHiddenClass, true);
+            }
+
             panel.style.display = picking || !IsOpen ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
@@ -94,6 +140,26 @@ namespace ProjectCR
         public void SetTarget(int slot, BetTarget target)
         {
             chosenTargets[slot] = target;
+        }
+
+        /// <summary>태블릿 화면에 창을 맞춘다. 카메라가 움직이는 중이거나 대상 고르는 중이면 숨겨 둔다.</summary>
+        private void LateUpdate()
+        {
+            if (!IsOpen || picking || !FitsTablet || panel == null || panel.panel == null)
+            {
+                return;
+            }
+
+            bool busy = CameraBusy != null && CameraBusy();
+            Camera view = tabletCamera != null ? tabletCamera : Camera.main;
+            if (busy || !TabletScreenFit.TryGetPanelRect(view, tabletScreen.transform, screenPoints, panel.panel, tabletInset, out Rect rect))
+            {
+                panel.EnableInClassList(TabletHiddenClass, true);
+                return;
+            }
+
+            TabletScreenFit.Place(shopBox, rect);
+            panel.EnableInClassList(TabletHiddenClass, false);
         }
 
         public void ShowNotice(string text)

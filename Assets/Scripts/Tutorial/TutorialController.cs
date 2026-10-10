@@ -9,7 +9,8 @@ namespace ProjectCR
     /// - 첫 라운드 통과, 로봇이 음료를 내려놓은 뒤 → <see cref="PlayDrink"/>
     /// - 음료를 고르고 로봇이 떠나 베팅 화면으로 돌아온 뒤, 상점을 열 수 있으면 → <see cref="PlayService"/>(태블릿 [서비스]가 깜빡인다)
     /// - 게임 오버·게임 클리어 판정 뒤, 결과 창보다 먼저 → <see cref="PlayEnding"/>
-    /// 안내마다 그 게임에서 한 번만이고, 튜토리얼 대상 게임(최초로 시작한 게임)에서만 나온다(<see cref="TutorialProgress"/>).
+    /// 안내마다 그 게임에서 한 번만이다. 도입·결말은 튜토리얼 대상 게임(최초로 시작한 게임)에서만,
+    /// 음료·서비스는 어느 게임이든 처음 그 자리에 왔을 때 한 번 나온다(<see cref="TutorialProgress"/>).
     /// 대화창이 열려 있는 동안 <see cref="IsRunning"/>이고, RouletteGame은 칩·베팅·회전·서비스·음료·시점 전환을 막는다.
     /// 돈·회전·음료·납부는 건드리지 않는다.
     /// 페이지마다 정해진 강조(<see cref="TutorialHighlight"/>)를 <see cref="HighlightChanged"/>로 알리고, 대화가 끝나면 None을 보낸다.
@@ -200,7 +201,7 @@ namespace ProjectCR
             Cancel();
         }
 
-        /// <summary>개발용: 저장된 '튜토리얼 시작함'을 지운다. 다음 새 게임부터 다시 나온다.</summary>
+        /// <summary>개발용: 저장된 '튜토리얼 시작함'과 '본 안내'를 지운다. 다음 새 게임부터 다시 나온다.</summary>
         [ContextMenu("튜토리얼 다시 보기(저장 초기화)")]
         public void ResetSavedProgress()
         {

@@ -33,6 +33,9 @@ namespace ProjectCR
         [Tooltip("상점 창(HUD와 같은 UIDocument).")]
         [SerializeField] private ShopView shopView;
 
+        [Tooltip("태블릿 [음료] 화면(마신 음료 효과). 비우면 [음료] 버튼을 눌러도 아무것도 하지 않는다.")]
+        [SerializeField] private TabletDrinkEffectsView drinkEffects;
+
         [Tooltip("3D 테이블 입력(칩 놓기·빼기·칩 고르기). 없으면 테이블 없이 돈다.")]
         [SerializeField] private TableBetInput tableInput;
 
@@ -118,11 +121,28 @@ namespace ProjectCR
             if (shopView != null)
             {
                 shopView.Initialize();
+                shopView.CameraBusy = () => cameraRig != null && cameraRig.IsMoving;
                 shopView.Closed += OnShopClosed;
                 shopView.BuyRequested += OnShopBuy;
                 shopView.PickTargetRequested += OnShopPickTarget;
             }
             hud.ViewToggled += ToggleView;
+
+            if (drinkEffects != null)
+            {
+                drinkEffects.Initialize();
+                drinkEffects.CameraBusy = () => cameraRig != null && cameraRig.IsMoving;
+                drinkEffects.CloseRequested += CloseDrinkEffects;
+            }
+
+            if (pauseMenu != null)
+            {
+                pauseMenu.EscapeInterceptor = HandleEscape;
+            }
+
+#if UNITY_EDITOR
+            SetupDebugTools();
+#endif
 
 
             if (tableInput != null)
@@ -192,6 +212,7 @@ namespace ProjectCR
             drinkSelected = -1;
             badgeHovered = -1;
             CloseDrinkPicker();
+            ResetDrinkEffects();
 
             if (shopView != null)
             {
@@ -375,10 +396,211 @@ namespace ProjectCR
                 case TabletAction.Service:
                     OnShopClicked();
                     break;
+                case TabletAction.Drinks:
+                    OpenDrinkEffects();
+                    break;
                 default:
                     OnClearClicked();
                     break;
             }
+        }
+
+#if UNITY_EDITOR
+        // ---------- 디버그 버튼(에디터 전용, 빌드에는 없다) ----------
+
+        private DebugToolsView debugTools;
+
+        private void SetupDebugTools()
+        {
+            var document = hud.GetComponent<UnityEngine.UIElements.UIDocument>();
+            if (document != null)
+            {
+                debugTools = new DebugToolsView(document.rootVisualElement, DebugClearRound, DebugAddMoney);
+            }
+        }
+
+        /// <summary>
+        /// 라운드 클리어: 남은 회전을 버리고 바로 납부해 통과시킨다(음료 선택 → 다음 라운드로 이어진다).
+        /// 돈이 납부금보다 적으면 납부금만큼 먼저 넣어, 납부 뒤 보유 금액이 누르기 전과 같게 한다.
+        /// </summary>
+        private string DebugClearRound()
+        {
+            if (flow.Phase != GamePhase.Betting || verifying || InputLocked || (shopView != null && shopView.IsOpen))
+            {
+                return $"지금은 쓸 수 없습니다(베팅 중에만, 지금 {flow.Phase})";
+            }
+
+            int round = flow.Round.Round;
+            long due = flow.Round.CurrentDue;
+            bool toppedUp = flow.Wallet.Balance < due;
+            if (toppedUp)
+            {
+                flow.Wallet.Add(due);
+            }
+
+            if (!flow.ForceRoundEnd())
+            {
+                return "라운드를 끝낼 수 없습니다";
+            }
+
+            HideBetGuide();
+            RefreshViews();
+            StartCoroutine(ResolvePayment());
+            return toppedUp ? $"라운드 {round} 클리어 (납부금 {due:N0}을 먼저 넣고 납부)" : $"라운드 {round} 클리어 (납부금 {due:N0} 납부)";
+        }
+
+        private string DebugAddMoney()
+        {
+            long added = flow.Wallet.Add(100_000);
+            RefreshViews();
+            if (shopView != null && shopView.IsOpen)
+            {
+                shopView.Refresh(flow);
+            }
+
+            return $"+{added:N0} → 보유 {flow.Wallet.Balance:N0}";
+        }
+#endif
+
+        // ---------- 태블릿 [음료] 화면 ----------
+
+        // 음료 화면이 열려 있다 / 닫고 카메라가 베팅 자리로 돌아오는 중. 둘 다 게임 입력을 막는다.
+        private bool drinkEffectsOpen;
+        private bool drinkEffectsReturning;
+
+        /// <summary>
+        /// 태블릿 [음료]: 베팅 중이고 마신 음료가 있을 때만. 카메라가 태블릿 앞으로 가고, 도착하면 태블릿 화면이 효과 목록으로 바뀐다.
+        /// 돈·베팅·회전·음료 상태는 바꾸지 않는다.
+        /// </summary>
+        private void OpenDrinkEffects()
+        {
+            if (drinkEffects == null || drinkEffectsOpen || drinkEffectsReturning || flow.Phase != GamePhase.Betting
+                || (shopView != null && shopView.IsOpen) || (cameraRig != null && cameraRig.IsMoving) || !DrinkEffectSummary.HasAny(flow))
+            {
+                return;
+            }
+
+            drinkEffectsOpen = true;
+            HideBetGuide();
+            if (tutorial != null)
+            {
+                // 딜러의 시작 안내가 확대 화면 위에 남지 않게.
+                tutorial.HideNotice();
+            }
+
+            ApplyInputLock();
+            drinkEffects.Open(flow);
+            if (cameraRig != null)
+            {
+                cameraRig.MoveToTabletFocus();
+            }
+
+            RefreshViews();
+        }
+
+        /// <summary>음료 화면을 닫는다([X], Esc, 자동 종료). 카메라가 베팅 자리에 도착한 뒤에 입력을 되돌린다.</summary>
+        private void CloseDrinkEffects()
+        {
+            if (!drinkEffectsOpen)
+            {
+                return;
+            }
+
+            drinkEffectsOpen = false;
+            drinkEffects.Close();
+            drinkEffectsReturning = true;
+            MoveCameraToBetting();
+            StartCoroutine(FinishDrinkEffectsReturn());
+        }
+
+        private IEnumerator FinishDrinkEffectsReturn()
+        {
+            while (cameraRig != null && cameraRig.IsMoving)
+            {
+                yield return null;
+            }
+
+            drinkEffectsReturning = false;
+            ApplyInputLock();
+            RefreshViews();
+        }
+
+        /// <summary>새 게임: 음료 화면과 [음료] 버튼 강조를 바로 정리한다(카메라는 새 게임이 옮긴다).</summary>
+        private void ResetDrinkEffects()
+        {
+            drinkEffectsOpen = false;
+            drinkEffectsReturning = false;
+            if (drinkEffects != null)
+            {
+                drinkEffects.Close();
+            }
+
+            if (tableView != null && tableView.Tablet != null)
+            {
+                tableView.Tablet.SetHighlighted(TabletAction.Drinks, false);
+            }
+        }
+
+        /// <summary>베팅 중이 아니거나 다른 창·대화·일시정지·결과·1인칭이 되면 음료 화면을 닫는다.</summary>
+        private void AutoCloseDrinkEffects()
+        {
+            if (drinkEffectsOpen && (flow.Phase != GamePhase.Betting || (shopView != null && shopView.IsOpen)
+                                     || (tutorial != null && tutorial.IsRunning) || GamePause.IsPaused
+                                     || (resultView != null && resultView.IsShown) || firstPersonView))
+            {
+                CloseDrinkEffects();
+            }
+        }
+
+        /// <summary>Esc를 일시정지보다 먼저 받는다: 음료 화면 → 서비스 창 순서로 닫는다. 썼으면 true.</summary>
+        private bool HandleEscape()
+        {
+            if (drinkEffectsOpen)
+            {
+                CloseDrinkEffects();
+                return true;
+            }
+
+            if (shopView != null && shopView.IsOpen)
+            {
+                if (pickingSlot >= 0)
+                {
+                    FinishPick(BetTarget.None);
+                }
+                else
+                {
+                    OnShopClosed();
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>첫 음료를 마시면 베팅 화면으로 돌아온 뒤 [음료] 버튼을 잠시 금색으로 깜빡인다.</summary>
+        private IEnumerator FlashDrinksButton()
+        {
+            TabletPanel tablet = tableView != null ? tableView.Tablet : null;
+            if (tablet == null)
+            {
+                yield break;
+            }
+
+            while (flow.Phase != GamePhase.Betting || (cameraRig != null && cameraRig.IsMoving)
+                   || (tutorial != null && tutorial.IsRunning))
+            {
+                if (flow.Phase == GamePhase.GameOver || flow.Phase == GamePhase.GameClear)
+                {
+                    yield break;
+                }
+
+                yield return null;
+            }
+
+            tablet.SetHighlighted(TabletAction.Drinks, true);
+            yield return new WaitForSecondsRealtime(3.6f);
+            tablet.SetHighlighted(TabletAction.Drinks, false);
         }
 
         // ---------- 상점 ----------
@@ -398,6 +620,11 @@ namespace ProjectCR
                 tutorial.EndServiceHighlight();
             }
 
+            if (cameraRig != null)
+            {
+                cameraRig.MoveToShop();
+            }
+
             shopView.Show(flow);
             RefreshViews();
         }
@@ -412,6 +639,7 @@ namespace ProjectCR
 
             shopView.Hide();
             RefreshViews();
+            MoveCameraToBetting();
 
             // 상점에서 돈을 다 써서 걸 돈도 칩도 없으면 기존 규칙대로 납부 판정.
             if (flow.Phase == GamePhase.RoundPayment)
@@ -439,11 +667,12 @@ namespace ProjectCR
             RefreshViews();
         }
 
-        /// <summary>숫자 집중 대상 고르기: 창을 접고 판 클릭을 기다린다. 오른쪽 클릭은 취소. 돈은 움직이지 않는다.</summary>
+        /// <summary>숫자 집중 대상 고르기: 창을 접고 베팅판 자리로 카메라를 옮겨 판 클릭을 기다린다. 오른쪽 클릭은 취소. 돈은 움직이지 않는다.</summary>
         private void OnShopPickTarget(int slot)
         {
             pickingSlot = slot;
             shopView.SetPicking(true);
+            MoveCameraToBetting();
         }
 
         private void FinishPick(BetTarget target)
@@ -451,6 +680,10 @@ namespace ProjectCR
             int slot = pickingSlot;
             pickingSlot = -1;
             shopView.SetPicking(false);
+            if (cameraRig != null && shopView.IsOpen)
+            {
+                cameraRig.MoveToShop();
+            }
 
             if (!target.IsNone && slot < flow.Shop.Offers.Count)
             {
@@ -502,6 +735,11 @@ namespace ProjectCR
 
         private void LateUpdate()
         {
+            if (flow != null)
+            {
+                AutoCloseDrinkEffects();
+            }
+
             UpdateBetGuide();
             UpdateBadgeTooltip();
 
@@ -965,6 +1203,7 @@ namespace ProjectCR
         /// </summary>
         private void OnDrinkConfirmed(int offerIndex, IReadOnlyList<BetTarget> targets = null)
         {
+            bool hadDrinks = DrinkEffectSummary.HasAny(flow);
             IReadOnlyList<DrinkOffer> current = flow.Rewards.CurrentOffer;
             if (targets == null && current != null && offerIndex >= 0 && offerIndex < current.Count && current[offerIndex].NeedsTargetChoice)
             {
@@ -982,6 +1221,11 @@ namespace ProjectCR
             {
                 // 이미 확정했거나 상태가 바뀌었다.
                 return;
+            }
+
+            if (!hadDrinks)
+            {
+                StartCoroutine(FlashDrinksButton());
             }
 
             // 고른 잔은 치우고 로봇은 나머지를 싣고 돌아간다.
@@ -1097,7 +1341,8 @@ namespace ProjectCR
         /// 막는 것: 칩·베팅·회전·전체 회수·서비스·음료·시점 전환.
         /// </summary>
         private bool InputLocked => tutorialActive || openingActive || (tutorial != null && tutorial.IsRunning) || GamePause.IsPaused
-                                    || (resultView != null && resultView.IsShown) || pickingDrink >= 0;
+                                    || (resultView != null && resultView.IsShown) || pickingDrink >= 0
+                                    || drinkEffectsOpen || drinkEffectsReturning;
 
         /// <summary>일시정지가 바뀌면 3D 입력을 맞추고, 켜질 때는 판·음료 안내를 지운다.</summary>
         private void OnPauseChanged(bool paused)

@@ -461,6 +461,186 @@
     border-radius: 14px;
 }
 
+/* ---------- 태블릿 "마신 음료" 화면 ----------
+   태블릿 화면 메시 자리에 TabletDrinkEffectsView가 맞춰 놓는다(위치·크기는 코드). 화면 색 바탕, 아이보리 글자, 효과 수치는 금색,
+   행 사이 얇은 황동 선. 카메라가 오가는 동안은 숨긴다. */
+.tablet-drinks {
+    position: absolute;
+    padding: 18px 22px 14px 26px;
+    background-color: rgb(16, 52, 37);
+    border-radius: 22px;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+
+.tablet-drinks--hidden {
+    opacity: 0;
+}
+
+.tablet-drinks__header {
+    flex-direction: row;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding-bottom: 8px;
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(198, 154, 78);
+}
+
+.tablet-drinks__title {
+    font-size: 34px;
+    -unity-font-style: bold;
+    color: rgb(244, 234, 210);
+}
+
+.tablet-drinks__subtitle {
+    margin-top: 2px;
+    font-size: 17px;
+    color: rgb(190, 200, 180);
+}
+
+.tablet-drinks__close {
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    padding: 0;
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(255, 240, 230);
+    background-color: rgb(178, 44, 38);
+    border-width: 2px;
+    border-color: rgb(110, 22, 18);
+    border-radius: 8px;
+}
+
+.tablet-drinks__close:hover {
+    background-color: rgb(212, 60, 50);
+}
+
+.tablet-drinks__list {
+    flex-grow: 1;
+    margin-top: 6px;
+}
+
+.tablet-drinks__row {
+    flex-direction: row;
+    align-items: center;
+    padding: 7px 8px 7px 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(198, 154, 78, 0.55);
+}
+
+.tablet-drinks__row--last {
+    border-bottom-width: 0;
+}
+
+.tablet-drinks__text {
+    flex-grow: 1;
+    margin-left: 14px;
+}
+
+.tablet-drinks__name {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(244, 236, 214);
+}
+
+.tablet-drinks__effect {
+    margin-top: 1px;
+    font-size: 19px;
+    color: rgb(240, 196, 84);
+}
+
+.tablet-drinks__stacks {
+    min-width: 60px;
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(244, 236, 214);
+    -unity-text-align: middle-right;
+}
+
+.tablet-drinks__empty {
+    margin-top: 18px;
+    font-size: 22px;
+    color: rgb(190, 200, 180);
+}
+
+/* 잔 그림: 위가 넓은 역삼각형(테두리 삼각형) + 다리 + 받침. */
+.tablet-drinks__glass {
+    width: 34px;
+    align-items: center;
+}
+
+.tablet-drinks__glass-bowl {
+    width: 0;
+    height: 0;
+    border-left-width: 15px;
+    border-right-width: 15px;
+    border-top-width: 16px;
+    border-left-color: rgba(0, 0, 0, 0);
+    border-right-color: rgba(0, 0, 0, 0);
+}
+
+.tablet-drinks__glass-stem {
+    width: 3px;
+    height: 12px;
+    background-color: rgb(214, 206, 186);
+}
+
+.tablet-drinks__glass-foot {
+    width: 18px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: rgb(214, 206, 186);
+}
+
+.tablet-drinks__list .unity-scroller--vertical {
+    width: 8px;
+    margin-left: 6px;
+}
+
+.tablet-drinks__list .unity-scroller__low-button,
+.tablet-drinks__list .unity-scroller__high-button {
+    display: none;
+}
+
+.tablet-drinks__list .unity-scroller .unity-base-slider__tracker {
+    background-color: rgba(0, 0, 0, 0.25);
+    border-width: 0;
+    border-radius: 4px;
+}
+
+.tablet-drinks__list .unity-scroller .unity-base-slider__dragger {
+    left: 0;
+    right: 0;
+    width: 8px;
+    background-color: rgb(200, 156, 72);
+    border-width: 0;
+    border-radius: 4px;
+}
+
+/* 태블릿 화면에 맞춰 띄울 때: 어두운 배경 없이, 창은 ShopView가 화면 메시 사각형에 놓는다.
+   창 둘레는 태블릿 베젤이 대신하니 나무 틀을 빼고 화면 색에 맞춘다. 카메라가 오는 동안은 숨긴다. */
+.shop-modal--tablet {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.shop-modal--tablet .shop-box {
+    position: absolute;
+    max-width: none;
+    padding: 18px 26px 22px 26px;
+    background-color: rgb(20, 46, 34);
+    border-width: 0;
+    border-radius: 36px;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+
+.shop-modal--tablet-hidden .shop-box {
+    opacity: 0;
+}
+
 .shop-header {
     flex-direction: row;
     align-items: center;

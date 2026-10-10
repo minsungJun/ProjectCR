@@ -12,6 +12,9 @@ namespace ProjectCR
 
         /// <summary>전체 회수 = 판의 칩 모두 빼기(HUD 전체 취소와 같다).</summary>
         RecallAll,
+
+        /// <summary>음료 = 태블릿 "마신 음료" 화면 열기(카메라가 태블릿 앞으로 간다).</summary>
+        Drinks,
     }
 
     /// <summary>

@@ -128,6 +128,7 @@ MonoBehaviour:
   action: 2
   face: {fileID: 2953977285373864887}
   label: {fileID: 5369291178200686427}
+  highlightGlow: {fileID: 0}
 --- !u!1 &1332601438350501713
 GameObject:
   m_ObjectHideFlags: 0
@@ -710,6 +711,96 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &3184893926924103643
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2518648331856433194}
+  - component: {fileID: 777136972743505280}
+  - component: {fileID: 1157090987330878900}
+  m_Layer: 0
+  m_Name: CRT_Tablet_Drinks_Outline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2518648331856433194
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3184893926924103643}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
+  m_LocalPosition: {x: -0.16276968, y: 0.0044613774, z: -0.04953647}
+  m_LocalScale: {x: 50.786163, y: 127.514206, z: 127.514206}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513223432437549050}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &777136972743505280
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3184893926924103643}
+  m_Mesh: {fileID: 4300000, guid: e47edfbcbc5958f489da06f985f90f91, type: 2}
+--- !u!23 &1157090987330878900
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3184893926924103643}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 356790b5c3738b44cbc4bfb66682831b, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &3367979374249834294
 GameObject:
   m_ObjectHideFlags: 0
@@ -829,8 +920,8 @@ Transform:
   m_GameObject: {fileID: 3532067520240568320}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: 0, y: -0.0010000467, z: 0.0006840527}
-  m_LocalScale: {x: 100, y: 100, z: 100}
+  m_LocalPosition: {x: 0.043605004, y: -0.0010000467, z: 0.0006840527}
+  m_LocalScale: {x: 73, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 7513223432437549050}
@@ -928,6 +1019,7 @@ MonoBehaviour:
   action: 0
   face: {fileID: 7248523016016640848}
   label: {fileID: 3010872354290905985}
+  highlightGlow: {fileID: 0}
 --- !u!1 &3865402278472657911
 GameObject:
   m_ObjectHideFlags: 0
@@ -1032,6 +1124,135 @@ TextMesh:
   m_Color:
     serializedVersion: 2
     rgba: 4291684075
+--- !u!1 &5822433064714447686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1250143608278295400}
+  - component: {fileID: 4778654667583238925}
+  - component: {fileID: 6321746310941085498}
+  - component: {fileID: 6689434486510346869}
+  - component: {fileID: 2401087443933041920}
+  m_Layer: 0
+  m_Name: CRT_Tablet_Drinks_Button
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1250143608278295400
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822433064714447686}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
+  m_LocalPosition: {x: -0.16276968, y: 0.0044613774, z: -0.04953647}
+  m_LocalScale: {x: 50.786163, y: 127.514206, z: 127.514206}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513223432437549050}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &4778654667583238925
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822433064714447686}
+  m_Mesh: {fileID: 4300000, guid: e7fda67ec67c4e94db661fb5755b0b3a, type: 2}
+--- !u!23 &6321746310941085498
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822433064714447686}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9598912707b66a1469f676c4f5dca954, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &6689434486510346869
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822433064714447686}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.0015900001, y: 0.0002742209, z: 0.00010388424}
+  m_Center: {x: 0.00082, y: -0.00042560635, z: 0.00031287022}
+--- !u!114 &2401087443933041920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822433064714447686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1aa0dcc0d96e69b4e8a99c0de435c91b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectCR::ProjectCR.TabletButton
+  action: 3
+  face: {fileID: 6321746310941085498}
+  label: {fileID: 5431932906666566527}
+  highlightGlow: {fileID: 0}
 --- !u!1 &6334757842504330008
 GameObject:
   m_ObjectHideFlags: 0
@@ -1354,6 +1575,7 @@ MonoBehaviour:
   action: 1
   face: {fileID: 1104036227840850453}
   label: {fileID: 1958247328947561806}
+  highlightGlow: {fileID: 0}
 --- !u!1 &7857193862531908468
 GameObject:
   m_ObjectHideFlags: 0
@@ -1587,8 +1809,11 @@ Transform:
   - {fileID: 243789898371412817}
   - {fileID: 6249081570995914876}
   - {fileID: 7367516220101598165}
+  - {fileID: 1250143608278295400}
   - {fileID: 2054814274973669792}
+  - {fileID: 8518049721161303364}
   - {fileID: 2884770739797312973}
+  - {fileID: 2518648331856433194}
   - {fileID: 308741050670145677}
   - {fileID: 1806572425127789431}
   - {fileID: 5695642030961811355}
@@ -1610,11 +1835,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ProjectCR::ProjectCR.TabletPanel
   balanceValue: {fileID: 4325127132712259498}
-  betValue: {fileID: 8563448605031928097}
+  dueValue: {fileID: 8563448605031928097}
   buttons:
-  - {fileID: 5323142338624387360}
-  - {fileID: 3871309312909870628}
   - {fileID: 1044033414089489307}
+  - {fileID: 3871309312909870628}
+  - {fileID: 2401087443933041920}
+  - {fileID: 5323142338624387360}
 --- !u!1 &8534739237033462788
 GameObject:
   m_ObjectHideFlags: 0
@@ -1732,7 +1958,7 @@ Transform:
   m_GameObject: {fileID: 8798291539399193043}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.8191518, z: -0.57357675, w: 0}
-  m_LocalPosition: {x: 0.00083177583, y: 0.045806974, z: 0.006013078}
+  m_LocalPosition: {x: 0.044436783, y: 0.045806974, z: 0.0060130786}
   m_LocalScale: {x: 1.3333334, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1809,3 +2035,107 @@ TextMesh:
   m_Color:
     serializedVersion: 2
     rgba: 4279769878
+--- !u!1 &8883918833905332682
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8518049721161303364}
+  - component: {fileID: 7721081399919979567}
+  - component: {fileID: 5431932906666566527}
+  m_Layer: 0
+  m_Name: CRT_Tablet_Drinks_Label
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8518049721161303364
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8883918833905332682}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.8191522, z: -0.5735763, w: 0}
+  m_LocalPosition: {x: -0.12096864, y: 0.045934767, z: 0.0058081467}
+  m_LocalScale: {x: 1.3333334, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513223432437549050}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!23 &7721081399919979567
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8883918833905332682}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10100, guid: 0000000000000000e000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!102 &5431932906666566527
+TextMesh:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8883918833905332682}
+  m_Text: "\uC74C\uB8CC"
+  m_OffsetZ: 0
+  m_CharacterSize: 0.0015347679
+  m_LineSpacing: 1
+  m_Anchor: 4
+  m_Alignment: 1
+  m_TabSize: 4
+  m_FontSize: 64
+  m_FontStyle: 1
+  m_RichText: 1
+  m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Color:
+    serializedVersion: 2
+    rgba: 4291684075

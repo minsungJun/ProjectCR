@@ -12,9 +12,18 @@ namespace ProjectCR.Tests
     {
         private sealed class MemoryStore : ITutorialStore
         {
+            private readonly System.Collections.Generic.HashSet<TutorialStep> seen = new System.Collections.Generic.HashSet<TutorialStep>();
+
             public bool HasStarted { get; private set; }
             public void MarkStarted() => HasStarted = true;
-            public void Clear() => HasStarted = false;
+            public bool HasSeen(TutorialStep step) => seen.Contains(step);
+            public void MarkSeen(TutorialStep step) => seen.Add(step);
+
+            public void Clear()
+            {
+                HasStarted = false;
+                seen.Clear();
+            }
         }
 
         // ---------- 대상 판정 ----------
@@ -27,14 +36,42 @@ namespace ProjectCR.Tests
             Assert.IsTrue(first.IsTutorialRun);
             Assert.IsTrue(store.HasStarted, "시작하는 순간 저장한다(도중에 꺼도 다시 나오지 않는다)");
 
+            first.TryBegin(TutorialStep.Drink);
+            first.TryBegin(TutorialStep.Service);
+
             TutorialProgress second = TutorialProgress.BeginRun(store);
             Assert.IsFalse(second.IsTutorialRun, "새 게임·다시 시작에서는 반복하지 않는다");
             Assert.IsFalse(second.TryBegin(TutorialStep.Intro));
-            Assert.IsFalse(second.TryBegin(TutorialStep.Drink));
+            Assert.IsFalse(second.TryBegin(TutorialStep.Drink), "첫 게임에서 본 음료 안내는 다시 나오지 않는다");
+            Assert.IsFalse(second.TryBegin(TutorialStep.Service));
+            Assert.IsFalse(second.TryBegin(TutorialStep.Ending));
 
             Assert.IsTrue(TutorialProgress.BeginRun(store, force: true).IsTutorialRun, "개발용 강제 표시");
             store.Clear();
             Assert.IsTrue(TutorialProgress.BeginRun(store).IsTutorialRun, "저장 초기화 후에는 다시 대상");
+        }
+
+        /// <summary>첫 게임에서 음료·서비스까지 못 가고 끝났으면, 다음 게임에서 처음 그 자리에 왔을 때 나온다.</summary>
+        [Test]
+        public void DrinkAndService_ShowFirstTimeReached_EvenInLaterRuns()
+        {
+            var store = new MemoryStore();
+            TutorialProgress first = TutorialProgress.BeginRun(store);
+            first.TryBegin(TutorialStep.Intro);
+            first.CancelPendingGuides(); // 1라운드에서 게임 오버
+            first.TryBegin(TutorialStep.Ending);
+
+            TutorialProgress second = TutorialProgress.BeginRun(store);
+            Assert.IsFalse(second.IsTutorialRun);
+            Assert.IsFalse(second.ShouldShow(TutorialStep.Intro), "도입은 첫 게임만");
+            Assert.IsFalse(second.ShouldShow(TutorialStep.Ending), "결말도 첫 게임만");
+            Assert.IsTrue(second.TryBegin(TutorialStep.Drink), "처음 음료를 고를 때 나온다");
+            Assert.IsTrue(store.HasSeen(TutorialStep.Drink));
+
+            TutorialProgress third = TutorialProgress.BeginRun(store);
+            Assert.IsFalse(third.ShouldShow(TutorialStep.Drink), "한 번 봤으면 끝");
+            Assert.IsTrue(third.TryBegin(TutorialStep.Service), "서비스는 아직 못 봤다");
+            Assert.IsFalse(TutorialProgress.BeginRun(store).ShouldShow(TutorialStep.Service));
         }
 
         [Test]

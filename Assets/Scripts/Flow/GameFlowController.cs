@@ -488,6 +488,23 @@ namespace ProjectCR
             return (now, after);
         }
 
+        /// <summary>
+        /// 디버그: 지금 라운드를 바로 끝내고 납부 단계로 보낸다(베팅 중일 때만). 판의 칩은 거두고(돈은 회전 때만 빠지므로 그대로),
+        /// 남은 회전은 버린다. 납부 판정은 부른 쪽이 <see cref="SubmitPayment"/>로 한다.
+        /// </summary>
+        public bool ForceRoundEnd()
+        {
+            if (Phase != GamePhase.Betting)
+            {
+                return false;
+            }
+
+            Bet.ClearBets();
+            Round.ForfeitRemainingSpins();
+            Phase = GamePhase.RoundPayment;
+            return true;
+        }
+
         // ---------- 상점 ----------
 
         /// <summary>

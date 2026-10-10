@@ -24,6 +24,12 @@ namespace ProjectCR
 
         public bool IsOpen { get; private set; }
 
+        /// <summary>
+        /// 일시정지 메뉴가 닫혀 있을 때 Esc를 먼저 받는 곳(RouletteGame: 마신 음료 화면 → 서비스 창 순서로 닫는다).
+        /// true를 돌려주면 Esc를 썼으므로 일시정지 메뉴를 열지 않는다.
+        /// </summary>
+        public Func<bool> EscapeInterceptor;
+
         private void OnEnable()
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
@@ -72,7 +78,7 @@ namespace ProjectCR
             {
                 Close();
             }
-            else
+            else if (EscapeInterceptor == null || !EscapeInterceptor())
             {
                 Open();
             }
