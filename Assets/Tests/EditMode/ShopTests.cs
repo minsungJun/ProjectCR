@@ -283,6 +283,27 @@ namespace ProjectCR.Tests
         }
 
         [Test]
+        public void NumberFocus_AllowsCombosWithZero()
+        {
+            foreach (BetTarget combo in new[]
+                     {
+                         BetTarget.Inside(BetKind.Split, 0, 1),
+                         BetTarget.Inside(BetKind.Street, 0, 1, 2),
+                         BetTarget.Inside(BetKind.Corner, 0, 1, 2, 3),
+                     })
+            {
+                Assert.IsTrue(ShopController.IsValidFocusTarget(DrinkGroup.Number, combo), combo.ToString());
+            }
+
+            GameFlowController flow = Flow(Only("focus_number"));
+            flow.EnterShop();
+            BetTarget trio = BetTarget.Inside(BetKind.Street, 0, 1, 2);
+            Assert.AreEqual(ShopError.None, flow.Shop.Buy(0, trio));
+            Assert.AreEqual(1, flow.Upgrades.Probabilities.StacksOf(trio));
+            Assert.Greater(flow.BuildSpinConfig().ProbabilityOf(BetTarget.Straight(0)), 1d / 38d, "0 칸 확률도 오른다");
+        }
+
+        [Test]
         public void Focus_NeedsValidTarget_BeforeCharging()
         {
             GameFlowController flow = Flow(Only("focus_number"));
@@ -290,7 +311,7 @@ namespace ProjectCR.Tests
 
             Assert.AreEqual(ShopError.NeedTarget, flow.Shop.Buy(0, BetTarget.None));
             Assert.AreEqual(ShopError.InvalidTarget, flow.Shop.Buy(0, Red), "숫자 집중에 빨강은 안 된다.");
-            Assert.AreEqual(ShopError.InvalidTarget, flow.Shop.Buy(0, BetTarget.Inside(BetKind.Split, 0, 1)), "0이 든 조합은 안 된다.");
+            Assert.AreEqual(ShopError.InvalidTarget, flow.Shop.Buy(0, BetTarget.Inside(BetKind.Split, 1, 5)), "판에서 걸 수 없는 조합은 안 된다.");
             Assert.AreEqual(100, flow.Wallet.Balance, "대상이 정해지기 전에는 돈이 빠지지 않는다.");
 
             Assert.AreEqual(ShopError.None, flow.Shop.Buy(0, BetTarget.Straight(0)), "0 단독은 된다.");

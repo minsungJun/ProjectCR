@@ -55,9 +55,6 @@ namespace ProjectCR
         private Label tooltipProgress;
         private Label tooltipNote;
 
-        /// <summary>확률 음료 대상 고르기 창. Initialize 뒤에 생긴다.</summary>
-        public DrinkTargetPicker DrinkPicker { get; private set; }
-
         /// <summary>RouletteGame.Start에서 부른다. UIDocument가 루트를 만든 뒤여야 한다.</summary>
         public void Initialize(RouletteDefinition definition)
         {
@@ -79,7 +76,6 @@ namespace ProjectCR
             tooltipStake = root.Q<Label>("bet-tooltip-stake");
             tooltipProgress = root.Q<Label>("bet-tooltip-progress");
             tooltipNote = root.Q<Label>("bet-tooltip-note");
-            DrinkPicker = new DrinkTargetPicker(root);
 
 
             // [옵션] = 일시정지 메뉴(Esc와 같다). 시점 전환은 옵션 왼쪽 버튼.

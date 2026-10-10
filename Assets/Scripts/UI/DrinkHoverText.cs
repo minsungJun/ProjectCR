@@ -8,10 +8,9 @@ namespace ProjectCR
     /// - 지급 음료: "컬럼 진토닉 · 지급 강화 · 1열 ×1.5 → ×2.25"
     ///   / "1열 베팅의 당첨금 배율에 ×1.5를 곱합니다. 2열·3열은 그대로입니다." / "예: 1열에 10을 걸어 맞히면 45 → 67"
     ///   / "이번 게임 내내 유지 · 1열 2잔째, 같은 대상을 또 마시면 배율이 곱해져 쌓입니다"
-    /// - 확률 음료: "코랄 위스키 · 확률 강화 · 컬럼 가중치 +26%"
-    ///   / "마실 때 1열·2열·3열 중 대상을 골라, 그 대상이 나올 확률을 올립니다. 당첨금 배율은 그대로입니다."
-    ///   / "예: 1열만 고르면 31.6% → 36.7% · 2개 고르면 각각 +13%"
-    ///   / "이번 게임 내내 유지 · 여러 개 고르면 가중치를 똑같이 나눠 받고, 같은 대상을 또 고르면 쌓입니다"
+    /// - 확률 음료: "코랄 위스키 · 확률 강화 · 2열 31.6% → 36.7%"
+    ///   / "2열에 공이 떨어질 확률을 올립니다. 당첨금 배율은 그대로입니다." / "추첨 가중치 +26% · 2열 1잔째"
+    ///   / "이번 게임 내내 유지 · 마신 대상은 다음 같은 음료에 다시 나올 확률이 높습니다"
     /// 마지막 줄 아래 안내("누르면 고릅니다")는 RouletteGame이 붙인다.
     /// 효과 설명 줄은 음료 에셋의 Description을 적으면 그 문장을 쓴다(자리 표시 {target}·{group}·{bets}·{boost}).
     /// </summary>
@@ -90,39 +89,22 @@ namespace ProjectCR
             }
 
             DrinkGroup chanceGroup = offer.Group;
-            if (!offer.NeedsTargetChoice)
-            {
-                // 숫자 확률 음료: 후보에 정해진 숫자 하나.
-                BetTarget number = offer.Target;
-                string numberLabel = DrinkOffer.TargetLabel(number);
-                int drunk = flow.Probabilities.StacksOf(number);
-                (double numberNow, double numberAfter) = flow.PreviewProbabilityDrink(new[] { number }, offer.Boost);
-                return new DrinkHoverText(
-                    offer.DisplayName,
-                    "확률 강화",
-                    $"{numberLabel} {NumberText.Percent(numberNow)} → {NumberText.Percent(numberAfter)}",
-                    Custom(offer.Probability.CustomDescription, chanceGroup, "+" + Percent(offer.Boost), Choices(chanceGroup), numberLabel)
-                    ?? $"{numberLabel}에 공이 떨어질 확률을 올립니다. 당첨금 배율은 그대로입니다.",
-                    $"추첨 가중치 +{Percent(offer.Boost)} · {numberLabel} {drunk + 1}잔째",
-                    "이번 게임 내내 유지 · 마신 숫자는 다음 숫자 음료에 다시 나올 확률이 높습니다");
-            }
-
-            string choices = Choices(chanceGroup);
-            BetTarget example = offer.TargetOptions()[0];
-            (double chanceNow, double chanceAfter) = flow.PreviewProbabilityDrink(new[] { example }, offer.Boost);
+            BetTarget chanceTarget = offer.Target;
+            string chanceLabel = DrinkOffer.TargetLabel(chanceTarget);
+            int drunk = flow.Probabilities.StacksOf(chanceTarget);
+            (double chanceNow, double chanceAfter) = flow.PreviewProbabilityDrink(new[] { chanceTarget }, offer.Boost);
             return new DrinkHoverText(
                 offer.DisplayName,
                 "확률 강화",
-                $"{chanceGroup.ToKorean()} 가중치 +{Percent(offer.Boost)}",
-                Custom(offer.Probability.CustomDescription, chanceGroup, "+" + Percent(offer.Boost), choices, string.Empty)
-                ?? $"마실 때 {choices} 중 대상을 골라, 그 대상이 나올 확률을 올립니다. 당첨금 배율은 그대로입니다.",
-                $"예: {DrinkOffer.TargetLabel(example)}만 고르면 {NumberText.Percent(chanceNow)} → {NumberText.Percent(chanceAfter)}"
-                + $" · 2개 고르면 각각 +{Percent(offer.Boost / 2m)}",
-                "이번 게임 내내 유지 · 여러 개 고르면 가중치를 똑같이 나눠 받고, 같은 대상을 또 고르면 쌓입니다");
+                $"{chanceLabel} {NumberText.Percent(chanceNow)} → {NumberText.Percent(chanceAfter)}",
+                Custom(offer.Probability.CustomDescription, chanceGroup, "+" + Percent(offer.Boost), Choices(chanceGroup), chanceLabel)
+                ?? $"{chanceLabel}에 공이 떨어질 확률을 올립니다. 당첨금 배율은 그대로입니다.",
+                $"추첨 가중치 +{Percent(offer.Boost)} · {chanceLabel} {drunk + 1}잔째",
+                "이번 게임 내내 유지 · 마신 대상은 다음 같은 음료에 다시 나올 확률이 높습니다");
         }
 
-        /// <summary>확률 음료에서 고를 수 있는 대상을 짧게(1열·2열·3열, 숫자 0~36).</summary>
-        public static string Choices(DrinkGroup group) => group == DrinkGroup.Number ? "숫자(0~36)" : group.BetsKorean();
+        /// <summary>묶음의 대상을 짧게(1열·2열·3열, 숫자 0~36). 설명 자리 표시 {bets}에 쓴다.</summary>
+        private static string Choices(DrinkGroup group) => group == DrinkGroup.Number ? "숫자(0~36)" : group.BetsKorean();
 
         /// <summary>같은 묶음의 다른 대상은 그대로라는 문장("2열·3열은 그대로입니다.").</summary>
         private static string OthersUnchanged(DrinkGroup group, BetTarget target)

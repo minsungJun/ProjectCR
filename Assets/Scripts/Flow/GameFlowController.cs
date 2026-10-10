@@ -113,7 +113,7 @@ namespace ProjectCR
             Drinks = new DrinkRunState(drinkCatalog);
             Probabilities = new ProbabilityDrinkRunState();
             Rewards = new DrinkRewardController(drinkCatalog, Seed ^ RewardSeedSalt);
-            Rewards.DrunkNumbers = DrunkNumbers;
+            Rewards.DrunkTargets = DrunkTargets;
             Inventory = new InventoryState();
             Upgrades = new BettingUpgradeState();
             Cross = new CrossBetEffectState();
@@ -177,22 +177,19 @@ namespace ProjectCR
         /// <summary>마지막으로 마신 음료. 없으면 null.</summary>
         public DrinkOffer LastDrink { get; private set; }
 
-        /// <summary>숫자 확률 음료로 마신 숫자(처음 마신 순서). 다음 숫자 확률 음료 후보가 이 숫자들을 다시 잘 고른다.</summary>
-        public IReadOnlyList<BetTarget> DrunkNumbers()
+        /// <summary>확률 음료로 마신 대상(처음 마신 순서). 다음 확률 음료 후보가 같은 묶음에서 이 대상들을 다시 잘 고른다.</summary>
+        public IReadOnlyList<BetTarget> DrunkTargets()
         {
-            var numbers = new List<BetTarget>();
+            var targets = new List<BetTarget>();
             foreach (ProbabilityEffect effect in Probabilities.Effects)
             {
-                if (effect.Target.IsStraight)
-                {
-                    numbers.Add(effect.Target);
-                }
+                targets.Add(effect.Target);
             }
 
-            return numbers;
+            return targets;
         }
 
-        /// <summary>마지막 음료의 대상(지급 음료는 정해진 대상 하나·숫자는 없음, 확률 음료는 고르거나 정해진 대상들).</summary>
+        /// <summary>마지막 음료의 대상(정해진 대상 하나, 숫자 지급 음료는 없음).</summary>
         public IReadOnlyList<BetTarget> LastDrinkTargets { get; private set; } = new BetTarget[0];
 
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
@@ -413,11 +410,10 @@ namespace ProjectCR
 
         /// <summary>
         /// 음료 후보 중 하나를 마신다. DrinkSelection 상태에서만 동작하고, 성공하면 한 잔을 더한 뒤 다음 라운드로 넘어간다.
-        /// 지급 강화는 후보에 정해진 대상의 잔 수 +1(숫자는 묶음 전체 +1). 확률 강화는 <paramref name="targets"/>(그 묶음의 대상 하나 이상, 겹치지 않게)에
-        /// 한 잔 가중치를 똑같이 나눠 붙인다. 숫자 확률 음료는 후보에 정해진 숫자에 붙고 targets는 무시한다.
-        /// 상태가 맞지 않거나 번호·대상이 틀리면 null이고 아무것도 바뀌지 않는다(후보도 그대로).
+        /// 지급 강화는 후보에 정해진 대상의 잔 수 +1(숫자는 묶음 전체 +1). 확률 강화는 후보에 정해진 대상의 가중치가 한 잔만큼 오른다.
+        /// 상태가 맞지 않거나 번호가 틀리면 null이고 아무것도 바뀌지 않는다(후보도 그대로).
         /// </summary>
-        public DrinkOffer ConfirmDrink(int offerIndex, IReadOnlyList<BetTarget> targets = null)
+        public DrinkOffer ConfirmDrink(int offerIndex)
         {
             if (Phase != GamePhase.DrinkSelection)
             {
@@ -430,21 +426,11 @@ namespace ProjectCR
                 return null;
             }
 
-            if (offer[offerIndex].IsProbability && !offer[offerIndex].NeedsTargetChoice)
-            {
-                targets = new[] { offer[offerIndex].Target };
-            }
-
-            if (offer[offerIndex].IsProbability && !ProbabilityDrinkDefinition.AreValidTargets(offer[offerIndex].Group, targets))
-            {
-                return null;
-            }
-
             DrinkOffer drink = Rewards.Take(offerIndex);
             if (drink.IsProbability)
             {
-                Probabilities.AddSplit(targets, drink.Boost);
-                LastDrinkTargets = new List<BetTarget>(targets);
+                Probabilities.AddStack(drink.Target, drink.Boost);
+                LastDrinkTargets = new[] { drink.Target };
             }
             else if (drink.IsWholeGroup)
             {

@@ -226,7 +226,7 @@ namespace ProjectCR
         }
 
         /// <summary>
-        /// 집중 강화 대상: 그 묶음의 베팅 하나. 숫자는 숫자 하나(0 포함) 또는 0이 없는 유효한 조합(음료와 같은 규칙).
+        /// 집중 강화 대상: 그 묶음의 베팅 하나. 숫자는 숫자 하나(0 포함) 또는 판에서 걸 수 있는 조합(0이 든 스플릿·트리오·퍼스트 포 포함).
         /// 해골은 베팅 대상이 아니라서 들어올 수 없다.
         /// </summary>
         public static bool IsValidFocusTarget(DrinkGroup group, BetTarget target)
@@ -243,7 +243,7 @@ namespace ProjectCR
 
             if (target.IsInside)
             {
-                return InsideBets.IsValid(target) && !target.CoversNumber(0, PocketColor.Green);
+                return InsideBets.IsValid(target);
             }
 
             return true;

@@ -109,8 +109,6 @@ namespace ProjectCR
         private void Start()
         {
             hud.Initialize(definition);
-            hud.DrinkPicker.Confirmed += OnDrinkTargetsConfirmed;
-            hud.DrinkPicker.Cancelled += OnDrinkTargetsCancelled;
             GamePause.Changed += OnPauseChanged;
             if (pauseMenu != null)
             {
@@ -211,7 +209,6 @@ namespace ProjectCR
             drinkHovered = -1;
             drinkSelected = -1;
             badgeHovered = -1;
-            CloseDrinkPicker();
             ResetDrinkEffects();
 
             if (shopView != null)
@@ -694,7 +691,7 @@ namespace ProjectCR
                 }
                 else
                 {
-                    shopView.ShowNotice("숫자 하나나 0이 없는 조합만 고를 수 있습니다");
+                    shopView.ShowNotice("이 강화의 묶음에 속한 베팅만 고를 수 있습니다");
                 }
             }
 
@@ -1144,79 +1141,15 @@ namespace ProjectCR
                 return;
             }
 
-            string hint = drinkSelected != drinkHovered ? "누르면 고릅니다"
-                : offer[drinkHovered].IsProbability ? "한 번 더 누르면 대상을 고릅니다 · 태블릿 [마시기]"
-                : "한 번 더 누르면 마십니다 · 태블릿 [마시기]";
+            string hint = drinkSelected == drinkHovered ? "한 번 더 누르면 마십니다 · 태블릿 [마시기]" : "누르면 고릅니다";
             hud.ShowDrinkTooltip(DrinkHoverText.For(offer[drinkHovered], flow), hint);
             hud.MoveBetTooltip(tableInput.PointerScreen);
         }
 
-        // 대상 고르기 창이 열린 확률 음료(후보 번호). -1이면 없음.
-        private int pickingDrink = -1;
-
-        private DrinkTargetPicker DrinkPicker => hud != null ? hud.DrinkPicker : null;
-
-        /// <summary>확률 음료 대상 고르기 창을 연다. 열려 있는 동안 3D 입력은 막힌다.</summary>
-        private void OpenDrinkPicker(int offerIndex)
-        {
-            IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
-            if (DrinkPicker == null || offer == null || offerIndex < 0 || offerIndex >= offer.Count)
-            {
-                return;
-            }
-
-            pickingDrink = offerIndex;
-            hud.HideBetTooltip();
-            DrinkPicker.Open(offer[offerIndex], flow);
-            ApplyInputLock();
-        }
-
-        private void CloseDrinkPicker()
-        {
-            pickingDrink = -1;
-            if (DrinkPicker != null)
-            {
-                DrinkPicker.Close();
-            }
-
-            ApplyInputLock();
-        }
-
-        private void OnDrinkTargetsConfirmed(IReadOnlyList<BetTarget> targets)
-        {
-            int index = pickingDrink;
-            CloseDrinkPicker();
-            if (index >= 0)
-            {
-                OnDrinkConfirmed(index, targets);
-            }
-        }
-
-        private void OnDrinkTargetsCancelled()
-        {
-            CloseDrinkPicker();
-            RefreshViews();
-        }
-
-        /// <summary>
-        /// 음료를 마신다. 확률 음료인데 대상이 없으면 고르기 창을 연다(로봇이 없을 때는 첫 대상으로 바로 마신다).
-        /// </summary>
-        private void OnDrinkConfirmed(int offerIndex, IReadOnlyList<BetTarget> targets = null)
+        private void OnDrinkConfirmed(int offerIndex)
         {
             bool hadDrinks = DrinkEffectSummary.HasAny(flow);
-            IReadOnlyList<DrinkOffer> current = flow.Rewards.CurrentOffer;
-            if (targets == null && current != null && offerIndex >= 0 && offerIndex < current.Count && current[offerIndex].NeedsTargetChoice)
-            {
-                if (drinkServer != null && DrinkPicker != null)
-                {
-                    OpenDrinkPicker(offerIndex);
-                    return;
-                }
-
-                targets = new[] { current[offerIndex].TargetOptions()[0] };
-            }
-
-            DrinkOffer drink = flow.ConfirmDrink(offerIndex, targets);
+            DrinkOffer drink = flow.ConfirmDrink(offerIndex);
             if (drink == null)
             {
                 // 이미 확정했거나 상태가 바뀌었다.
@@ -1341,7 +1274,7 @@ namespace ProjectCR
         /// 막는 것: 칩·베팅·회전·전체 회수·서비스·음료·시점 전환.
         /// </summary>
         private bool InputLocked => tutorialActive || openingActive || (tutorial != null && tutorial.IsRunning) || GamePause.IsPaused
-                                    || (resultView != null && resultView.IsShown) || pickingDrink >= 0
+                                    || (resultView != null && resultView.IsShown)
                                     || drinkEffectsOpen || drinkEffectsReturning;
 
         /// <summary>일시정지가 바뀌면 3D 입력을 맞추고, 켜질 때는 판·음료 안내를 지운다.</summary>

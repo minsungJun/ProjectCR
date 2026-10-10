@@ -14,12 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectCR::ProjectCR.ProbabilityDrinkDefinition
   group: 1
   displayName: "\uC5E0\uBC84 \uC704\uC2A4\uD0A4"
-  description: "\uC120\uD0DD\uD55C \uB354\uC98C(1\u201312\xB713\u201324\xB725\u201336)\uC5D0
-    \uACF5\uC774 \uB5A8\uC5B4\uC9C8 \uD655\uB960\uC744 \uC62C\uB9BD\uB2C8\uB2E4."
+  description: "{target}\uC5D0 \uACF5\uC774 \uB5A8\uC5B4\uC9C8 \uD655\uB960\uC744
+    \uC62C\uB9BD\uB2C8\uB2E4."
   icon: {fileID: 0}
   tint: {r: 0.81960785, g: 0.5058824, b: 0.14117648, a: 1}
   model: {fileID: 4979538305942450573, guid: 9e2f6388f7f839046916efda69726e36, type: 3}
   boostPerStack: 0.26
   singleNumberBoost: 0.17
-  numberSetBoost: 0.18
-  singleNumberChance: 0.5

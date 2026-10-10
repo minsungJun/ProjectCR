@@ -63,8 +63,10 @@ namespace ProjectCR.Tests
             ProbabilityDrinkDefinition probability = catalog.ProbabilityDrinks.First(d => d.Group == DrinkGroup.Color);
             typeof(ProbabilityDrinkDefinition).GetField("description", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(probability, "{group}({bets}) 중 고른 대상 가중치 {boost}");
-            DrinkHoverText chance = DrinkHoverText.For(DrinkOffer.ForProbability(probability), flow);
-            Assert.AreEqual("색깔(빨강·검정) 중 고른 대상 가중치 +37%", chance.Effect);
+            typeof(ProbabilityDrinkDefinition).GetField("description", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(probability, "{target}({group}: {bets}) 가중치 {boost}");
+            DrinkHoverText chance = DrinkHoverText.For(DrinkOffer.ForProbability(probability, BetTarget.Outside(BetKind.Black)), flow);
+            Assert.AreEqual("검정(색깔: 빨강·검정) 가중치 +37%", chance.Effect);
         }
 
         [Test]
@@ -80,18 +82,17 @@ namespace ProjectCR.Tests
         }
 
         [Test]
-        public void ProbabilityDrink_ShowsWeightAndChance()
+        public void ProbabilityDrink_ShowsItsTarget_WeightAndChance()
         {
             ProbabilityDrinkDefinition drink = catalog.ProbabilityDrinks.First(d => d.Group == DrinkGroup.Column);
+            BetTarget c2 = BetTarget.Outside(BetKind.Column2);
 
-            DrinkHoverText text = DrinkHoverText.For(DrinkOffer.ForProbability(drink), flow);
+            DrinkHoverText text = DrinkHoverText.For(DrinkOffer.ForProbability(drink, c2), flow);
             Assert.AreEqual("확률 강화", text.Kind);
-            Assert.AreEqual("컬럼 가중치 +26%", text.Accent);
-            StringAssert.Contains("1열·2열·3열 중 대상을 골라", text.Effect);
-            StringAssert.Contains("당첨금 배율은 그대로", text.Effect);
-            StringAssert.StartsWith("예: 1열만 고르면 31.6% → 36.7%", text.Detail);
-            StringAssert.Contains("2개 고르면 각각 +13%", text.Detail);
-            StringAssert.Contains("나눠 받고", text.Duration);
+            Assert.AreEqual("2열 31.6% → 36.7%", text.Accent);
+            Assert.AreEqual("2열에 공이 떨어질 확률을 올립니다. 당첨금 배율은 그대로입니다.", text.Effect);
+            Assert.AreEqual("추첨 가중치 +26% · 2열 1잔째", text.Detail);
+            StringAssert.Contains("다시 나올 확률이 높습니다", text.Duration);
             Assert.AreEqual(0, flow.Probabilities.TotalStacks, "미리보기는 상태를 바꾸지 않는다");
         }
     }

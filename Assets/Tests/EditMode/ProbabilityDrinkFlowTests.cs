@@ -81,55 +81,29 @@ namespace ProjectCR.Tests
 
                 decimal boost = drink.Group == DrinkGroup.Number ? 0.17m
                     : drink.Group == DrinkGroup.Column || drink.Group == DrinkGroup.Dozen ? 0.26m : 0.37m;
-                Assert.AreEqual(boost, DrinkOffer.ForProbability(drink).Boost, $"{drink.Group}");
+                Assert.AreEqual(boost, DrinkOffer.ForProbability(drink, options[0]).Boost, $"{drink.Group}");
             }
         }
 
+        /// <summary>모든 확률 음료는 후보에 대상 하나가 정해져 나오고, 마시면 그 대상에만 한 잔이 붙는다.</summary>
         [Test]
-        public void ConfirmProbabilityDrink_RejectsMissingOrWrongTargets_AndKeepsOffer()
+        public void ChanceDrink_UsesItsOfferedTarget()
         {
             var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
-            int column = Index(flow, DrinkGroup.Column);
+            foreach (DrinkOffer offered in flow.Rewards.CurrentOffer)
+            {
+                CollectionAssert.Contains(offered.Group.Targets(), offered.Target, $"{offered.Group}: 대상은 그 묶음의 대상 하나");
+            }
 
-            Assert.IsNull(flow.ConfirmDrink(column), "대상 없이 마실 수 없다");
-            Assert.IsNull(flow.ConfirmDrink(column, new BetTarget[0]));
-            Assert.IsNull(flow.ConfirmDrink(column, new[] { Red }), "다른 묶음의 대상");
-            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
-            Assert.IsNull(flow.ConfirmDrink(column, new[] { c1, c1 }), "같은 대상 두 번");
-            Assert.AreEqual(GamePhase.DrinkSelection, flow.Phase);
-            Assert.IsNotNull(flow.Rewards.CurrentOffer, "후보는 그대로");
-            Assert.AreEqual(0, flow.Probabilities.TotalStacks);
-        }
+            DrinkOffer drink = flow.Rewards.CurrentOffer[0];
+            Assert.AreSame(drink, flow.ConfirmDrink(0));
+            Assert.IsNull(flow.ConfirmDrink(0), "두 번 확정되지 않는다.");
 
-        /// <summary>컬럼 +26%를 두 컬럼에 고르면 각각 +13%, 고르지 않은 컬럼은 그대로.</summary>
-        [Test]
-        public void ConfirmProbabilityDrink_SplitsBoostEvenly_AcrossChosenTargets()
-        {
-            var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
-            int column = Index(flow, DrinkGroup.Column);
-            DrinkOffer offered = flow.Rewards.CurrentOffer[column];
-            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
-            BetTarget c2 = BetTarget.Outside(BetKind.Column2);
-            BetTarget c3 = BetTarget.Outside(BetKind.Column3);
-
-            (double now, double after) = flow.PreviewProbabilityDrink(new[] { c1, c2 }, offered.Boost);
-            Assert.AreEqual(0, flow.Probabilities.TotalStacks, "미리보기는 상태를 바꾸지 않는다.");
-
-            DrinkOffer drink = flow.ConfirmDrink(column, new[] { c1, c2 });
-            Assert.AreSame(offered, drink);
-            Assert.IsNull(flow.ConfirmDrink(column, new[] { c1 }), "두 번 확정되지 않는다.");
-            CollectionAssert.AreEqual(new[] { c1, c2 }, flow.LastDrinkTargets);
-
-            Assert.AreEqual(0.13m, flow.Probabilities.Effects.First(e => e.Target == c1).Total);
-            Assert.AreEqual(0.13m, flow.Probabilities.Effects.First(e => e.Target == c2).Total);
-            Assert.AreEqual(0, flow.Probabilities.StacksOf(c3));
-
-            SpinConfig config = flow.BuildSpinConfig();
-            Assert.AreEqual(after, config.ProbabilityOf(c1) + config.ProbabilityOf(c2), 1e-12, "미리보기와 같은 확률");
-            Assert.Greater(after, now);
-            Assert.AreEqual(config.ProbabilityOf(c1), config.ProbabilityOf(c2), 1e-12, "똑같이 나눠 받는다");
-            Assert.Less(config.ProbabilityOf(c3), 12d / 38d, "고르지 않은 컬럼은 상대적으로 줄어든다");
-            Assert.AreEqual(1d / 38d, config.PocketProbabilities()[definition.IndexOfSkull()], 1e-12);
+            Assert.AreEqual(drink.Target, flow.Probabilities.Effects.Single().Target);
+            Assert.AreEqual(drink.Boost, flow.Probabilities.Effects.Single().Total);
+            CollectionAssert.AreEqual(new[] { drink.Target }, flow.LastDrinkTargets);
+            CollectionAssert.AreEqual(new[] { drink.Target }, flow.DrunkTargets());
+            Assert.AreEqual(0, flow.Drinks.TotalStacks, "지급 배율 음료는 늘지 않는다.");
             Assert.AreEqual(2, flow.Round.Round);
         }
 
@@ -146,21 +120,6 @@ namespace ProjectCR.Tests
             Assert.AreEqual(0.39m, state.Effects.First(e => e.Target == c1).Total);
             Assert.AreEqual(2, state.StacksOf(c1));
             Assert.AreEqual(0.13m, state.Effects.First(e => e.Target == c2).Total);
-        }
-
-        private static int Index(GameFlowController flow, DrinkGroup group)
-        {
-            IReadOnlyList<DrinkOffer> offer = flow.Rewards.CurrentOffer;
-            for (int i = 0; i < offer.Count; i++)
-            {
-                if (offer[i].Group == group)
-                {
-                    return i;
-                }
-            }
-
-            Assert.Fail($"{group} 음료가 후보에 없다");
-            return -1;
         }
 
         [Test]
@@ -180,34 +139,53 @@ namespace ProjectCR.Tests
             Assert.IsTrue(sawPayout && sawChance);
         }
 
-        [Test]
-        public void NumberChanceDrink_UsesItsOfferedNumber_WithoutChoosing()
-        {
-            var flow = PassRound(new GameFlowController(definition, balance, 5, ChanceOnly()));
-            int number = Index(flow, DrinkGroup.Number);
-            DrinkOffer offered = flow.Rewards.CurrentOffer[number];
-            Assert.IsTrue(offered.Target.IsStraight, "숫자 확률 음료는 후보에 숫자 하나가 정해져 있다");
-            Assert.IsFalse(offered.NeedsTargetChoice);
+        private static Dictionary<int, int> Draws(IReadOnlyList<BetTarget> drunk, int times) =>
+            DrawCounts(DrinkGroup.Number, drunk, times).ToDictionary(p => p.Key.Number, p => p.Value);
 
-            DrinkOffer drink = flow.ConfirmDrink(number, new[] { BetTarget.Straight(offered.Target.Number == 7 ? 8 : 7) });
-            Assert.AreSame(offered, drink, "고른 대상을 넘겨도 정해진 숫자를 쓴다");
-            Assert.AreEqual(offered.Target, flow.Probabilities.Effects.Single().Target);
-            Assert.AreEqual(0.17m, flow.Probabilities.Effects.Single().Total);
-            CollectionAssert.AreEqual(new[] { offered.Target }, flow.DrunkNumbers());
-            Assert.AreEqual(0, flow.Drinks.TotalStacks, "지급 배율 음료는 늘지 않는다.");
-        }
-
-        private static Dictionary<int, int> Draws(IReadOnlyList<BetTarget> drunk, int times)
+        private static Dictionary<BetTarget, int> DrawCounts(DrinkGroup group, IReadOnlyList<BetTarget> drunk, int times)
         {
             var random = new System.Random(1234);
-            var counts = new Dictionary<int, int>();
+            var counts = new Dictionary<BetTarget, int>();
             for (int i = 0; i < times; i++)
             {
-                int n = DrinkRewardController.DrawNumber(drunk, random).Number;
-                counts[n] = counts.TryGetValue(n, out int c) ? c + 1 : 1;
+                BetTarget t = DrinkRewardController.DrawTarget(group, drunk, random);
+                counts[t] = counts.TryGetValue(t, out int c) ? c + 1 : 1;
             }
 
             return counts;
+        }
+
+        [Test]
+        public void ColumnDraw_NothingDrunk_EvenThirds()
+        {
+            Dictionary<BetTarget, int> counts = DrawCounts(DrinkGroup.Column, new BetTarget[0], 30_000);
+            Assert.AreEqual(3, counts.Count);
+            foreach (int count in counts.Values)
+            {
+                Assert.AreEqual(1d / 3d, count / 30_000d, 0.02);
+            }
+        }
+
+        /// <summary>1열을 마셨으면 1열 50%, 나머지 50%는 2열·3열이 반씩.</summary>
+        [Test]
+        public void ColumnDraw_OneDrunk_HalfTheTime()
+        {
+            BetTarget c1 = BetTarget.Outside(BetKind.Column1);
+            Dictionary<BetTarget, int> counts = DrawCounts(DrinkGroup.Column, new[] { c1 }, 30_000);
+            Assert.AreEqual(0.5, counts[c1] / 30_000d, 0.02);
+            Assert.AreEqual(0.25, counts[BetTarget.Outside(BetKind.Column2)] / 30_000d, 0.02);
+            Assert.AreEqual(0.25, counts[BetTarget.Outside(BetKind.Column3)] / 30_000d, 0.02);
+        }
+
+        /// <summary>다른 묶음에서 마신 대상은 상관없고, 묶음 대상을 다 마셨으면 그 중에서 똑같이.</summary>
+        [Test]
+        public void Draw_IgnoresOtherGroups_AndAllDrunkStaysEven()
+        {
+            Dictionary<BetTarget, int> color = DrawCounts(DrinkGroup.Color, new[] { BetTarget.Outside(BetKind.Column1), BetTarget.Straight(7) }, 20_000);
+            Assert.AreEqual(0.5, color[Red] / 20_000d, 0.02, "컬럼·숫자를 마셔도 색깔 음료는 반반");
+
+            Dictionary<BetTarget, int> both = DrawCounts(DrinkGroup.Color, new[] { Red, BetTarget.Outside(BetKind.Black) }, 20_000);
+            Assert.AreEqual(0.5, both[Red] / 20_000d, 0.02);
         }
 
         [Test]
