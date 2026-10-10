@@ -93215,8 +93215,7 @@ MonoBehaviour:
   roulettePose: {fileID: 1073687184}
   drinkPose: {fileID: 752045720}
   defaultPose: {fileID: 1530540366}
-  shopPose: {fileID: 875305377}
-  tabletFocusPose: {fileID: 1776916934}
+  tabletPose: {fileID: 875305377}
   moveDuration: 0.9
   ease:
     serializedVersion: 2
@@ -122092,37 +122091,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1776627620}
   m_Mesh: {fileID: 5483063691590278003, guid: bd71c63e3b4772b408c0c4d107243d62, type: 3}
---- !u!1 &1776916933
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1776916934}
-  m_Layer: 0
-  m_Name: CameraPostion_TabletFocus
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1776916934
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1776916933}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.000011745791, y: 0.8429182, z: -0.5380418, w: 0.000018401435}
-  m_LocalPosition: {x: -1.4940208, y: 1.2867892, z: 0.59894466}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1777158219
 GameObject:
   m_ObjectHideFlags: 0
@@ -151958,7 +151926,6 @@ SceneRoots:
   - {fileID: 1530540366}
   - {fileID: 752045720}
   - {fileID: 875305377}
-  - {fileID: 1776916934}
   - {fileID: 1812593561}
   - {fileID: 1328214687}
   - {fileID: 111567282}

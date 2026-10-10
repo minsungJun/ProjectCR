@@ -7,8 +7,9 @@ namespace ProjectCR
 {
     /// <summary>
     /// 태블릿 "마신 음료" 화면. 별도 팝업이 아니라 <b>태블릿 화면 자리에</b> 그린다:
-    /// 카메라가 태블릿 앞(CameraRig.MoveToTabletFocus)에 도착하면, 매 프레임 태블릿 화면 메시를 비춘 사각형에
-    /// 목록을 맞춰 놓는다(<see cref="TabletScreenFit"/>). 카메라가 화면을 정면으로 보니 실제 태블릿 화면이 바뀐 것처럼 보인다.
+    /// 카메라가 상점과 같은 태블릿 자리(CameraRig.MoveToTablet)에 도착하면, 매 프레임 태블릿 화면 메시를 비춘 사각형에
+    /// 목록을 맞춰 놓는다(<see cref="TabletScreenFit"/>). 그래서 실제 태블릿 화면이 바뀐 것처럼 보인다.
+    /// 마신 음료가 많아 화면을 넘으면 목록이 세로로 스크롤된다(마우스 휠·스크롤바).
     /// 카메라가 오가는 동안은 숨긴다. 내용은 <see cref="DrinkEffectSummary"/>(마신 음료 효과만)이고 상태는 바꾸지 않는다.
     /// 요소는 HUD UIDocument 안에 코드로 만든다(uxml에 창을 따로 두지 않는다). 전체에 blocks-input이 붙어 3D 입력을 막는다.
     /// </summary>

@@ -489,7 +489,7 @@ namespace ProjectCR
             drinkEffects.Open(flow);
             if (cameraRig != null)
             {
-                cameraRig.MoveToTabletFocus();
+                cameraRig.MoveToTablet();
             }
 
             RefreshViews();
@@ -619,7 +619,7 @@ namespace ProjectCR
 
             if (cameraRig != null)
             {
-                cameraRig.MoveToShop();
+                cameraRig.MoveToTablet();
             }
 
             shopView.Show(flow);
@@ -679,7 +679,7 @@ namespace ProjectCR
             shopView.SetPicking(false);
             if (cameraRig != null && shopView.IsOpen)
             {
-                cameraRig.MoveToShop();
+                cameraRig.MoveToTablet();
             }
 
             if (!target.IsNone && slot < flow.Shop.Offers.Count)
