@@ -106,6 +106,9 @@ namespace ProjectCR
 
         public TableBetBoard Board => board;
 
+        /// <summary>트레이 칩 금액(작은 것부터).</summary>
+        public IReadOnlyList<long> Denominations => denominations;
+
         /// <summary>테이블 태블릿(없으면 null).</summary>
         public TabletPanel Tablet => tablet;
 

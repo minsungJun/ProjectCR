@@ -148,6 +148,7 @@ namespace ProjectCR
                 tableInput.TargetClicked += OnTargetClicked;
                 tableInput.TargetRemoveRequested += OnTargetRemoveRequested;
                 tableInput.ChipSelected += OnChipSelected;
+                tableInput.ChipStepped += OnChipStepped;
                 tableInput.TabletPressed += OnTabletPressed;
                 tableInput.DrinkHoverChanged += OnDrinkHover;
                 tableInput.DrinkClicked += OnDrinkClicked;
@@ -721,6 +722,48 @@ namespace ProjectCR
             }
 
             ApplyBetAction(error);
+        }
+
+        /// <summary>마우스 휠: 트레이 칩 금액 목록에서 한 단계 위·아래. 끝에서는 더 넘어가지 않는다(소리도 내지 않는다).</summary>
+        private void OnChipStepped(int step)
+        {
+            if (InputLocked || tableView == null || tableView.Denominations.Count == 0)
+            {
+                return;
+            }
+
+            IReadOnlyList<long> values = tableView.Denominations;
+            long current = flow.Bet.ChipValue;
+            int index = -1;
+            for (int i = 0; i < values.Count; i++)
+            {
+                if (values[i] == current)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            // 지금 금액이 목록에 없으면(잔액에 맞춰 줄어든 값 등) 가장 가까운 단계부터.
+            if (index < 0)
+            {
+                index = 0;
+                while (index < values.Count - 1 && values[index] < current)
+                {
+                    index++;
+                }
+
+                if (step > 0 && values[index] > current)
+                {
+                    index--;
+                }
+            }
+
+            int next = Mathf.Clamp(index + step, 0, values.Count - 1);
+            if (values[next] != current)
+            {
+                OnChipSelected(values[next]);
+            }
         }
 
         // ---------- 판 위 호버 안내(툴팁 + 칸 강조) ----------

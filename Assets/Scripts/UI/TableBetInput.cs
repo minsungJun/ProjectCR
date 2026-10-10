@@ -11,7 +11,7 @@ namespace ProjectCR
     ///   <see cref="dragThreshold"/>px 넘게 움직이면 그 칸 칩 더미를 끌고(놓은 칸으로 통째로 옮김, 판 밖이면 뺌),
     ///   움직이지 않고 떼면 그때 칩 하나를 놓고, 움직이지 않고 holdDelay초 누르면 계속 놓기로 넘어간다(그 뒤로는 끌기가 되지 않는다).
     ///   빈 칸은 끌 게 없으니 누르는 순간 바로 놓는다.
-    /// 트레이 칩 클릭 = 칩 금액 고르기, 태블릿 버튼 클릭 = 회전·서비스·전체 회수, 강화 배지 = 호버만(툴팁). 마우스가 HUD 위에 있으면 무시한다.
+    /// 트레이 칩 클릭 = 칩 금액 고르기, 마우스 휠 = 칩 금액 한 단계 위(휠 올림)·아래(휠 내림), 태블릿 버튼 클릭 = 회전·서비스·전체 회수, 강화 배지 = 호버만(툴팁). 마우스가 HUD 위에 있으면 무시한다.
     /// 입력을 이벤트로 넘기기만 하고, 베팅 가능 여부는 GameFlowController가 판단한다.
     /// <see cref="Interactable"/>이 false면(1인칭으로 둘러보는 중) 아무것도 가리키지 않고 클릭도 보내지 않는다.
     /// </summary>
@@ -52,6 +52,9 @@ namespace ProjectCR
         public event Action<BetTarget> TargetRemoveRequested;
         public event Action<long> ChipSelected;
 
+        /// <summary>마우스 휠로 칩 금액을 한 단계 바꾼다(+1 = 윗단위, -1 = 아랫단위). HUD 위(상점·음료 목록 스크롤)에서는 보내지 않는다.</summary>
+        public event Action<int> ChipStepped;
+
         /// <summary>태블릿 버튼을 눌렀다. 누를 수 없는 상태(어둡게 그려진 버튼)면 보내지 않는다.</summary>
         public event Action<TabletAction> TabletPressed;
 
@@ -89,6 +92,10 @@ namespace ProjectCR
         private bool pressPending;
         private BetTarget pressTarget = BetTarget.None;
         private Vector2 pressScreen;
+
+        // 휠 한 칸에 여러 프레임 값이 들어오는 장치(터치패드)에서 너무 빨리 넘어가지 않게 단계 사이 최소 간격(초).
+        private const float ChipStepInterval = 0.08f;
+        private float lastChipStep = -1f;
 
         private TabletButton hoveredButton;
         private ServedDrink hoveredDrink;
@@ -191,6 +198,8 @@ namespace ProjectCR
                 ClearHover();
                 return;
             }
+
+            ReadChipWheel(mouse);
 
             bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, trayRayDistance);
 
@@ -363,6 +372,19 @@ namespace ProjectCR
             IsDragging = false;
             DragFrom = BetTarget.None;
             DragDropped?.Invoke(from, over);
+        }
+
+        /// <summary>휠을 올리면 윗단위, 내리면 아랫단위 칩. 한 번 넘긴 뒤 잠깐은 더 넘기지 않는다.</summary>
+        private void ReadChipWheel(Mouse mouse)
+        {
+            float scroll = mouse.scroll.ReadValue().y;
+            if (Mathf.Approximately(scroll, 0f) || Time.unscaledTime - lastChipStep < ChipStepInterval)
+            {
+                return;
+            }
+
+            lastChipStep = Time.unscaledTime;
+            ChipStepped?.Invoke(scroll > 0f ? 1 : -1);
         }
 
         private void ClearHover()
