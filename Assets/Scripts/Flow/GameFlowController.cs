@@ -194,6 +194,9 @@ namespace ProjectCR
 
         public bool CanAffordMinimumBet => Wallet.Balance >= GameBalance.MinBet;
 
+        /// <summary>이번 라운드 칩 트레이의 칩 단위(작은 것부터). 납부금이 커지면 위로 밀린다(<see cref="GameBalance.TrayChipValues"/>).</summary>
+        public IReadOnlyList<long> TrayChipValues => GameBalance.TrayChipValues(Round.CurrentDue);
+
         /// <summary>
         /// 딜러의 귀띔 단서: 다음 회전에 나오지 않는 베팅(바깥 베팅 하나, 모두 나오면 숫자 하나). 없으면 None.
         /// 상점을 나갈 때 결과를 미리 뽑아 두고 그 결과에서 고르므로 거짓이 없다. 그 회전이 시작되면 지워진다.
@@ -694,7 +697,32 @@ namespace ProjectCR
             Round.AdvanceRound();
             Bet.Unlock(Wallet.Balance);
             Bet.ClearBets();
+            FitChipValueToTray();
             Phase = NextPhaseAfterSpin();
+        }
+
+        /// <summary>
+        /// 새 라운드에 트레이가 밀려 지금 칩 단위가 트레이에 없으면, 트레이에서 그보다 작은 것 중 가장 큰 칩으로(없으면 가장 작은 칩) 바꾼다.
+        /// </summary>
+        private void FitChipValueToTray()
+        {
+            IReadOnlyList<long> tray = TrayChipValues;
+            long current = Bet.ChipValue;
+            long fitted = tray[0];
+            foreach (long value in tray)
+            {
+                if (value == current)
+                {
+                    return;
+                }
+
+                if (value <= current)
+                {
+                    fitted = value;
+                }
+            }
+
+            Bet.SetChipValue(fitted);
         }
 
         private BetError WhenBetting(Func<BetError> action)

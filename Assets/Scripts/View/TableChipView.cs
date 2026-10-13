@@ -18,7 +18,8 @@ namespace ProjectCR
 
         [SerializeField] private TableBetBoard board;
 
-        [Tooltip("칩 금액(작은 것부터). templates와 같은 순서.")]
+        [Tooltip("1라운드 칩 금액(작은 것부터). templates와 같은 순서. 트레이 칸·글자 메시(CRT_Tray_Label_금액)를 찾는 기준이다.\n" +
+                 "게임 중 실제 금액은 라운드마다 GameFlowController.TrayChipValues로 바뀐다(칩 모양은 칸 순서 그대로).")]
         [SerializeField] private long[] denominations = new long[0];
 
         [Tooltip("판에 놓을 칩 모양(모델의 CHIP_* 견본). 꺼져 있어도 된다.")]
@@ -74,8 +75,23 @@ namespace ProjectCR
         [SerializeField] private Color amountLabelColor = new Color(1f, 0.86f, 0.45f);
 
         private readonly Dictionary<BetTarget, List<GameObject>> stacks = new Dictionary<BetTarget, List<GameObject>>();
-        private readonly Dictionary<long, Stack<GameObject>> pool = new Dictionary<long, Stack<GameObject>>();
-        private readonly Dictionary<GameObject, long> chipValues = new Dictionary<GameObject, long>();
+        // 쉬는 칩(칩 모양 = templates 칸 번호별), 칩마다 어느 칸 모양인지.
+        private readonly Dictionary<int, Stack<GameObject>> pool = new Dictionary<int, Stack<GameObject>>();
+        private readonly Dictionary<GameObject, int> chipShapes = new Dictionary<GameObject, int>();
+
+        // 지금 트레이 칸별 금액(라운드마다 바뀐다). 처음에는 denominations.
+        private long[] trayValues;
+
+        // 트레이 칸 버튼과 칸 위 금액 글자(모델 메시), 트레이가 밀렸을 때 대신 보여 줄 글자.
+        private ChipTraySlot[] traySlots;
+        private Renderer[] trayLabelMeshes;
+        private TextMesh[] trayLabelTexts;
+
+        // 칸 위 글자 높이(모델 글자들의 높이 중간값). 밀린 트레이 글자를 모두 같은 크기로 쓴다.
+        private float trayLabelHeight = 0.012f;
+
+        // 크기를 아직 못 맞춘 글자. TextMesh는 그려진 뒤에야 크기를 잴 수 있어서 다음 프레임에 맞춘다.
+        private readonly List<TextMesh> unsizedLabels = new List<TextMesh>();
         private readonly Dictionary<BetTarget, StackLabel> labels = new Dictionary<BetTarget, StackLabel>();
         private readonly Stack<StackLabel> freeLabels = new Stack<StackLabel>();
         private Vector3[] trayBase;
@@ -106,14 +122,16 @@ namespace ProjectCR
 
         public TableBetBoard Board => board;
 
-        /// <summary>트레이 칩 금액(작은 것부터).</summary>
-        public IReadOnlyList<long> Denominations => denominations;
+        /// <summary>지금 트레이 칩 금액(작은 것부터).</summary>
+        public IReadOnlyList<long> Denominations => trayValues ?? denominations;
 
         /// <summary>테이블 태블릿(없으면 null).</summary>
         public TabletPanel Tablet => tablet;
 
         private void Awake()
         {
+            trayValues = (long[])denominations.Clone();
+            FindTrayParts();
             trayBase = new Vector3[trayChips.Length];
             trayLiftNow = new float[trayChips.Length];
             trayLiftVelocity = new float[trayChips.Length];
@@ -128,6 +146,7 @@ namespace ProjectCR
         /// <summary>베팅판·칩 금액·잔액에 맞춰 다시 그린다.</summary>
         public void Refresh(GameFlowController flow)
         {
+            SetTrayValues(flow.TrayChipValues);
             RefreshStacks(flow.Bet);
             RefreshTray(flow.Bet.ChipValue);
 
@@ -162,7 +181,7 @@ namespace ProjectCR
             bool moving = false;
             for (int i = 0; i < trayChips.Length; i++)
             {
-                float target = denominations[trayChipSlot[i]] == trayTargetValue ? trayLift : 0f;
+                float target = trayValues[trayChipSlot[i]] == trayTargetValue ? trayLift : 0f;
                 float now = trayLiftTime > 0f
                     ? Mathf.SmoothDamp(trayLiftNow[i], target, ref trayLiftVelocity[i], trayLiftTime, Mathf.Infinity, dt)
                     : target;
@@ -193,6 +212,7 @@ namespace ProjectCR
         /// <summary>합계 글자가 늘 카메라를 보고 화면에서 칩 위에 있게 한다(시점 전환·카메라 이동 중에도).</summary>
         private void LateUpdate()
         {
+            SizeTrayLabels();
             if (labels.Count == 0)
             {
                 return;
@@ -249,6 +269,181 @@ namespace ProjectCR
         public void EndDrag()
         {
             dragTarget = BetTarget.None;
+        }
+
+        /// <summary>
+        /// 트레이 칸 버튼과 칸 위 금액 글자 메시를 찾는다(트레이 칩과 같은 테이블 아래, 이름의 금액 = denominations).
+        /// </summary>
+        private void FindTrayParts()
+        {
+            Transform root = trayChips.Length > 0 && trayChips[0] != null ? trayChips[0].root : transform.root;
+            traySlots = new ChipTraySlot[denominations.Length];
+            foreach (ChipTraySlot slot in root.GetComponentsInChildren<ChipTraySlot>(true))
+            {
+                int index = Array.IndexOf(denominations, slot.Value);
+                if (index >= 0)
+                {
+                    traySlots[index] = slot;
+                }
+            }
+
+            trayLabelMeshes = new Renderer[denominations.Length];
+            trayLabelTexts = new TextMesh[denominations.Length];
+            foreach (MeshRenderer label in root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (!label.name.StartsWith("CRT_Tray_Label_", StringComparison.Ordinal)
+                    || !long.TryParse(label.name.Substring("CRT_Tray_Label_".Length), out long value))
+                {
+                    continue;
+                }
+
+                int index = Array.IndexOf(denominations, value);
+                if (index >= 0)
+                {
+                    trayLabelMeshes[index] = label;
+                }
+            }
+
+            var heights = new List<float>();
+            foreach (Renderer label in trayLabelMeshes)
+            {
+                if (label != null)
+                {
+                    heights.Add(label.bounds.size.z);
+                }
+            }
+
+            if (heights.Count > 0)
+            {
+                heights.Sort();
+                trayLabelHeight = heights[heights.Count / 2];
+            }
+        }
+
+        /// <summary>
+        /// 트레이 칸별 금액을 바꾼다(라운드가 바뀌어 트레이가 밀렸을 때). 칩 모양·칩에 찍힌 숫자는 그대로 두고,
+        /// 칸을 눌렀을 때의 금액과 칸 위 금액 글자만 바꾼다. 처음 금액이면 모델 글자를, 밀렸으면 같은 자리의 글자를 보여 준다.
+        /// </summary>
+        private void SetTrayValues(IReadOnlyList<long> values)
+        {
+            if (values == null || values.Count != denominations.Length)
+            {
+                return;
+            }
+
+            bool changed = false;
+            bool original = true;
+            for (int i = 0; i < values.Count; i++)
+            {
+                changed |= trayValues[i] != values[i];
+                original &= denominations[i] == values[i];
+            }
+
+            if (!changed)
+            {
+                return;
+            }
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                trayValues[i] = values[i];
+                if (traySlots[i] != null)
+                {
+                    traySlots[i].Configure(values[i]);
+                }
+
+                if (trayLabelMeshes[i] != null)
+                {
+                    trayLabelMeshes[i].enabled = original;
+                    TextMesh text = trayLabelTexts[i];
+                    if (!original && text == null)
+                    {
+                        text = trayLabelTexts[i] = CreateTrayLabel(trayLabelMeshes[i]);
+                    }
+
+                    if (text != null)
+                    {
+                        text.text = ChipLabel(values[i]);
+                        text.gameObject.SetActive(!original);
+                    }
+                }
+            }
+
+            trayTargetValue = -1;
+        }
+
+        private const float TrayLabelProbe = 0.002f;
+
+        /// <summary>
+        /// 새로 만든 칸 글자를 모델 글자 높이(모든 칸 같은 값)에 맞춘다. 글자 메시가 아직 없으면 다음 프레임에 다시 본다.
+        /// 숫자·K·M은 높이가 같아서 칸마다 같은 크기가 된다.
+        /// </summary>
+        private void SizeTrayLabels()
+        {
+            for (int i = unsizedLabels.Count - 1; i >= 0; i--)
+            {
+                TextMesh text = unsizedLabels[i];
+                if (text == null)
+                {
+                    unsizedLabels.RemoveAt(i);
+                    continue;
+                }
+
+                float rendered = text.GetComponent<MeshRenderer>().bounds.size.z;
+                if (rendered <= 1e-5f)
+                {
+                    continue;
+                }
+
+                text.characterSize = TrayLabelProbe * trayLabelHeight / rendered;
+                unsizedLabels.RemoveAt(i);
+            }
+        }
+
+        /// <summary>트레이 칸 위 금액 글자. 1만 이상은 K·M으로 줄인다(5,000 → "5000", 10,000 → "10K", 1,000,000 → "1M").</summary>
+        public static string ChipLabel(long value)
+        {
+            if (value >= 1_000_000 && value % 1_000_000 == 0)
+            {
+                return $"{value / 1_000_000}M";
+            }
+
+            if (value >= 10_000 && value % 1_000 == 0)
+            {
+                return $"{value / 1_000}K";
+            }
+
+            return value.ToString();
+        }
+
+        /// <summary>모델 글자 메시 자리에 같은 색·높이의 글자를 만든다. 테이블 면 위에 눕히고 위쪽은 플레이어 반대편.</summary>
+        private TextMesh CreateTrayLabel(Renderer mesh)
+        {
+            Font font = balanceText != null && balanceText.font != null
+                ? balanceText.font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Vector3 up = board.transform.up;
+            Bounds bounds = mesh.bounds;
+
+            var go = new GameObject(mesh.name + "_Text");
+            go.transform.SetParent(mesh.transform.parent, true);
+            go.transform.position = bounds.center + up * 0.0004f;
+            // 플레이어(+Z)에서 읽히게: 글자 위쪽은 -Z(플레이어 반대편). 태블릿 글자와 같은 방향.
+            go.transform.rotation = Quaternion.LookRotation(-up, Vector3.ProjectOnPlane(Vector3.back, up));
+
+            var text = go.AddComponent<TextMesh>();
+            text.font = font;
+            text.fontSize = 64;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            Material material = mesh.sharedMaterial;
+            text.color = material != null && material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : new Color(0.95f, 0.9f, 0.78f);
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+
+            // 크기는 그려진 뒤 SizeTrayLabels에서 모델 글자 높이에 맞춘다.
+            text.characterSize = TrayLabelProbe;
+            unsizedLabels.Add(text);
+            return text;
         }
 
         /// <summary>호버 표시: 칩 놓는 자리 원판 + (정의가 있으면) 포함 칸 강조. 숨기면 둘 다 끈다.</summary>
@@ -403,11 +598,11 @@ namespace ProjectCR
             Vector3 up = board.transform.up;
             long left = amount;
 
-            for (int d = denominations.Length - 1; d >= 0 && chips.Count < MaxChipsPerStack; d--)
+            for (int d = trayValues.Length - 1; d >= 0 && chips.Count < MaxChipsPerStack; d--)
             {
-                while (left >= denominations[d] && chips.Count < MaxChipsPerStack)
+                while (left >= trayValues[d] && chips.Count < MaxChipsPerStack)
                 {
-                    left -= denominations[d];
+                    left -= trayValues[d];
                     GameObject chip = Take(d);
                     // 견본 칩의 기준점이 아랫면이라 칩 두께(배율 반영)만큼씩 올려 쌓는다.
                     chip.transform.position = basePosition + up * (chipHeight * chipScale * chips.Count);
@@ -429,7 +624,7 @@ namespace ProjectCR
         {
             if (trayGlow != null)
             {
-                trayGlow.Show(Array.IndexOf(denominations, chipValue));
+                trayGlow.Show(Array.IndexOf(trayValues, chipValue));
             }
 
             // 높이는 Update가 천천히 맞춘다. 여기서는 목표만 바꾼다.
@@ -442,11 +637,10 @@ namespace ProjectCR
 
         private GameObject Take(int denominationIndex)
         {
-            long value = denominations[denominationIndex];
             GameObject template = templates[denominationIndex];
             Vector3 scale = template.transform.lossyScale * chipScale;
 
-            if (pool.TryGetValue(value, out Stack<GameObject> free) && free.Count > 0)
+            if (pool.TryGetValue(denominationIndex, out Stack<GameObject> free) && free.Count > 0)
             {
                 GameObject reused = free.Pop();
                 reused.transform.localScale = scale;
@@ -458,7 +652,7 @@ namespace ProjectCR
             chip.name = $"Bet_{template.name}";
             chip.transform.localScale = scale;
             chip.SetActive(true);
-            chipValues[chip] = value;
+            chipShapes[chip] = denominationIndex;
             return chip;
         }
 
@@ -475,11 +669,11 @@ namespace ProjectCR
         private void Release(GameObject chip)
         {
             chip.SetActive(false);
-            long value = chipValues[chip];
-            if (!pool.TryGetValue(value, out Stack<GameObject> free))
+            int shape = chipShapes[chip];
+            if (!pool.TryGetValue(shape, out Stack<GameObject> free))
             {
                 free = new Stack<GameObject>();
-                pool[value] = free;
+                pool[shape] = free;
             }
 
             free.Push(chip);

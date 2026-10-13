@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ProjectCR
@@ -77,6 +78,22 @@ namespace ProjectCR
         [Tooltip("납부금을 이 단위로 올림한다. 증가율 2.5, 단위 5면 120, 300, 750, 1,875, 4,690, 11,720, 29,300, 73,245…")]
         [SerializeField] private long dueRoundingUnit = 5;
 
+        [Header("칩")]
+        [Tooltip("칩 단위 전체(작은 것부터). 트레이에는 이 중 연속된 chipTraySlots개가 보인다.")]
+        [SerializeField] private long[] chipValues =
+        {
+            1, 5, 10, 50, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000,
+        };
+
+        [Tooltip("트레이 칸 수(칩 모델 수).")]
+        [Min(1)]
+        [SerializeField] private int chipTraySlots = 8;
+
+        [Tooltip("트레이의 가장 큰 칩이 이번 라운드 납부금의 이 비율 이상이 되도록 트레이를 위로 민다. 0.05 = 납부금의 1/20.\n" +
+                 "기본값이면 1~5라운드 1~5,000, 6라운드 5~10K, 7라운드 10~50K, 8라운드 50~100K, 9라운드 100~500K, 10라운드 1,000~5M.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float chipTopShare = 0.05f;
+
         public long InitialMoney => initialMoney;
         public long MaxMoney => maxMoney;
         public long MinBet => minBet;
@@ -124,6 +141,40 @@ namespace ProjectCR
 
             decimal kept = Math.Round(balance * (decimal)Mathf.Clamp01(skullBalanceKeep), MidpointRounding.AwayFromZero);
             return Math.Min(balance, (long)kept);
+        }
+
+        /// <summary>
+        /// 이번 라운드 트레이에 보일 칩 단위(작은 것부터 chipTraySlots개). 납부금이 커지면 위로 한 칸씩 밀린다:
+        /// 가장 큰 칩이 납부금 × chipTopShare 이상이 되는 가장 낮은 자리. 단위가 모자라면 맨 위에서 멈춘다.
+        /// </summary>
+        public IReadOnlyList<long> TrayChipValues(long due)
+        {
+            var values = new List<long>();
+            if (chipValues != null)
+            {
+                foreach (long value in chipValues)
+                {
+                    if (value > 0 && (values.Count == 0 || value > values[values.Count - 1]))
+                    {
+                        values.Add(value);
+                    }
+                }
+            }
+
+            if (values.Count == 0)
+            {
+                values.Add(Math.Max(1, minBet));
+            }
+
+            int slots = Math.Min(Math.Max(1, chipTraySlots), values.Count);
+            decimal need = Math.Max(0, due) * (decimal)Mathf.Clamp01(chipTopShare);
+            int top = slots - 1;
+            while (top < values.Count - 1 && values[top] < need)
+            {
+                top++;
+            }
+
+            return values.GetRange(top - slots + 1, slots);
         }
 
         /// <summary>
