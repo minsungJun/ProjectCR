@@ -68,5 +68,24 @@ namespace ProjectCR.Tests
             Assert.AreEqual(5, flow.TrayChipValues[0]);
             Assert.AreEqual(expected, flow.Bet.ChipValue, because);
         }
+
+        [TestCase("Amount_1", 1L)]
+        [TestCase("Amount_5000", 5_000L)]
+        [TestCase("Amount_10K", 10_000L)]
+        [TestCase("Amount_500k", 500_000L)]
+        [TestCase("Amount_5M", 5_000_000L)]
+        public void AmountSpriteName_ParsesValue(string name, long expected)
+        {
+            Assert.IsTrue(TableChipView.TryParseAmount(name, out long amount));
+            Assert.AreEqual(expected, amount);
+        }
+
+        [TestCase("Amount_")]
+        [TestCase("Amount_X")]
+        [TestCase("")]
+        public void AmountSpriteName_RejectsUnknown(string name)
+        {
+            Assert.IsFalse(TableChipView.TryParseAmount(name, out _));
+        }
     }
 }

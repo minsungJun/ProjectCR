@@ -86,6 +86,9 @@ namespace ProjectCR
         private ChipTraySlot[] traySlots;
         private Renderer[] trayLabelMeshes;
         private TextMesh[] trayLabelTexts;
+        private SpriteRenderer[] trayLabelSprites;
+        private readonly Dictionary<long, Sprite> spritesByAmount = new Dictionary<long, Sprite>();
+        private bool trayLabelsApplied;
 
         // 칸 위 글자 높이(모델 글자들의 높이 중간값). 밀린 트레이 글자를 모두 같은 크기로 쓴다.
         private float trayLabelHeight = 0.012f;
@@ -99,6 +102,18 @@ namespace ProjectCR
         // 끄는 중인 칩 더미(없으면 None)와 커서 아래 판 위 자리.
         private BetTarget dragTarget = BetTarget.None;
         private Vector3 dragPoint;
+
+        [Header("트레이 금액 글자")]
+        [Tooltip("칸 위 금액 스프라이트. 이름 끝의 금액으로 짝을 맞춘다(Amount_10K = 10,000, Amount_1M = 1,000,000).\n" +
+                 "금액에 맞는 스프라이트가 있으면 모델 글자 대신 이걸 보여 주고, 없으면 모델 글자(처음 금액) 또는 글자로 대신한다.")]
+        [SerializeField] private Sprite[] amountSprites = new Sprite[0];
+
+        [Tooltip("금액 스프라이트 캔버스 전체의 테이블 위 높이(m). 768×256 캔버스면 숫자 높이는 이 값의 약 0.4배.")]
+        [Min(0.001f)]
+        [SerializeField] private float amountSpriteHeight = 0.03f;
+
+        [Tooltip("금액 스프라이트 색(곱하기). 조명을 받지 않는 그림이라 주변보다 밝아 보이면 낮춘다.")]
+        [SerializeField] private Color amountSpriteTint = new Color(0.9f, 0.9f, 0.9f, 1f);
 
         [Header("칩 끌기")]
         [Tooltip("끄는 칩 더미를 판 위로 띄우는 높이(m).")]
@@ -289,6 +304,15 @@ namespace ProjectCR
 
             trayLabelMeshes = new Renderer[denominations.Length];
             trayLabelTexts = new TextMesh[denominations.Length];
+            trayLabelSprites = new SpriteRenderer[denominations.Length];
+            foreach (Sprite sprite in amountSprites)
+            {
+                if (sprite != null && TryParseAmount(sprite.name, out long amount))
+                {
+                    spritesByAmount[amount] = sprite;
+                }
+            }
+
             foreach (MeshRenderer label in root.GetComponentsInChildren<MeshRenderer>(true))
             {
                 if (!label.name.StartsWith("CRT_Tray_Label_", StringComparison.Ordinal)
@@ -339,11 +363,12 @@ namespace ProjectCR
                 original &= denominations[i] == values[i];
             }
 
-            if (!changed)
+            if (!changed && trayLabelsApplied)
             {
                 return;
             }
 
+            trayLabelsApplied = true;
             for (int i = 0; i < values.Count; i++)
             {
                 trayValues[i] = values[i];
@@ -354,22 +379,101 @@ namespace ProjectCR
 
                 if (trayLabelMeshes[i] != null)
                 {
-                    trayLabelMeshes[i].enabled = original;
-                    TextMesh text = trayLabelTexts[i];
-                    if (!original && text == null)
-                    {
-                        text = trayLabelTexts[i] = CreateTrayLabel(trayLabelMeshes[i]);
-                    }
-
-                    if (text != null)
-                    {
-                        text.text = ChipLabel(values[i]);
-                        text.gameObject.SetActive(!original);
-                    }
+                    ShowTrayLabel(i, values[i], original);
                 }
             }
 
             trayTargetValue = -1;
+        }
+
+        /// <summary>
+        /// 칸 i 위 금액 표시: 금액 스프라이트가 있으면 그걸, 없으면 처음 금액은 모델 글자, 밀린 금액은 글자(TextMesh).
+        /// </summary>
+        private void ShowTrayLabel(int i, long value, bool original)
+        {
+            bool hasSprite = spritesByAmount.TryGetValue(value, out Sprite sprite);
+            bool useText = !hasSprite && !original;
+
+            trayLabelMeshes[i].enabled = !hasSprite && original;
+
+            SpriteRenderer spriteLabel = trayLabelSprites[i];
+            if (hasSprite && spriteLabel == null)
+            {
+                spriteLabel = trayLabelSprites[i] = CreateTraySprite(trayLabelMeshes[i]);
+            }
+
+            if (spriteLabel != null)
+            {
+                spriteLabel.sprite = sprite;
+                spriteLabel.gameObject.SetActive(hasSprite);
+                if (hasSprite)
+                {
+                    // 부모(FBX)의 크기와 상관없이 테이블 위 실제 크기로 맞춘다.
+                    float height = sprite.rect.height / sprite.pixelsPerUnit;
+                    Transform label = spriteLabel.transform;
+                    Transform parent = label.parent;
+                    label.SetParent(null, true);
+                    label.localScale = Vector3.one * (amountSpriteHeight / Mathf.Max(1e-5f, height));
+                    label.SetParent(parent, true);
+                }
+            }
+
+            TextMesh text = trayLabelTexts[i];
+            if (useText && text == null)
+            {
+                text = trayLabelTexts[i] = CreateTrayLabel(trayLabelMeshes[i]);
+            }
+
+            if (text != null)
+            {
+                text.text = ChipLabel(value);
+                text.gameObject.SetActive(useText);
+            }
+        }
+
+        /// <summary>모델 글자 메시 자리에 금액 스프라이트를 테이블 면 위에 눕혀 놓는다(위쪽은 플레이어 반대편).</summary>
+        private SpriteRenderer CreateTraySprite(Renderer mesh)
+        {
+            Vector3 up = board.transform.up;
+            var go = new GameObject(mesh.name + "_Sprite");
+            go.transform.SetParent(mesh.transform.parent, true);
+            go.transform.position = mesh.bounds.center + up * 0.0004f;
+            go.transform.rotation = Quaternion.LookRotation(-up, Vector3.ProjectOnPlane(Vector3.back, up));
+
+            var sprite = go.AddComponent<SpriteRenderer>();
+            sprite.color = amountSpriteTint;
+            return sprite;
+        }
+
+        /// <summary>스프라이트 이름 끝의 금액을 읽는다: "Amount_5000" → 5,000, "Amount_10K" → 10,000, "Amount_1M" → 1,000,000.</summary>
+        public static bool TryParseAmount(string name, out long amount)
+        {
+            amount = 0;
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            string token = name.Substring(name.LastIndexOf('_') + 1).Replace(",", string.Empty).Trim().ToUpperInvariant();
+            long unit = 1;
+            if (token.EndsWith("K", StringComparison.Ordinal))
+            {
+                unit = 1_000;
+                token = token.Substring(0, token.Length - 1);
+            }
+            else if (token.EndsWith("M", StringComparison.Ordinal))
+            {
+                unit = 1_000_000;
+                token = token.Substring(0, token.Length - 1);
+            }
+
+            if (!long.TryParse(token, out long number) || number <= 0)
+            {
+                return false;
+            }
+
+            amount = number * unit;
+            return true;
         }
 
         private const float TrayLabelProbe = 0.002f;
